@@ -15,7 +15,8 @@ func _init(sc:Script = null) -> void:
 	name = "ScriptComponent"
 	if sc == null:
 		return
-	if not sc.get_base_script().get_instance_base_type() == get_script().get_instance_base_type():
+	var base := sc.get_base_script()
+	if base and not base.get_instance_base_type() == get_script().get_instance_base_type():
 		push_warning("The script \"%s\" does not inherit ScriptComponent. Deleting component to prevent unexpected behavior." % sc.get_instance_base_type())
 		call_deferred("queue_free")
 	set_script(sc)
