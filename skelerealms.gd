@@ -62,6 +62,7 @@ func _enter_tree():
 	add_autoload_singleton("DeviceNetwork", "res://addons/skelerealms/scripts/misc/device_network.gd")
 	add_autoload_singleton("QuestSystem", "res://addons/skelerealms/scripts/quests/quest_system.gd")
 	add_autoload_singleton("DialogueSystem", "res://addons/skelerealms/scripts/dialogue/dialogue_system.gd")
+	add_autoload_singleton("SpawnTrackerManager", "res://addons/skelerealms/scripts/system/spawn_tracker_manager.gd")
 	
 	se_w = Window.new()
 	se = ScheduleEditorPlugin.ScheduleEditor.instantiate()
@@ -117,6 +118,7 @@ func _exit_tree():
 	remove_autoload_singleton("DeviceNetwork")
 	remove_autoload_singleton("QuestSystem")
 	remove_autoload_singleton("DialogueSystem")
+	remove_autoload_singleton("SpawnTrackerManager")
 
 	remove_control_from_container(container, utility)
 	remove_node_3d_gizmo_plugin(network_gizmo)

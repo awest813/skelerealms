@@ -4,7 +4,8 @@ extends Node3D
 
 ## This is used for one-shot spawners; the unique ID of the spawner will be stored in here if it
 ## spawned its NPC. This is a hash set.
-static var spawn_tracker: Dictionary # TODO: Save this
+## Persisted across save/load via [SpawnTrackerManager].
+static var spawn_tracker: Dictionary
 @export var templates: Array[NPCTemplateOption]
 @export_enum("One Shot", "Every Time", "Must Be Triggered") var mode:int
 @export var despawn_when_exit_scene:bool ## Whether this entity should despawn when it leaves the scene.

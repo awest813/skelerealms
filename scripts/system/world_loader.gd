@@ -6,7 +6,10 @@ extends Node
 var world_paths:Dictionary = {}
 var regex:RegEx
 var loading_path:String
-var last_load_progress := 0 
+var last_load_progress := 0
+## Name of the world that was loaded before the current load attempt.
+## Used to attempt recovery on load failure.
+var _previous_world_id: String = ""
 
 
 ## Called when the loading process begins.
@@ -17,6 +20,9 @@ signal begin_world_loading
 signal world_loading_ready
 ## Called while the scene is loading with its progress. Progress from 0 to 1.
 signal load_scene_progess_updated(percent:int)
+## Called when a world load fails. The error message describes what went wrong.
+## Hook into this to show an error screen or take recovery action.
+signal world_loading_failed(error_message: String)
 
 
 func _enter_tree() -> void:
@@ -42,11 +48,12 @@ func _process(_delta: float) -> void:
 			var ps := ResourceLoader.load_threaded_get(loading_path) as PackedScene
 			if not ps:
 				push_error("Failed to load world at %s" % loading_path)
-				_abort()
+				_abort("Loaded resource at '%s' is not a valid PackedScene." % loading_path)
+				return
 			_finish_load.call_deferred(ps)
 		ResourceLoader.THREAD_LOAD_FAILED, ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
 			push_error("Could not load world due to thread loading error.")
-			_abort()
+			_abort("Threaded load failed for '%s'." % loading_path)
 		ResourceLoader.THREAD_LOAD_IN_PROGRESS:
 			if not last_load_progress == prog[0]:
 				(func(): load_scene_progess_updated.emit(prog[0])).call_deferred()
@@ -61,18 +68,19 @@ func load_world(wid:String) -> void:
 		push_error("World not found: %s" % wid)
 		return
 	
+	# Remember the current world so we can attempt recovery on failure
+	_previous_world_id = GameInfo.world
+	
 	GameInfo.console_unfreeze()
 	begin_world_loading.emit()
 	GameInfo.game_loading.emit(wid)
 	await get_tree().process_frame
 	print("Processed frame. Continuing...")
 	GameInfo.is_loading = true
-	#await get_tree().process_frame
-	#print("processed frame. Unloading world...")
 	var e:Error = ResourceLoader.load_threaded_request(world_paths[wid], "PackedScene", true)
 	if not e == OK:
 		push_error("Load thread error: %d" % e)
-		_abort()
+		_abort("Failed to start threaded load for world '%s' (error %d)." % [wid, e])
 		return
 	
 	last_load_progress = 0
@@ -96,10 +104,30 @@ func _unload_world():
 		remove_child(get_child(0))
 
 
-func _abort() -> void:
-	# TODO: Crash game? 
-	world_loading_ready.emit()
+func _abort(error_message: String = "Unknown world loading error.") -> void:
+	push_error("WorldLoader: ABORT — %s" % error_message)
 	GameInfo.is_loading = false
+
+	# Attempt to reload the previous world if one was set and is available
+	if not _previous_world_id.is_empty() and world_paths.has(_previous_world_id):
+		push_warning("WorldLoader: Attempting to reload previous world '%s'." % _previous_world_id)
+		var prev_path: String = world_paths[_previous_world_id]
+		var prev_scene := ResourceLoader.load(prev_path) as PackedScene
+		if prev_scene:
+			add_child(prev_scene.instantiate())
+			GameInfo.world = _previous_world_id
+			push_warning("WorldLoader: Successfully recovered to previous world '%s'." % _previous_world_id)
+		else:
+			push_error("WorldLoader: Recovery failed — could not reload '%s'. Pausing game." % _previous_world_id)
+			GameInfo.pause_game(true)
+	else:
+		# No previous world to recover to — pause the game to prevent undefined state
+		push_error("WorldLoader: No previous world available for recovery. Pausing game.")
+		GameInfo.pause_game(true)
+
+	_previous_world_id = ""
+	world_loading_failed.emit(error_message)
+	world_loading_ready.emit()
 	GameInfo.game_loaded.emit()
 
 

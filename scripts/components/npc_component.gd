@@ -153,6 +153,8 @@ signal updated(delta:float)
 signal puppet_request_move(puppet:NPCPuppet)
 signal puppet_request_raise_weapons(puppet:NPCPuppet)
 signal puppet_request_lower_weapons(puppet:NPCPuppet)
+## Signal emitted when this NPC interacts with a door.
+signal door_interacted(door: Door)
 
 
 ## Shorthand to get an npc component for an entity by ID.
@@ -358,12 +360,13 @@ func _next_point() -> void:
 	# we do this rigamarole because it will look weird if an NPC follows the granular path exactly
 	if _doors_in_path.size() > 0: # if we have doors
 		var next_door:int = _doors_in_path[0] # get next door
-		if _path[next_door].position.distance_to(parent_entity.position) < ProjectSettings.get_setting("skelerealms/actor_fade_distance"): # TODO: fine tune these
-			# if the next door is close enough, jsut go to it next because it will look awkward following the path
+		if _path[next_door].position.distance_to(parent_entity.position) < ProjectSettings.get_setting("skelerealms/actor_fade_distance"):
+			# if the next door is close enough, just go to it next because it will look awkward following the path
 			# skip all until door
-			# TODO: Interact with door?
 			for i in range(next_door): # this will make the target point the door
 				_current_target_point = _pop_path()
+			# Interact with the nearest door to teleport the NPC through it
+			_interact_with_nearest_door(parent_entity.position)
 			return
 	else: # if we dont have doors (we can assume that the destination is in same world
 		if _path.back().position.distance_to(parent_entity.position) < ProjectSettings.get_setting("skelerealms/actor_fade_distance"):
@@ -394,6 +397,54 @@ func _pop_path() -> NavPoint:
 						.map(func(x:int): return x-1)\
 						.filter(func(x:int): return x >= 0) # shift doors forward and remove ines that have passed
 	return _path.pop_front() # may be reversed, i dont remember
+
+
+## Find the nearest [Door] node in the scene and interact with it to teleport
+## the NPC through. Searches the current scene tree for Door instances near
+## [param near_position].
+func _interact_with_nearest_door(near_position: Vector3) -> void:
+	var doors := _find_doors_in_scene()
+	if doors.is_empty():
+		return
+
+	# Find the closest door to the NPC's position
+	var best_door: Door = null
+	var best_dist: float = INF
+	for door: Door in doors:
+		var dist: float = door.global_position.distance_to(near_position)
+		if dist < best_dist:
+			best_dist = dist
+			best_door = door
+
+	if best_door and best_door.interactible:
+		printe("interacting with door %s" % best_door.name)
+		best_door.interact(parent_entity.name)
+		door_interacted.emit(best_door)
+
+
+## Collect all [Door] nodes currently in the scene tree.
+func _find_doors_in_scene() -> Array[Door]:
+	var result: Array[Door] = []
+	if not parent_entity.in_scene:
+		return result
+	var tree := parent_entity.get_tree()
+	if not tree:
+		return result
+	for node in tree.get_nodes_in_group("doors"):
+		if node is Door:
+			result.append(node)
+	# Fallback: walk the scene tree if no "doors" group is used
+	if result.is_empty():
+		_collect_doors(tree.current_scene, result)
+	return result
+
+
+## Recursively collect [Door] nodes under [param root].
+func _collect_doors(root: Node, out: Array[Door]) -> void:
+	if root is Door:
+		out.append(root)
+	for child in root.get_children():
+		_collect_doors(child, out)
 
 
 ## Add a Goap objective.

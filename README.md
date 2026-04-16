@@ -79,10 +79,10 @@ Please note that the project is in an Alpha state, which means breaking changes 
 	- ~~Fix barter shop_will_accept_item.~~ ✅
 	- Polish cross-scene navigation.
 - 0.8
-	- Spawn tracker persistence.
-	- World loader abort handling.
-	- NPC door interaction.
-	- Barter filtering & haggling.
+	- ~~Spawn tracker persistence.~~ ✅
+	- ~~World loader abort handling.~~ ✅
+	- ~~NPC door interaction.~~ ✅
+	- Barter haggling.
 	- Item worth & ownership.
 - 1.0
 	- Feature & API stability.
