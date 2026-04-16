@@ -196,8 +196,9 @@ func _calculate_aabb_coverage(target: PhysicsBody3D, state: PhysicsDirectSpaceSt
 		var ray_q = PhysicsRayQueryParameters3D.create(global_position, sample_pt)
 		var result = state.intersect_ray(ray_q)
 		if result:
-			# Check if we hit the target or one of its children
-			if result["collider"] == target or (result["collider"] as Node).is_ancestor_of(target) or target.is_ancestor_of(result["collider"] as Node):
+			# Check if we hit the target itself, a child of the target, or a parent of the target
+			var collider_node := result["collider"] as Node
+			if collider_node == target or target.is_ancestor_of(collider_node):
 				hits += 1
 		else:
 			# No hit means the ray passed through (point visible if nothing blocked)

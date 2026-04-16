@@ -352,7 +352,12 @@ func save() -> Dictionary:
 	var connection_data:Array = []
 	for world_name in worlds:
 		var world_node:NavWorld = worlds[world_name]
-		_collect_connections(world_node.get_child(0) if world_node.get_child_count() > 0 else null, connection_data, world_name, {})
+		# The first child of each NavWorld is the root of its KD-tree (see NavWorld.add_point)
+		if world_node.get_child_count() == 0:
+			continue
+		var root = world_node.get_child(0)
+		if root is NavNode:
+			_collect_connections(root, connection_data, world_name, {})
 	return {"connections": connection_data}
 
 
