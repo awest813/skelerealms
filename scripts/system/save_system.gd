@@ -3,6 +3,9 @@ extends Node
 ## This should be autoloaded.
 
 
+## The current save schema version. Increment when the save format changes.
+const SAVE_SCHEMA_VERSION: int = 1
+
 ## Called when the savegame is complete.
 ## Use this to, for example, freeze the game until complete, or tell the netity manager to clean up stale entities.
 signal save_complete
@@ -10,9 +13,23 @@ signal save_complete
 signal load_complete
 
 
+## Registered migration functions. Key is the version to migrate FROM (int -> Callable).
+## Each callable receives a Dictionary and returns the migrated Dictionary.
+var _migrations: Dictionary = {}
+
+
+## Register a migration that upgrades saves from [param from_version] to [code]from_version + 1[/code].
+## The callable should accept a [Dictionary] and return the migrated [Dictionary].
+func register_migration(from_version: int, migration: Callable) -> void:
+	_migrations[from_version] = migration
+
+
 ## Save the game and write it to user://saves directory.
-func save():
+## [param slot_name]: optional name for the save slot (e.g. "quicksave", "slot_1").
+## If empty, falls back to a datetime string.
+func save(slot_name: String = ""):
 	var save_data = {
+		"schema_version": SAVE_SCHEMA_VERSION,
 		"game_info" : {}, # info about the game, like playtime, quests, etc
 		"entity_data" : {}, # savegame info from entities
 		"other_data" : {} # anything else
@@ -35,12 +52,24 @@ func save():
 		old_data.merge(save_data, true) # merge, taking care to overwrite to keep info up to date
 		save_data = old_data # bit funky but I'm lazy
 
+	# Always stamp with current schema version after merge
+	save_data["schema_version"] = SAVE_SCHEMA_VERSION
+
 	var save_text:String = _serialize(save_data) # serialize
 
+	# Compute and embed checksum (FNV-1a 32-bit)
+	save_data["checksum"] = _compute_checksum(save_text)
+	save_text = _serialize(save_data)
+
 	DirAccess.make_dir_recursive_absolute("user://saves/")
-	# TODO: allow for custom save file names
+	# Determine filename
+	var file_name: String
+	if slot_name.is_empty():
+		file_name = "%s.dat" % Time.get_datetime_string_from_system().replace(":", "")
+	else:
+		file_name = "%s.dat" % slot_name
 	# Create savegame file
-	var file = FileAccess.open("user://saves/%s.dat" % Time.get_datetime_string_from_system().replace(":", ""), FileAccess.WRITE)
+	var file = FileAccess.open("user://saves/%s" % file_name, FileAccess.WRITE)
 	file.store_string(save_text)
 	# I think these two are redundant but I wanna be safe
 	file.flush()
@@ -61,6 +90,19 @@ func load_game(path:String):
 	var file = FileAccess.open(path, FileAccess.READ) # open file
 	var data_blob:String = file.get_as_text() # read file
 	var save_data:Dictionary = _deserialize(data_blob) # parse data
+
+	# Validate checksum if present
+	if save_data.has("checksum"):
+		var stored_checksum: String = save_data["checksum"]
+		# Recompute without the checksum field
+		var check_data: Dictionary = save_data.duplicate(true)
+		check_data.erase("checksum")
+		var actual_checksum := _compute_checksum(_serialize(check_data))
+		if actual_checksum != stored_checksum:
+			push_warning("SaveSystem: Checksum mismatch for '%s'. Save may be corrupted (expected %s, got %s)." % [path, stored_checksum, actual_checksum])
+
+	# Apply migrations if needed
+	save_data = _apply_migrations(save_data)
 
 	# Reset to default state if it doesn't have an entry in the save data
 	for e in SKEntityManager.instance.entities:
@@ -83,6 +125,24 @@ func load_game(path:String):
 			so.load_data(save_data["other_data"][so.name])
 		else:
 			so.reset_data()
+
+
+## Load a named save slot. Convenience wrapper around [method load_game].
+func load_slot(slot_name: String) -> bool:
+	var path := "user://saves/%s.dat" % slot_name
+	if not FileAccess.file_exists(path):
+		return false
+	load_game(path)
+	return true
+
+
+## List all save files. Returns an array of filenames (without path prefix).
+func list_saves() -> Array[String]:
+	var saves: Array[String] = []
+	if not DirAccess.dir_exists_absolute("user://saves/"):
+		return saves
+	saves.append_array(DirAccess.get_files_at("user://saves/"))
+	return saves
 
 
 ## Check if an entity is accounted for in the save system. Returns the save data blob if there is, else none.
@@ -129,3 +189,25 @@ func _serialize(data:Dictionary) -> String:
 ## Like with [method _serialize], you can write your own.
 func _deserialize(text:String) -> Dictionary:
 	return JSON.parse_string(text)
+
+
+## Apply registered migrations to bring a save up to [constant SAVE_SCHEMA_VERSION].
+func _apply_migrations(data: Dictionary) -> Dictionary:
+	var version: int = data.get("schema_version", 0)
+	while version < SAVE_SCHEMA_VERSION:
+		if _migrations.has(version):
+			data = _migrations[version].call(data)
+		version += 1
+		data["schema_version"] = version
+	return data
+
+
+## Compute a FNV-1a 32-bit checksum for corruption detection.
+func _compute_checksum(text: String) -> String:
+	var hash_val: int = 0x811c9dc5
+	for i in range(text.length()):
+		hash_val = hash_val ^ text.unicode_at(i)
+		# Multiply by FNV prime, keeping 32-bit unsigned
+		hash_val = (hash_val * 0x01000193) & 0xFFFFFFFF
+	# Format as zero-padded 8-char hex string
+	return "%08x" % hash_val
