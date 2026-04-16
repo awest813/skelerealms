@@ -121,6 +121,8 @@ signal start_dialogue
 signal awareness_state_changed(ref_id:String, state:int)
 ## Signal emitted when it wants to flee from an entity. Passes ref id of who it is warning.
 signal flee(ref_id:String)
+## Signal emitted when the NPC issues a warning to an entity (e.g., "stay back!").
+signal warning(ref_id:String)
 ## Signal emitted when it hears an audio event.
 signal heard_something(emitter:AudioEventEmitter)
 ## Signal emitted when this NPC is interacted with.
@@ -140,7 +142,13 @@ signal added_to_conversation
 ## Signal emitted when the NPC is removed from a conversation.
 signal removed_from_conversation
 ## Signal emitted when a crime is witnessed
-signal crime_witnessed 
+signal crime_witnessed
+## Signal emitted when the NPC begins investigating a location.
+signal investigate_started(target_position: Vector3)
+## Signal emitted when the NPC finishes investigating (nothing found).
+signal investigate_ended
+## Signal emitted when this NPC confronts an entity about a crime.
+signal crime_confrontation(perpetrator_ref_id: String, crime: Crime)
 signal updated(delta:float)
 signal puppet_request_move(puppet:NPCPuppet)
 signal puppet_request_raise_weapons(puppet:NPCPuppet)
@@ -542,6 +550,15 @@ func get_translated_name() -> String:
 			return tr(parent_entity.form_id)
 	else:
 		return t
+
+
+## Returns true if this NPC can currently see the entity identified by [param ref_id].
+## Checks perception memory for a non-zero visibility value.
+func can_see_entity(ref_id: StringName) -> bool:
+	if not perception_memory.has(ref_id):
+		return false
+	var vis: float = perception_memory[ref_id].get(&"visibility", 0.0)
+	return not is_zero_approx(vis)
 
 #endregion misc
 

@@ -80,15 +80,35 @@ This also fixes FRAMEWORK_STATUS Phase 1 #5 (coven NPC-opinion lookup).
 ### 3A  AI Investigate State
 **Source:** Camelot AI description
 
-Complete the investigate stub in `default_threat_response.gd`:
+~~Complete the investigate stub in `default_threat_response.gd`:
 on losing sight → record `last_known_position` → navigate there → if nothing
-found, return to patrol.
+found, return to patrol.~~ ✅
+
+**Implementation:**
+- When `UNAWARE` state fires and target is below attack threshold, NPC records last
+  known position in GOAP memory and adds `{"area_investigated": true}` objective.
+- When `AWARE_VISIBLE` fires during investigation, the investigation is cancelled
+  (target found).
+- When `WARY` fires (awareness fully decayed), the investigation ends and NPC
+  returns to patrol.
+- Added `investigate_started` and `investigate_ended` signals to `NPCComponent`.
+- Also implemented friendly-fire response based on `friendly_fire_behavior` export.
 
 ### 3B  Guard Challenge / Crime Response
 **Source:** Camelot's Guard Challenge Modal
 
-Complete `default_crime_report.gd` with four response branches:
-pay fine, serve jail time, resist arrest, attempt persuasion.
+~~Complete `default_crime_report.gd` with four response branches:
+pay fine, serve jail time, resist arrest, attempt persuasion.~~ ✅
+
+**Implementation:**
+- `DefaultCrimeReportModule` now checks coven membership to determine whether to
+  report crimes (own covens vs. other covens via `report_crimes_against_other_covens`).
+- On witnessing a crime above `confront_severity_threshold`, the NPC stores
+  confrontation data in GOAP memory and adds `{"crime_confronted": true}` objective.
+- Four resolution methods: `resolve_pay_fine()`, `resolve_serve_time()`,
+  `resolve_resist_arrest()`, `resolve_persuasion()`.
+- `crime_confrontation` signal added to `NPCComponent` for UI/dialogue integration.
+- Added `can_see_entity()` helper to `NPCComponent`.
 
 ### 3C  Mod-Friendly Data Architecture
 **Source:** `src/framework/mods/content-merge.ts`
