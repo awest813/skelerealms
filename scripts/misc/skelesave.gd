@@ -83,9 +83,7 @@ static func deserialize(data:PackedByteArray) -> Dictionary:
 	var output:Dictionary = {}
 	var pos:int = 0
 	var current_phrase:PackedByteArray = PackedByteArray()
-	var current_array:Array = []
 	var current_key:String = ""
-	var current_value:Variant = null
 
 	while pos < data.size():
 		match data[pos]:
@@ -93,10 +91,11 @@ static func deserialize(data:PackedByteArray) -> Dictionary:
 				current_key = current_phrase.get_string_from_utf8()
 				current_phrase.clear()
 			VALUE_DELIM:
-				current_value = _decode_value(current_phrase)
+				output[current_key] = _decode_value(current_phrase)
 				current_phrase.clear()
 			_:
 				current_phrase.append(data[pos])
+		pos += 1
 	return output
 
 
