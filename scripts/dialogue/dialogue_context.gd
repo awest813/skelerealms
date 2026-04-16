@@ -48,7 +48,7 @@ func get_skill_level(skill_id: StringName) -> int:
 
 
 ## Emit a custom event. Override to handle game-specific events.
-func emit_event(event_id: StringName, _payload: Dictionary = {}) -> void:
+func emit_event(event_id: StringName, payload: Dictionary = {}) -> void:
 	push_warning("DialogueContext: Unhandled event '%s'. Override emit_event() to handle." % event_id)
 
 

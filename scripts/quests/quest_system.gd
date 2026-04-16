@@ -93,11 +93,4 @@ func load_data(data: Dictionary) -> void:
 
 
 func reset_data() -> void:
-	# Re-register all definitions to reset runtime state
-	var definitions := {}
-	for quest_id: StringName in engine._definitions:
-		definitions[quest_id] = engine._definitions[quest_id]
-	engine._definitions.clear()
-	engine._states.clear()
-	for quest_id: StringName in definitions:
-		engine.register_quest(definitions[quest_id])
+	engine.reset_all_state()

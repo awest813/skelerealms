@@ -307,6 +307,15 @@ func get_registered_quest_ids() -> Array[StringName]:
 	return ids
 
 
+## Reset all runtime state while keeping definitions. Re-creates empty state for each quest.
+func reset_all_state() -> void:
+	var defs := _definitions.duplicate()
+	_definitions.clear()
+	_states.clear()
+	for quest_id: StringName in defs:
+		register_quest(defs[quest_id])
+
+
 # ── Private helpers ─────────────────────────────────────────────────────────
 
 

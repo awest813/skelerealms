@@ -120,6 +120,12 @@ func get_snapshot() -> DialogueEngine.DialogueSessionSnapshot:
 	return snapshot
 
 
+## Restore session state from a snapshot.
+func restore_from_snapshot(snapshot: DialogueEngine.DialogueSessionSnapshot) -> void:
+	_current_node_id = snapshot.current_node_id
+	_completed = snapshot.completed
+
+
 # ── Private helpers ─────────────────────────────────────────────────────────
 
 

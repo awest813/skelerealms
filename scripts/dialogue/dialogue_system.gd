@@ -103,9 +103,7 @@ func load_data(data: Dictionary) -> void:
 		if engine.has_dialogue(snapshot.dialogue_id) and not snapshot.completed:
 			var context := DialogueContext.new()
 			active_session = engine.create_session(snapshot.dialogue_id, context)
-			# Advance session to the saved node
-			active_session._current_node_id = snapshot.current_node_id
-			active_session._completed = snapshot.completed
+			active_session.restore_from_snapshot(snapshot)
 
 
 func reset_data() -> void:
