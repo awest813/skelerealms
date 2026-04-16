@@ -11,16 +11,19 @@ extends SKEntityComponent
 var _components:Dictionary = {}
 
 
-func _init(sc:Script) -> void:
-	if not sc.get_base_script().get_instance_base_type() == get_script().get_instance_base_type():
+func _init(sc:Script = null) -> void:
+	name = "ScriptComponent"
+	if sc == null:
+		return
+	var base := sc.get_base_script()
+	if base and not base.get_instance_base_type() == get_script().get_instance_base_type():
 		push_warning("The script \"%s\" does not inherit ScriptComponent. Deleting component to prevent unexpected behavior." % sc.get_instance_base_type())
-		call_deferred("queue_free") ## Queue next frame. I think. May not work.
+		call_deferred("queue_free")
 	set_script(sc)
 
 
 func _ready() -> void:
 	super._ready()
-	name = "ScriptComponent"
 	await parent_entity.instantiated
 	for c in parent_entity.get_children():
 		if c == self:

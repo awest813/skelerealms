@@ -18,7 +18,12 @@ signal added_money(amount:int)
 signal removed_money(amount:int)
 
 
+func _init() -> void:
+	name = "InventoryComponent"
+
+
 func _ready() -> void:
+	super._ready()
 	added_to_inventory.connect(func(x): inventory_changed.emit())
 	removed_from_inventory.connect(func(x): inventory_changed.emit())
 

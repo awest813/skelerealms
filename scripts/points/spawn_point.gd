@@ -27,24 +27,15 @@ func _roll() -> void:
 
 
 func spawn() -> void:
-	# set up entity
 	var t := resolve_templates()
 	if t == null:
 		return
 	
-	# add that shiz
 	spawn_tracker[generate_id()] = true
-	var e := SKEntityManager.instance.add_entity_from_scene(t)
+	var e := SKEntityManager.instance.add_entity(t)
 	e.rotation = quaternion
-	e.generated = true
 	if despawn_when_exit_scene:
 		e.left_scene.connect(func() -> void: SKEntityManager.instance.remove_entity(e.name))
-	
-	# resolve loot table
-	if t.loot_table:
-		for i in t.loot_table.resolve_table_to_instances():
-			var ie = SKEntityManager.instance.add_entity(i) # Add entity
-			(e.get_component("ItemComponent") as ItemComponent).contained_inventory = e.name # set contained inventory
 
 
 func reset_spawner() -> void:
