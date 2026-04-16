@@ -45,8 +45,8 @@ func _process(delta:float) -> void:
 			)
 			# if we made a plan, stop sorting through objectives
 			if not action_queue.is_empty():
+				_current_objective = o # assign objective before popping so the planner knows which objective is active
 				_pop_action()
-				_current_objective = o # logically, this should be uncommented. But commenting it before made things work but now it's broken? what a load of crap
 				_rebuild_plan = false
 				break
 	

@@ -105,16 +105,26 @@ func accept_barter(selling_modifier:float, buying_modifier:float, currency: Stri
 
 
 ## Determine whether a shop will accept an item or not.
-## NOTE: Broken right now.
-func shop_will_accept_item(shop:Resource, item:StringName) -> bool:
-	var ic:ItemComponent = SKEntityManager.instance.get_entity(item).get_component("ItemComponent")
+func shop_will_accept_item(shop:ShopComponent, item:StringName) -> bool:
+	var entity = SKEntityManager.instance.get_entity(item)
+	if not entity:
+		return false
+	var ic:ItemComponent = entity.get_component("ItemComponent")
+	if not ic:
+		return false
+	
+	# Collect item data component type tags
+	var item_tags:Array[StringName] = []
+	for child in ic.get_children():
+		if child is ItemDataComponent:
+			item_tags.append(StringName(child.get_type()))
 	
 	if not shop.whitelist.is_empty():
-		if not ic.data.tags.any(func(tag): return shop.whitelist.has(tag)): # if no tags in whitelist
+		if not item_tags.any(func(tag): return shop.whitelist.has(tag)): # if no tags in whitelist
 			return false
 	
 	if not shop.blacklist.is_empty():
-		if ic.data.tags.any(func(tag): return shop.blacklist.has(tag)): # if any tag in blacklist
+		if item_tags.any(func(tag): return shop.blacklist.has(tag)): # if any tag in blacklist
 			return false
 	
 	if not shop.accept_stolen and ic.stolen: # if item stolen and vendor accepts no stolen

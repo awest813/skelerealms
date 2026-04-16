@@ -116,8 +116,8 @@ func move_to_inventory(refID:StringName):
 ## Drop this on the ground.
 func drop():
 	var e:SKEntity = SKEntityManager.instance.get_entity(contained_inventory)
-	var drop_dir:Quaternion = e.quaternion
-	print(drop_dir.get_euler().normalized() * DROP_DISTANCE)
+	# Use the entity's forward direction (-Z in Godot) for drop direction
+	var drop_forward := -Basis(e.quaternion).z.normalized()
 	# This whole bit is genericizing dropping the item in front of the player. It's meant to be used with the player, it should work with anything with a puppet.
 	if in_inventory:
 		SKEntityManager.instance.get_entity(contained_inventory)\
@@ -126,27 +126,22 @@ func drop():
 
 	# raycast in front of puppet if possible to do wall check
 	if e.in_scene and psc:
-		print("has puppet component, in scene")
 		if psc.puppet:
-			print("puppet exists")
 			# construct raycast
 			var from = parent_entity.position + Vector3(0, 1.5, 0)
-			var to = parent_entity.position + Vector3(0, 1.5, 0) + (drop_dir.get_euler().normalized() * DROP_DISTANCE)
+			var to = parent_entity.position + Vector3(0, 1.5, 0) + (drop_forward * DROP_DISTANCE)
 			var query = PhysicsRayQueryParameters3D.create(from, to, 0xFFFFFFFF, SkeleRealmsGlobal.get_child_rids(psc.unwrap().puppet))
 			await get_tree().physics_frame
 			var space = (psc.puppet as Node3D).get_world_3d().direct_space_state
-			# FIXME: Direction is weird
 			var res = space.intersect_ray(query)
 			if res.is_empty():
-				# else spawn in front
-				print("didn't hit anything")
+				# spawn in front
 				parent_entity.position = to
 				contained_inventory = NONE
 				psc.spawn()
 				return
 			else:
 				# if hit something, spawn at hit position
-				print(res)
 				parent_entity.position = res["position"] # TODO: Compensate for item size
 				contained_inventory = NONE
 				psc.spawn()
