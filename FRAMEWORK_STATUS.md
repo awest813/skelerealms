@@ -130,9 +130,9 @@ These features have been explicitly flagged as broken, or contain code that prov
 - **Comments:** `# TODO: load and apply connections`, `# TODO: Figure out connections`
 - **Detail:** `_load()` in `NavMaster` is an empty stub. `NavNode` also has a stub for connection persistence. The KD-tree is built from networks at runtime, but any cross-session or pre-baked connection data is ignored. Off-screen NPCs can navigate at runtime only if the network was built in the same session.
 
-### 6. Skelesave — `deserialize` always returns empty dictionary
+### 6. ~~Skelesave — `deserialize` always returns empty dictionary~~ ✅ FIXED
 - **File:** `scripts/misc/skelesave.gd:82–100`
-- **Detail:** The `while` loop parses `KEY_DELIM` and `VALUE_DELIM` tokens into `current_key` and `current_value`, but never writes either into `output`. The function always returns `{}`. The `_decode_value` path for arrays is also unfinished (see `# TODO: array`). This custom binary serializer is non-functional.
+- **Fix:** The `while` loop now correctly writes `current_key` → `_decode_value(current_phrase)` into `output` on each `VALUE_DELIM` token. The `_decode_value` array path was also completed. (Critical bug fix)
 
 ### 7. Item drop — direction calculation
 - **File:** `scripts/components/item_component.gd:136`
@@ -174,18 +174,18 @@ Ordered by dependency depth and severity. Fix broken systems before building on 
 
 ### Phase 1 — Critical Fixes (nothing downstream works correctly without these)
 
-1. **Fix `Skelesave.deserialize`** — the custom serializer's deserialization loop is non-functional; output is never populated. Either repair the loop or remove `Skelesave` in favour of the JSON path already used by `SaveSystem`.
-2. **Fix GOAP breadth-first search** — change `_build_graph` to BFS so action plans are reliably cost-optimal.
+1. **~~Fix `Skelesave.deserialize`~~** ✅ — the deserialization loop now correctly populates the output dictionary; array decoding also completed.
+2. **~~Fix GOAP breadth-first search~~** ✅ — `_build_graph` rewritten to BFS so action plans are reliably cost-optimal. (Camelot integration)
 3. **Fix GOAP objective assignment** — resolve the commented-out `_current_objective` assignment so the planner correctly tracks which objective is active.
 4. **Fix Granular Navigation connections** — implement `_load()` / `NavNode` connection persistence so off-screen paths survive scene reloads.
-5. **Fix Coven NPC-opinion lookup** — correct the argument order in `get_covennpc_opinions`; NPC hostility calculations are wrong for any coven-aligned character.
+5. **~~Fix Coven NPC-opinion lookup~~** ✅ — corrected to use `get_coven_opinions()`; NPC hostility calculations now work correctly for coven-aligned characters. (Camelot integration)
 
 ### Phase 2 — Core Gameplay Gaps (needed for a playable loop)
 
 6. **Generalize `VitalsComponent`** — decouple health/stamina/will from the player; provide a shared base or configurable NPC vitals component.
 7. **Complete Perception FOV** — implement vertical FOV using pitch and the AABB coverage percentage for accurate stealth calculations.
-8. **Complete Crime system** — track crimes against non-player entities; wire the aggress response in `default_crime_report`.
-9. **Complete Threat response** — implement the investigate state, watch-state visibility check, and friendly-fire response.
+8. **~~Complete Crime system~~** ✅ — crime report module now evaluates coven membership, supports configurable other-coven reporting, and provides four confrontation resolution branches. Crimes against non-player entities are tracked. (Camelot integration)
+9. **~~Complete Threat response~~** ✅ — investigate state, watch-state visibility check, and friendly-fire response all implemented. (Camelot integration)
 10. **Fix Item drop direction** — correct the basis vector used when dropping items so they land in front of the actor.
 11. **Fix `shop_will_accept_item`** — reconcile `ShopComponent` fields with the barter filter logic.
 

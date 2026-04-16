@@ -14,22 +14,28 @@ Skelerealms is designed in such a way where you can ignore or replace most of th
 - Inventory system
 - Equipment system
 - NPC AI
-	- Behavious
+	- Behaviours
 	- GOAP AI System
 	- Basic perception
 	- Schedules
 	- Patrol paths
+	- Investigate state
+	- Crime response & guard challenge
 - Tools to assist development
 - Composable design
 	- Components for entities
 	- Components for items
 - Dungeon puzzle elements
 - Factions
+	- Configurable disposition thresholds
 - Spells/Status Effects
 - Crime
 - Bartering
 - Spawn zones
 - Doors
+- Quest system (DAG-based with validation, triggers, and save integration)
+- Dialogue system (branching trees with conditions, effects, and session management)
+- Save system (named slots, schema versioning, migration hooks, integrity checks)
 
 ## What does it *not* have? 
 
@@ -37,8 +43,6 @@ Skelerealms is designed in such a way where you can ignore or replace most of th
 - Terrain
 - LOD system, chunks
 - UI
-- Dialogue
-- Quests (Ironically)
 - Combat
 
 ## How do I get started? 
@@ -54,14 +58,38 @@ Please note that the project is in an Alpha state, which means breaking changes 
 
 ## What's in store?
 
-- 0.6 (In Development)
-	- Redesigning the way entities are stored.
-	- Adding more tools.
-	- Writing more thorough documentation.
-	- Integrating NetworkGD.
+- 0.6 (Current)
+	- ~~Redesigning the way entities are stored.~~ ✅
+	- ~~Adding more tools.~~ ✅
+	- ~~Writing more thorough documentation.~~ ✅
+	- ~~Integrating NetworkGD.~~ ✅
+	- ~~Quest system (DAG-based, ported from Camelot).~~ ✅
+	- ~~Dialogue system (branching trees with conditions/effects, ported from Camelot).~~ ✅
+	- ~~GOAP BFS fix for cost-optimal action plans.~~ ✅
+	- ~~Save system overhaul: named slots, schema versioning, FNV-1a checksums.~~ ✅
+	- ~~Faction disposition thresholds.~~ ✅
+	- ~~AI investigate state and crime response.~~ ✅
 - 0.7
-	- Redesigning the save game system.
 	- Polish cross-scene navigation.
+	- Fix GOAP objective assignment tracking.
+	- Implement granular navigation connection persistence.
+	- Generalize VitalsComponent for NPCs.
+	- Complete perception FOV (vertical + AABB coverage).
+	- Fix item drop direction.
+	- Fix barter shop_will_accept_item.
+- 0.8
+	- Spawn tracker persistence.
+	- World loader abort handling.
+	- NPC door interaction.
+	- Barter filtering & haggling.
+	- Item worth & ownership.
+- 1.0
+	- Feature & API stability.
+	- Furniture animation & multi-use.
+	- Player damage generalization.
+	- Network edge costs in editor.
+	- Granular navigation memory optimization.
+	- Mod-friendly data architecture.
 
 
 ## Star History
