@@ -1,10 +1,27 @@
 extends Node
 ## The savegame system.
 ## This should be autoloaded.
+##
+## Save format (full snapshot with incremental merge):
+## Each save is a complete snapshot of all tracked entities and systems.
+## When saving, the new snapshot is merged on top of the most recent save so
+## that entities not currently loaded still keep their persisted state.
+## This is a "hybrid snapshot with deltas" approach — every file is a full
+## snapshot, but building it reuses data from the prior save for entities that
+## are off-screen.
+##
+## Save schema layout:
+##   schema_version  — int, for forward-compatible migrations
+##   game_info       — global game state (world time, continuity flags, quest/crime/dialogue state)
+##   entity_data     — per-entity state keyed by RefID; each entry contains
+##                     entity_data (position, rotation, world, form_id, unique) and
+##                     components (keyed by component name)
+##   other_data      — anything else registered via the "savegame_other" group
+##   checksum        — FNV-1a integrity check
 
 
 ## The current save schema version. Increment when the save format changes.
-const SAVE_SCHEMA_VERSION: int = 1
+const SAVE_SCHEMA_VERSION: int = 2
 
 ## Called when the savegame is complete.
 ## Use this to, for example, freeze the game until complete, or tell the netity manager to clean up stale entities.
@@ -16,6 +33,11 @@ signal load_complete
 ## Registered migration functions. Key is the version to migrate FROM (int -> Callable).
 ## Each callable receives a Dictionary and returns the migrated Dictionary.
 var _migrations: Dictionary = {}
+
+
+func _ready() -> void:
+	# Register built-in migrations
+	register_migration(1, _migrate_v1_to_v2)
 
 
 ## Register a migration that upgrades saves from [param from_version] to [code]from_version + 1[/code].
@@ -88,8 +110,14 @@ func load_most_recent():
 ## Load a game from a filepath.
 func load_game(path:String):
 	var file = FileAccess.open(path, FileAccess.READ) # open file
+	if not file:
+		push_error("SaveSystem: Failed to open save file '%s'." % path)
+		return
 	var data_blob:String = file.get_as_text() # read file
 	var save_data:Dictionary = _deserialize(data_blob) # parse data
+	if save_data.is_empty():
+		push_error("SaveSystem: Failed to parse save file '%s'." % path)
+		return
 
 	# Validate checksum if present
 	if save_data.has("checksum"):
@@ -104,27 +132,37 @@ func load_game(path:String):
 	# Apply migrations if needed
 	save_data = _apply_migrations(save_data)
 
+	var entity_data:Dictionary = save_data.get("entity_data", {})
+	var game_info_data:Dictionary = save_data.get("game_info", {})
+	var other_data:Dictionary = save_data.get("other_data", {})
+
 	# Reset to default state if it doesn't have an entry in the save data
 	for e in SKEntityManager.instance.entities:
-		if not save_data["entity_data"].has(e):
+		if not entity_data.has(e):
 			SKEntityManager.instance.entities[e].reset_data()
 	# load entity data - loop through all data, get entity (spawning it if it isn't there), call load
-	for data in save_data["entity_data"]:
-		SKEntityManager.instance.get_entity(data).load_data(save_data["entity_data"][data])
+	for data in entity_data:
+		var entity = SKEntityManager.instance.get_entity(data)
+		if entity:
+			entity.load_data(entity_data[data])
+		else:
+			push_warning("SaveSystem: Entity '%s' found in save but could not be loaded." % data)
 
 	# load game info data
 	for si in get_tree().get_nodes_in_group("savegame_gameinfo"):
-		if save_data["game_info"].has(si.name):
-			si.load_data(save_data["game_info"][si.name])
+		if game_info_data.has(si.name):
+			si.load_data(game_info_data[si.name])
 		else:
 			si.reset_data()
 
 	# load others data
 	for so in get_tree().get_nodes_in_group("savegame_other"):
-		if save_data["other_data"].has(so.name):
-			so.load_data(save_data["other_data"][so.name])
+		if other_data.has(so.name):
+			so.load_data(other_data[so.name])
 		else:
 			so.reset_data()
+
+	load_complete.emit()
 
 
 ## Load a named save slot. Convenience wrapper around [method load_game].
@@ -154,9 +192,12 @@ func entity_in_save(ref_id:String) -> Option:
 		return Option.none()
 	# deserialize
 	var deserialized_data:Dictionary = _deserialize(FileAccess.open(most_recent.unwrap(), FileAccess.READ).get_as_text())
-	if deserialized_data["entity_data"].has(ref_id):
+	if not deserialized_data:
+		return Option.none()
+	var entity_data:Dictionary = deserialized_data.get("entity_data", {})
+	if entity_data.has(ref_id):
 		# if the data has it, return the blob
-		return Option.from(deserialized_data["entity_data"][ref_id])
+		return Option.from(entity_data[ref_id])
 	else:
 		# else, it's not here.
 		return Option.none()
@@ -211,3 +252,48 @@ func _compute_checksum(text: String) -> String:
 		hash_val = (hash_val * 0x01000193) & 0xFFFFFFFF
 	# Format as zero-padded 8-char hex string
 	return "%08x" % hash_val
+
+
+## Migrate a v1 save to v2.
+## v1 stored entity position/unique as raw Variant values that became strings
+## after JSON round-trip. v2 stores position as [x,y,z] array, rotation as
+## [x,y,z,w] array, and adds form_id.
+func _migrate_v1_to_v2(data: Dictionary) -> Dictionary:
+	var entity_data: Dictionary = data.get("entity_data", {})
+	for entity_id in entity_data:
+		var entry: Dictionary = entity_data[entity_id]
+		if not entry.has("entity_data"):
+			continue
+		var ed: Dictionary = entry["entity_data"]
+
+		# Convert position from string "(x, y, z)" to [x, y, z] array
+		if ed.has("position") and ed["position"] is String:
+			var pos_str: String = ed["position"]
+			# Strip parentheses and parse
+			pos_str = pos_str.replace("(", "").replace(")", "").strip_edges()
+			var parts := pos_str.split(",")
+			if parts.size() >= 3:
+				ed["position"] = [parts[0].strip_edges().to_float(), parts[1].strip_edges().to_float(), parts[2].strip_edges().to_float()]
+
+		# Convert unique from string "true"/"false" to bool
+		if ed.has("unique") and ed["unique"] is String:
+			ed["unique"] = ed["unique"].to_lower() == "true"
+
+		# Add rotation if missing (identity quaternion)
+		if not ed.has("rotation"):
+			ed["rotation"] = [0.0, 0.0, 0.0, 1.0]
+
+		# Add form_id if missing
+		if not ed.has("form_id"):
+			ed["form_id"] = ""
+
+	# Migrate game_info key type: v1 used StringName &"world_time", v2 uses "world_time"
+	var game_info: Dictionary = data.get("game_info", {})
+	for node_name in game_info:
+		var node_data: Dictionary = game_info[node_name]
+		# If world_time was stored under a StringName key, re-key it as a string
+		if node_data.has(&"world_time") and not node_data.has("world_time"):
+			node_data["world_time"] = node_data[&"world_time"]
+			node_data.erase(&"world_time")
+
+	return data

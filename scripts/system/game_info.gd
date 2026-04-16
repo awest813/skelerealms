@@ -81,6 +81,7 @@ signal game_loaded
 
 func _ready():
 	set_name.call_deferred("GameInfo")
+	add_to_group("savegame_gameinfo")
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	
@@ -194,20 +195,31 @@ func _on_timer_complete():
 
 func save() -> Dictionary:
 	return {
-		"world" : world,
-		&"world_time" : world_time,
-		"continuity_flags" : continuity_flags
+		"world" : str(world),
+		"world_time" : world_time,
+		"continuity_flags" : continuity_flags,
 	}
 
 
-func load_game(data:Dictionary):
-	world = data["world"]
-	world_time = data[&"world_time"]
-	continuity_flags = data["continuity_flags"]
+func load_data(data:Dictionary):
+	world = StringName(data.get("world", world))
+	var wt = data.get("world_time", null)
+	if wt is Dictionary:
+		# Merge loaded time into defaults so missing keys get sane values
+		var defaults := _default_world_time()
+		defaults.merge(wt, true)
+		world_time = defaults
+	continuity_flags = data.get("continuity_flags", continuity_flags)
 
 
 func reset_data() -> void: # this should never happen but just in case
-	world_time = {
+	world_time = _default_world_time()
+	continuity_flags = {}
+	world = &"init"
+
+
+func _default_world_time() -> Dictionary:
+	return {
 		&"world_time" : 0,
 		&"minute" : 0,
 		&"hour" : 0,
@@ -216,8 +228,6 @@ func reset_data() -> void: # this should never happen but just in case
 		&"month" : 0,
 		&"year" : 0,
 	}
-	continuity_flags = {}
-	world = "init"
 
 
 func start_game() -> void:

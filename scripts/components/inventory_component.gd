@@ -35,6 +35,7 @@ func add_to_inventory(id:String):
 		var ic = e.get_component("ItemComponent")
 		if ic:
 			inventory.append(id)
+			dirty = true
 			added_to_inventory.emit(id)
 
 
@@ -44,6 +45,7 @@ func remove_from_inventory(id:String):
 	if index == -1: # catch if it doesnt have the item
 		return
 	inventory.remove_at(index)
+	dirty = true
 	removed_from_inventory.emit(id)
 
 
@@ -54,6 +56,7 @@ func add_money(amount:int, currency:StringName):
 		currencies[currency] += amount
 	else:
 		currencies[currency] = amount
+	dirty = true
 	_clamp_money(currency)
 
 
@@ -64,6 +67,7 @@ func remove_money(amount:int, currency:StringName):
 		currencies[currency] = 0
 		return
 	currencies[currency] -= amount
+	dirty = true
 	_clamp_money(currency)
 
 
@@ -124,3 +128,19 @@ func gather_debug_info() -> String:
 		JSON.stringify(currencies, "\t"),
 		JSON.stringify(inventory, "\t"),
 	]
+
+
+func save() -> Dictionary:
+	dirty = false
+	return {
+		"inventory": Array(inventory),
+		"currencies": currencies,
+	}
+
+
+func load_data(data:Dictionary):
+	var inv_data = data.get("inventory", null)
+	if inv_data is Array:
+		inventory = PackedStringArray(inv_data)
+	currencies = data.get("currencies", currencies)
+	dirty = false
