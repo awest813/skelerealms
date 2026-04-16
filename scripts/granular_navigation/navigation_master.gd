@@ -14,11 +14,17 @@ extends Node
 static var instance:NavMaster
 ## Dictionary of references to the roots of KD trees.
 var worlds:Dictionary = {}
+## Portal edges that failed to connect because the destination world was not yet loaded.
+## Each entry is a PortalEdge resource.
+var _pending_portal_edges:Array = []
+## Lookup table mapping formatted point name -> NavNode for connection persistence.
+var _node_lookup:Dictionary = {}
 
 
 func _ready() -> void:
 	GameInfo.game_started.connect(load_all_networks.bind())
 	instance = self
+	add_to_group("savegame_other")
 
 
 func calculate_path(start:NavPoint, end:NavPoint) -> Array[NavPoint]:
@@ -90,9 +96,36 @@ func _heuristic(a: NavNode, end:NavNode) -> float:
 		return a.position.distance_squared_to(end.position)
 
 
-# TODO: load and apply connections
+## Retry any portal connections that failed during initial load because the
+## destination world was not yet available. Call after all networks have been
+## loaded or when a new world is dynamically added.
 func _load():
-	pass
+	if _pending_portal_edges.is_empty():
+		return
+	var still_pending:Array = []
+	for edge in _pending_portal_edges:
+		var from_node = _find_node_for_portal(edge.portal_from)
+		var to_node = _find_node_for_portal(edge.portal_to)
+		if from_node and to_node:
+			connect_nodes(from_node, to_node, 0)
+		else:
+			still_pending.append(edge)
+	_pending_portal_edges = still_pending
+	if not still_pending.is_empty():
+		push_warning("NavMaster: %d portal connections still pending (worlds not loaded)." % still_pending.size())
+
+
+## Find the NavNode corresponding to a NetworkPortal's position across all worlds.
+func _find_node_for_portal(portal: NetworkPortal) -> NavNode:
+	var key = portal
+	if _node_lookup.has(key):
+		return _node_lookup[key]
+	# Fallback: search by position across all worlds
+	for world_name in worlds:
+		var node = nearest_point(NavPoint.new(world_name, portal.position))
+		if node and node.position.distance_to(portal.position) < 0.1:
+			return node
+	return null
 
 
 ## Recursive descent for the nearest point algorithm.
@@ -254,10 +287,13 @@ func _load_from_networks(data:Dictionary):
 		print("loading world network %s" % world)
 		edges.append_array(data[world].edges)
 		portals.append_array(data[world].portals)
-		portal_edges.append(data[world].portal_edges)
+		portal_edges.append_array(data[world].portal_edges)
 		
 		for point in data[world].points + data[world].portals:
-			added_nodes[point] = add_point(world, point.position)
+			var node = add_point(world, point.position)
+			added_nodes[point] = node
+			# Register in lookup table for connection persistence
+			_node_lookup[point] = node
 	# then go back and connect edges and portals, using the dictionary as a lookup
 	for edge in edges:
 		connect_nodes(added_nodes[edge.point_a], added_nodes[edge.point_b], edge.cost)
@@ -265,7 +301,9 @@ func _load_from_networks(data:Dictionary):
 		if added_nodes.has(edge.portal_from) and added_nodes.has(edge.portal_to):
 			connect_nodes(added_nodes[edge.portal_from], added_nodes[edge.portal_to], 0)
 		else:
-			print("Unable to make portal connection. Ensure that connecting world is loaded.")
+			# Store for later retry when the connecting world is loaded
+			_pending_portal_edges.append(edge)
+			print("Portal connection deferred. Connecting world not yet loaded.")
 
 
 func _load_from_disk(path:String, networks:Dictionary, regex:RegEx) -> void:
@@ -298,9 +336,74 @@ func load_all_networks() -> void:
 	_load_from_disk(path, networks, regex)
 	print("Compiling networks...")
 	_load_from_networks(networks)
+	# Retry any portal connections that were deferred
+	_load()
 	
 	print_tree_pretty()
 
 
 static func format_point_name(pt:Vector3, world:StringName) -> String:
 	return ("%s-%s" % [world, pt]).replace(".", "_")
+
+
+## Save connection data for persistence across sessions.
+## Serializes all NavNode connections as an array of edge dictionaries.
+func save() -> Dictionary:
+	var connection_data:Array = []
+	for world_name in worlds:
+		var world_node:NavWorld = worlds[world_name]
+		# The first child of each NavWorld is the root of its KD-tree (see NavWorld.add_point)
+		if world_node.get_child_count() == 0:
+			continue
+		var root = world_node.get_child(0)
+		if root is NavNode:
+			_collect_connections(root, connection_data, world_name, {})
+	return {"connections": connection_data}
+
+
+## Recursively collect connection data from the KD-tree.
+func _collect_connections(node:NavNode, out:Array, world:String, visited:Dictionary) -> void:
+	if not node:
+		return
+	if visited.has(node):
+		return
+	visited[node] = true
+	for other:NavNode in node.connections:
+		# Avoid duplicates: only record if this node's name sorts before the other
+		if node.name < other.name:
+			out.append({
+				"from_world": world,
+				"from_pos": [node.position.x, node.position.y, node.position.z],
+				"to_world": other.world,
+				"to_pos": [other.position.x, other.position.y, other.position.z],
+				"cost": node.connections[other],
+			})
+	if node.left_child:
+		_collect_connections(node.left_child, out, world, visited)
+	if node.right_child:
+		_collect_connections(node.right_child, out, world, visited)
+
+
+## Load saved connection data and apply to the current KD-tree.
+func load_data(data:Dictionary) -> void:
+	var connection_data:Array = data.get("connections", [])
+	for entry in connection_data:
+		var from_world:String = entry.get("from_world", "")
+		var from_pos_arr:Array = entry.get("from_pos", [0, 0, 0])
+		var from_pos := Vector3(from_pos_arr[0], from_pos_arr[1], from_pos_arr[2])
+		var to_world:String = entry.get("to_world", "")
+		var to_pos_arr:Array = entry.get("to_pos", [0, 0, 0])
+		var to_pos := Vector3(to_pos_arr[0], to_pos_arr[1], to_pos_arr[2])
+		var cost:float = entry.get("cost", 1.0)
+		
+		var from_node = nearest_point(NavPoint.new(from_world, from_pos))
+		var to_node = nearest_point(NavPoint.new(to_world, to_pos))
+		if from_node and to_node:
+			# Only apply if not already connected
+			if not from_node.connections.has(to_node):
+				connect_nodes(from_node, to_node, cost)
+
+
+## Reset connection state. Called when loading a save that has no entry for this node.
+func reset_data() -> void:
+	pass  # Connections will be rebuilt from Network resources on next load

@@ -16,7 +16,7 @@ Skelerealms is designed in such a way where you can ignore or replace most of th
 - NPC AI
 	- Behaviours
 	- GOAP AI System
-	- Basic perception
+	- Perception (horizontal + vertical FOV, AABB coverage)
 	- Schedules
 	- Patrol paths
 	- Investigate state
@@ -30,12 +30,13 @@ Skelerealms is designed in such a way where you can ignore or replace most of th
 	- Configurable disposition thresholds
 - Spells/Status Effects
 - Crime
-- Bartering
+- Bartering (with shop item filtering)
 - Spawn zones
 - Doors
 - Quest system (DAG-based with validation, triggers, and save integration)
 - Dialogue system (branching trees with conditions, effects, and session management)
 - Save system (named slots, schema versioning, migration hooks, integrity checks)
+- Vitals system (health/stamina/magica for both player and NPCs)
 
 ## What does it *not* have? 
 
@@ -70,13 +71,13 @@ Please note that the project is in an Alpha state, which means breaking changes 
 	- ~~Faction disposition thresholds.~~ ✅
 	- ~~AI investigate state and crime response.~~ ✅
 - 0.7
+	- ~~Fix GOAP objective assignment tracking.~~ ✅
+	- ~~Implement granular navigation connection persistence.~~ ✅
+	- ~~Generalize VitalsComponent for NPCs.~~ ✅
+	- ~~Complete perception FOV (vertical + AABB coverage).~~ ✅
+	- ~~Fix item drop direction.~~ ✅
+	- ~~Fix barter shop_will_accept_item.~~ ✅
 	- Polish cross-scene navigation.
-	- Fix GOAP objective assignment tracking.
-	- Implement granular navigation connection persistence.
-	- Generalize VitalsComponent for NPCs.
-	- Complete perception FOV (vertical + AABB coverage).
-	- Fix item drop direction.
-	- Fix barter shop_will_accept_item.
 - 0.8
 	- Spawn tracker persistence.
 	- World loader abort handling.

@@ -1,8 +1,9 @@
 class_name VitalsComponent
 extends SKEntityComponent
 ## Component keeping check of the main 3 attributes of an entity - health, stamina, and magica.
+## Works for both player and NPC entities. Player-specific features (Dishonored-style will
+## recharge, spell casting) are gated behind [member is_player].
 
-# TODO: This is for player only, make a generalized one 
 ## Called when this entity's health reaches 0. See [member health].
 signal dies
 ## Called when the stamina value reaches 0. See [member moxie].
@@ -13,7 +14,16 @@ signal hurt
 signal vitals_updated(data:Dictionary)
 
 
-const DISHONORED_MODE:bool = false
+## Whether this entity is the player. Gates player-specific mechanics like
+## Dishonored-style will recharge.
+@export var is_player:bool = false
+## If true (and [member is_player] is also true), will recharges to the
+## pre-cast value after a delay instead of continuously regenerating.
+@export var dishonored_mode:bool = false
+## Rate at which stamina (moxie) regenerates per second. Set to 0 to disable.
+@export var moxie_recharge_rate:float = 2.0
+## Rate at which magica (will) regenerates per second. Set to 0 to disable.
+@export var will_recharge_rate:float = 1.0
 ## Health, stamina, magica, and max of values.
 var vitals = {
 	"health" = 100.0,
@@ -30,9 +40,7 @@ var vitals = {
 		vitals = val
 		dirty = true
 		vitals_updated.emit(vitals)
-var moxie_recharge_rate:float = 2
 var moxie_just_changed:bool
-var will_recharge_rate:float = 1
 var will_just_changed:bool
 
 
@@ -94,8 +102,10 @@ func set_will(val:float) -> void:
 		drained.emit()
 
 
+## Cast a spell, consuming will. Dishonored-style recharge only applies when
+## [member is_player] and [member dishonored_mode] are both true.
 func cast_spell(cost:float) -> void:
-	if DISHONORED_MODE:
+	if is_player and dishonored_mode:
 		if tween:
 			tween.kill()
 		vitals.return_to_will = vitals["will"]
@@ -139,21 +149,27 @@ func load_data(data:Dictionary):
 
 
 func _physics_process(delta: float) -> void:
-	if not moxie_just_changed and not vitals.moxie == vitals.max_moxie:
-		change_moxie(moxie_recharge_rate * delta)
+	if not is_zero_approx(moxie_recharge_rate):
+		if not moxie_just_changed and not vitals.moxie == vitals.max_moxie:
+			change_moxie(moxie_recharge_rate * delta)
 	moxie_just_changed = false
 	
-	if not will_just_changed and not vitals.will == vitals.max_will:
-		change_will(will_recharge_rate * delta)
-	if not DISHONORED_MODE:
+	if not is_zero_approx(will_recharge_rate):
+		if not will_just_changed and not vitals.will == vitals.max_will:
+			change_will(will_recharge_rate * delta)
+	if not (is_player and dishonored_mode):
 		will_just_changed = false
 
 
 func gather_debug_info() -> String:
 	return """
 [b]VitalsComponent[/b]
+	Is Player: %s
+	Dishonored Mode: %s
 	Vitals: 
 %s
 """ % [
+	is_player,
+	dishonored_mode,
 	JSON.stringify(vitals, '\t').indent("\t\t")
 ]

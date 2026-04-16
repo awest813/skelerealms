@@ -87,7 +87,7 @@ Values baked into the source that a consumer cannot override via settings or `SK
 |---|---|---|
 | `scripts/constants.gd` | Default currency key is `&"snails"` (`SKConstants.DE_FACTO_CURRENCY`) | Any code that reads this const uses the literal string `snails` |
 | `scripts/crime/crime_master.gd` | Bounty amounts: `{0:0, 1:500, 2:10000, 5:100000}` | Crime severity → gold mapping is fixed |
-| `scripts/components/vitals_component.gd` | `DISHONORED_MODE = false` — gates whether will recharges instantly after casting | Must edit the constant to change regen style |
+| `scripts/components/vitals_component.gd` | ~~`DISHONORED_MODE = false` — gates whether will recharges instantly after casting~~ Now configurable via `is_player` and `dishonored_mode` exports ✅ | Configure via inspector exports |
 | `scripts/system/game_info.gd` | World-time timer fires every real second (`$Timer.start(1)`) | Timer granularity is 1 s regardless of `seconds_per_minute` |
 | `scripts/system/game_info.gd` | `Input.MOUSE_MODE_CAPTURED` on `_ready` | Overrides mouse mode unconditionally at startup |
 | `scripts/entities/entity.gd` | Component lookup uses child node name == class name string (e.g., `get_node_or_null("NPCComponent")`) | Entity component naming is a strict contract |
@@ -107,15 +107,13 @@ Values baked into the source that a consumer cannot override via settings or `SK
 
 These features have been explicitly flagged as broken, or contain code that provably cannot function correctly.
 
-### 1. Barter — `shop_will_accept_item`
+### ~~1. Barter — `shop_will_accept_item`~~ ✅ FIXED
 - **File:** `scripts/barter/barter.gd:108`
-- **Comment:** `## NOTE: Broken right now.`
-- **Detail:** The method references `shop.whitelist`, `shop.blacklist`, and `shop.accept_stolen`, but the `ShopComponent` resource no longer exposes these fields in the same way. Calling this method always returns an incorrect result.
+- **Fix:** Fixed type hint to `ShopComponent`, replaced incorrect `ic.data.tags` reference with proper `ItemDataComponent` children lookup via `get_type()`, added null safety checks for entity and component access.
 
-### 2. GOAP — Objective assignment after planning
+### ~~2. GOAP — Objective assignment after planning~~ ✅ FIXED
 - **File:** `scripts/components/goap_component.gd:49`
-- **Comment:** `# logically, this should be uncommented. But commenting it before made things work but now it's broken?`
-- **Detail:** `_current_objective` is set after the plan is built, but the condition that marks planning complete on the next frame tests `_current_objective`. This creates a one-frame window where the planner immediately re-plans unnecessarily, and the true active objective may be misrepresented in debug output.
+- **Fix:** Moved `_current_objective = o` assignment to before `_pop_action()` so the planner correctly tracks which objective is active from the moment the plan starts executing. This prevents the one-frame re-planning window.
 
 ### 3. ~~GOAP — Graph search algorithm is depth-first, not breadth-first~~ ✅ FIXED
 - **File:** `scripts/components/goap_component.gd`
@@ -125,19 +123,17 @@ These features have been explicitly flagged as broken, or contain code that prov
 - **File:** `scripts/components/npc_component.gd`
 - **Fix:** Replaced the nonexistent `get_covennpc_opinions()` call with the correct `get_coven_opinions()`, which returns this coven's opinion of the other entity's covens. (Camelot integration)
 
-### 5. Granular Navigation — connections never loaded
-- **Files:** `scripts/granular_navigation/navigation_master.gd:93`, `scripts/granular_navigation/navigation_node.gd:21`
-- **Comments:** `# TODO: load and apply connections`, `# TODO: Figure out connections`
-- **Detail:** `_load()` in `NavMaster` is an empty stub. `NavNode` also has a stub for connection persistence. The KD-tree is built from networks at runtime, but any cross-session or pre-baked connection data is ignored. Off-screen NPCs can navigate at runtime only if the network was built in the same session.
+### ~~5. Granular Navigation — connections never loaded~~ ✅ FIXED
+- **Files:** `scripts/granular_navigation/navigation_master.gd`, `scripts/granular_navigation/navigation_node.gd`
+- **Fix:** Implemented `_load()` for deferred portal connections, added `save()`/`load_data()`/`reset_data()` methods for connection persistence via the save system, fixed portal_edges append bug, and added a node lookup table. NavMaster now registers with the `savegame_other` group so connections survive across sessions.
 
 ### 6. ~~Skelesave — `deserialize` always returns empty dictionary~~ ✅ FIXED
 - **File:** `scripts/misc/skelesave.gd:82–100`
 - **Fix:** The `while` loop now correctly writes `current_key` → `_decode_value(current_phrase)` into `output` on each `VALUE_DELIM` token. The `_decode_value` array path was also completed. (Critical bug fix)
 
-### 7. Item drop — direction calculation
+### ~~7. Item drop — direction calculation~~ ✅ FIXED
 - **File:** `scripts/components/item_component.gd:136`
-- **Comment:** `# FIXME: Direction is weird`
-- **Detail:** Dropped items are launched in an unexpected direction due to a miscalculated basis vector. Items do not drop naturally in front of the actor.
+- **Fix:** Replaced incorrect `drop_dir.get_euler().normalized()` with proper `-Basis(quaternion).z` forward vector. Items now drop in front of the entity correctly.
 
 ---
 
@@ -147,8 +143,8 @@ These systems exist and partially work, but have documented gaps.
 
 | System | File(s) | Missing Pieces |
 |---|---|---|
-| **Perception (FOV)** | `scripts/ai/perception_eyes.gd:44,59,75` | Vertical FOV check uses `fov_v` export but is not applied; AABB-based occlusion coverage percentage is not calculated; only a simple dot-product horizontal check exists |
-| **Vitals (generalized)** | `scripts/components/vitals_component.gd:5` | Marked `# TODO: This is for player only, make a generalized one`; NPC health/stamina/will management needs its own component or a shared base |
+| **~~Perception (FOV)~~** ✅ | `scripts/ai/perception_eyes.gd` | Vertical FOV check now uses pitch angle comparison; AABB-based occlusion coverage percentage calculated via multi-point raycast sampling; horizontal check uses proper `cos(deg_to_rad())` threshold |
+| **~~Vitals (generalized)~~** ✅ | `scripts/components/vitals_component.gd` | Now works for both player and NPC entities; `is_player` and `dishonored_mode` exports gate player-specific mechanics; recharge rates are configurable via `@export` |
 | **Player damage handling** | `scripts/components/player_component.gd:19` | Only `&"blunt"` damage type is wired; buff/debuff pipeline is not implemented |
 | **Crime — reporting & response** | `scripts/crime/crime_master.gd:42`, `scripts/ai/Modules/default_crime_report.gd` | ~~Crimes against non-player entities are not tracked; the crime-reporter AI module does not attempt to aggress the perpetrator after reporting~~ Crime report module now evaluates coven membership, supports configurable other-coven reporting, and provides four confrontation resolution branches (pay fine, serve time, resist arrest, persuasion). Crimes against non-player entities are tracked. (Camelot integration) |
 | **~~Threat response — investigate & friendly fire~~** ✅ | `scripts/ai/Modules/default_threat_response.gd` | Investigate-after-losing-sight state implemented with `_begin_investigate` / `_end_investigate` / `_cancel_investigate` flow. Friendly-fire response implemented based on `friendly_fire_behavior` export (Neutral/Friend/Ally). (Camelot integration) |
@@ -158,7 +154,7 @@ These systems exist and partially work, but have documented gaps.
 | **~~Inventory/Equipment persistence~~** ✅ | `scripts/components/inventory_component.gd`, `scripts/components/equipment_component.gd` | Both components now implement `save()`/`load_data()` with dirty flag tracking (Camelot integration) |
 | **~~Covens persistence~~** ✅ | `scripts/components/covens_component.gd` | Coven membership now persists across save/load with group re-sync (Camelot integration) |
 | **Spawn tracker — persistence** | `scripts/points/spawn_point.gd:7` | `spawn_tracker` is a static dictionary that resets on restart; spawn state is not saved |
-| **Barter — filtering & haggling** | `scripts/barter/barter.gd:21–22` | Per-vendor item whitelists/blacklists are not enforced; haggling (price negotiation) is not implemented |
+| **Barter — ~~filtering~~ & haggling** | `scripts/barter/barter.gd:21–22` | ~~Per-vendor item whitelists/blacklists are not enforced~~ `shop_will_accept_item` now correctly checks item data component types against shop whitelist/blacklist ✅; haggling (price negotiation) is not implemented |
 | **Item — worth & ownership** | `scripts/components/item_component.gd:36,76,148` | Theft determination based on item worth and owner relationships is stubbed; item size is not compensated for during drop placement |
 | **Network edge costs** | `scripts/network/Scripts/network.gd:55` | Edge cost assignment in the editor is not wired up |
 | **World loader — abort handling** | `scripts/system/world_loader.gd:100` | On a failed load, the game is not crashed or reset to a safe state; it silently emits `world_loading_ready` |
@@ -176,18 +172,18 @@ Ordered by dependency depth and severity. Fix broken systems before building on 
 
 1. **~~Fix `Skelesave.deserialize`~~** ✅ — the deserialization loop now correctly populates the output dictionary; array decoding also completed.
 2. **~~Fix GOAP breadth-first search~~** ✅ — `_build_graph` rewritten to BFS so action plans are reliably cost-optimal. (Camelot integration)
-3. **Fix GOAP objective assignment** — resolve the commented-out `_current_objective` assignment so the planner correctly tracks which objective is active.
-4. **Fix Granular Navigation connections** — implement `_load()` / `NavNode` connection persistence so off-screen paths survive scene reloads.
+3. **~~Fix GOAP objective assignment~~** ✅ — moved `_current_objective` assignment before `_pop_action()` so the planner correctly tracks which objective is active.
+4. **~~Fix Granular Navigation connections~~** ✅ — implemented `_load()` for deferred portal connections, added save/load persistence via `savegame_other` group, fixed portal_edges append bug.
 5. **~~Fix Coven NPC-opinion lookup~~** ✅ — corrected to use `get_coven_opinions()`; NPC hostility calculations now work correctly for coven-aligned characters. (Camelot integration)
 
 ### Phase 2 — Core Gameplay Gaps (needed for a playable loop)
 
-6. **Generalize `VitalsComponent`** — decouple health/stamina/will from the player; provide a shared base or configurable NPC vitals component.
-7. **Complete Perception FOV** — implement vertical FOV using pitch and the AABB coverage percentage for accurate stealth calculations.
+6. **~~Generalize `VitalsComponent`~~** ✅ — decoupled from player-only use; `is_player` and `dishonored_mode` exports gate player-specific mechanics; recharge rates are configurable via `@export`.
+7. **~~Complete Perception FOV~~** ✅ — vertical FOV check using pitch angle, AABB coverage percentage via multi-point raycast sampling, horizontal check uses proper `cos(deg_to_rad())` threshold.
 8. **~~Complete Crime system~~** ✅ — crime report module now evaluates coven membership, supports configurable other-coven reporting, and provides four confrontation resolution branches. Crimes against non-player entities are tracked. (Camelot integration)
 9. **~~Complete Threat response~~** ✅ — investigate state, watch-state visibility check, and friendly-fire response all implemented. (Camelot integration)
-10. **Fix Item drop direction** — correct the basis vector used when dropping items so they land in front of the actor.
-11. **Fix `shop_will_accept_item`** — reconcile `ShopComponent` fields with the barter filter logic.
+10. **~~Fix Item drop direction~~** ✅ — replaced incorrect `get_euler().normalized()` with proper `-Basis(quaternion).z` forward vector.
+11. **~~Fix `shop_will_accept_item`~~** ✅ — fixed type hint to `ShopComponent`, replaced `ic.data.tags` with proper `ItemDataComponent` children lookup, added null safety.
 
 ### Phase 3 — World & Persistence (needed for a complete game loop)
 
@@ -198,7 +194,7 @@ Ordered by dependency depth and severity. Fix broken systems before building on 
 
 ### Phase 4 — Polish & Depth (enriches the simulation)
 
-16. **Barter — filtering & haggling** — enforce per-vendor item filters; add a haggling negotiation round.
+16. **Barter — haggling** — add a haggling negotiation round. (Filtering is now implemented via `shop_will_accept_item`.)
 17. **Item worth & ownership** — implement the theft-detection and item-drop-size-compensation stubs.
 18. **Furniture animation & multi-use** — trigger NPC use animations; support sub-points for multiple simultaneous users.
 19. **Player damage generalization** — extend the damage pipeline to all damage types and buff/debuff modifiers.
