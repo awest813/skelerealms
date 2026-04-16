@@ -137,3 +137,36 @@ pay fine, serve jail time, resist arrest, attempt persuasion.~~ ✅
 
 Design coven resources, quest definitions, and entity templates with a
 manifest-driven override system for mod support.
+
+---
+
+## Phase 4 — Framework Fixes & Generalization (0.7 roadmap items) ✅
+
+### ~~4A  GOAP Objective Assignment Fix~~ ✅
+Moved `_current_objective` assignment before `_pop_action()` so the planner
+correctly tracks which objective is active from the moment the plan starts.
+
+### ~~4B  Granular Navigation Connection Persistence~~ ✅
+Implemented `_load()` for deferred portal connections, added `save()`/`load_data()`
+for connection persistence via the `savegame_other` group, fixed `portal_edges`
+append bug, and added a node lookup table.
+
+### ~~4C  Generalized VitalsComponent~~ ✅
+Decoupled from player-only use. Added `is_player` and `dishonored_mode` exports
+to gate player-specific mechanics. Recharge rates (`moxie_recharge_rate`,
+`will_recharge_rate`) are now configurable via `@export`.
+
+### ~~4D  Complete Perception FOV~~ ✅
+Added vertical FOV check using pitch angle comparison against `fov_v` export.
+Implemented AABB coverage percentage via 7-point raycast sampling (center + 6 face
+centers). Horizontal check now uses proper `cos(deg_to_rad())` threshold.
+Visibility = `light_level × coverage`.
+
+### ~~4E  Fix Item Drop Direction~~ ✅
+Replaced incorrect `get_euler().normalized()` with proper `-Basis(quaternion).z`
+forward vector. Removed stale debug prints.
+
+### ~~4F  Fix Barter `shop_will_accept_item`~~ ✅
+Fixed type hint from `Resource` to `ShopComponent`. Replaced non-existent
+`ic.data.tags` with `ItemDataComponent` children lookup via `get_type()`. Added
+null safety for entity and component access.
