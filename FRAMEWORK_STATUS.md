@@ -117,15 +117,13 @@ These features have been explicitly flagged as broken, or contain code that prov
 - **Comment:** `# logically, this should be uncommented. But commenting it before made things work but now it's broken?`
 - **Detail:** `_current_objective` is set after the plan is built, but the condition that marks planning complete on the next frame tests `_current_objective`. This creates a one-frame window where the planner immediately re-plans unnecessarily, and the true active objective may be misrepresented in debug output.
 
-### 3. GOAP — Graph search algorithm is depth-first, not breadth-first
-- **File:** `scripts/components/goap_component.gd:113`
-- **Comment:** `# FIXME: We need to be doing breadth first search`
-- **Detail:** `_build_graph` recurses depth-first. This means the planner may find a valid but non-optimal action chain before finding a cheaper one. The sort-by-cost on `leaves` partially compensates, but the graph traversal is fundamentally wrong for guaranteed lowest-cost planning.
+### 3. ~~GOAP — Graph search algorithm is depth-first, not breadth-first~~ ✅ FIXED
+- **File:** `scripts/components/goap_component.gd`
+- **Fix:** Rewrote `_build_graph` to use BFS (iterative queue) so action plans are cost-optimal. (Camelot integration)
 
-### 4. Coven NPC-opinion lookup
-- **File:** `scripts/components/npc_component.gd:491`
-- **Comment:** `# FIXME: Get this coven opinions on other`
-- **Detail:** `c.get_covennpc_opinions(e_covens_component.covens.keys())` is called but the `Coven` class method `get_covennpc_opinions` is expected to return opinions *of* the other coven; the argument set is passed incorrectly. NPC attitude calculations that involve coven cross-opinion will return wrong values.
+### 4. ~~Coven NPC-opinion lookup~~ ✅ FIXED
+- **File:** `scripts/components/npc_component.gd`
+- **Fix:** Replaced the nonexistent `get_covennpc_opinions()` call with the correct `get_coven_opinions()`, which returns this coven's opinion of the other entity's covens. (Camelot integration)
 
 ### 5. Granular Navigation — connections never loaded
 - **Files:** `scripts/granular_navigation/navigation_master.gd:93`, `scripts/granular_navigation/navigation_node.gd:21`
@@ -155,7 +153,7 @@ These systems exist and partially work, but have documented gaps.
 | **Crime — reporting & response** | `scripts/crime/crime_master.gd:42`, `scripts/ai/Modules/default_crime_report.gd:11–12` | Crimes against non-player entities are not tracked; the crime-reporter AI module does not attempt to aggress the perpetrator after reporting |
 | **Threat response — investigate & friendly fire** | `scripts/ai/Modules/default_threat_response.gd:101,105,208` | Investigate-after-losing-sight state is stubbed; the watch-state visibility check is noted incomplete; friendly-fire response is not implemented |
 | **Furniture — animation & multi-use** | `scripts/points/furniture.gd:11–12` | NPC sitting/using animations are not triggered; only one NPC can use a furniture point at a time (sub-points not implemented) |
-| **Save system — custom filenames** | `scripts/system/save_system.gd:41` | All saves use a datetime string; no named save slots |
+| **Save system — ~~custom filenames / save slots~~** ✅ | `scripts/system/save_system.gd` | Named save slots, schema versioning with migration registry, and FNV-1a checksum validation are now implemented (Camelot integration) |
 | **Spawn tracker — persistence** | `scripts/points/spawn_point.gd:7` | `spawn_tracker` is a static dictionary that resets on restart; spawn state is not saved |
 | **Barter — filtering & haggling** | `scripts/barter/barter.gd:21–22` | Per-vendor item whitelists/blacklists are not enforced; haggling (price negotiation) is not implemented |
 | **Item — worth & ownership** | `scripts/components/item_component.gd:36,76,148` | Theft determination based on item worth and owner relationships is stubbed; item size is not compensated for during drop placement |

@@ -488,7 +488,7 @@ func determine_opinion_of(id:StringName) -> float:
 		for coven in covens:
 			var c = CovenSystem.get_coven(coven)
 			# get the other coven opinions
-			covennpc_opinions_unfiltered.append_array(c.get_covennpc_opinions(e_covens_component.covens.keys())) # FIXME: Get this coven opinions on other
+			covennpc_opinions_unfiltered.append_array(c.get_coven_opinions(e_covens_component.covens.keys())) # Get this coven's opinions of the other entity's covens
 			# take crimes into account
 			opinions.append(CrimeMaster.max_crime_severity(id, coven) * -10) # sing opinion by -10 for each severity point
 

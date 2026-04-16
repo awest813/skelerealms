@@ -7,6 +7,16 @@ extends Resource
 ## To give them a default response to the player, create a "Player" coven, and give them a default reaction to that.
 
 
+## Disposition thresholds (ported from Camelot's FactionEngine).
+## These determine how the faction views entities based on opinion score.
+enum Disposition { HOSTILE, NEUTRAL, FRIENDLY, ALLIED }
+
+## Default threshold constants. Override per-coven via the exports below.
+const DEFAULT_HOSTILE_BELOW: int = -25
+const DEFAULT_FRIENDLY_AT: int = 25
+const DEFAULT_ALLIED_AT: int = 60
+
+
 @export_category("Information")
 ## ID for this coven. Also used as a key in translations. See [member coven_name].
 @export var coven_id:StringName
@@ -23,6 +33,13 @@ extends Resource
 @export var ignore_crimes_against_members:bool = false
 ## Whether this coven remembers crimes done against it.
 @export var track_crime:bool = true
+@export_category("Disposition Thresholds")
+## Opinion score below which an entity is considered hostile.
+@export var hostile_below: int = DEFAULT_HOSTILE_BELOW
+## Opinion score at or above which an entity is considered friendly.
+@export var friendly_at: int = DEFAULT_FRIENDLY_AT
+## Opinion score at or above which an entity is considered allied.
+@export var allied_at: int = DEFAULT_ALLIED_AT
 
 
 ## Translated coven name.
@@ -36,7 +53,7 @@ func rank_name(rank:int) -> String:
 	return tr(ranks[rank]) if ranks.has(rank) else ""
 
 
-## Returns a list of the opinions it has of a list of covens.
+## Returns a list of the opinions this coven has of a list of other covens.
 func get_coven_opinions(covens:Array) -> Array[int]:
 	var opinion_list:Array[int] = []
 	
@@ -47,6 +64,31 @@ func get_coven_opinions(covens:Array) -> Array[int]:
 			opinion_list.append(0)
 	
 	return opinion_list
+
+
+## Get the disposition of this coven towards a given opinion score.
+## Returns one of [enum Disposition]: HOSTILE, NEUTRAL, FRIENDLY, or ALLIED.
+func get_disposition(opinion: int) -> Disposition:
+	if opinion < hostile_below:
+		return Disposition.HOSTILE
+	if opinion >= allied_at:
+		return Disposition.ALLIED
+	if opinion >= friendly_at:
+		return Disposition.FRIENDLY
+	return Disposition.NEUTRAL
+
+
+## Get the disposition name as a string (for debug / UI).
+func get_disposition_name(opinion: int) -> String:
+	match get_disposition(opinion):
+		Disposition.HOSTILE:
+			return "hostile"
+		Disposition.FRIENDLY:
+			return "friendly"
+		Disposition.ALLIED:
+			return "allied"
+		_:
+			return "neutral"
 
 
 ## Get the crime opinion modifier for an entity against this coven.
@@ -64,6 +106,9 @@ func get_debug_info() -> String:
 	Ignores crimes against others: %s
 	Ignores crimes against members: %s
 	Track Crime: %s
+	Hostile below: %s
+	Friendly at: %s
+	Allied at: %s
 	""" % [
 		coven_id,
 		JSON.stringify(other_coven_opinions),
@@ -71,5 +116,8 @@ func get_debug_info() -> String:
 		JSON.stringify(ranks),
 		ignore_crimes_against_others,
 		ignore_crimes_against_members,
-		track_crime
+		track_crime,
+		hostile_below,
+		friendly_at,
+		allied_at
 	]
