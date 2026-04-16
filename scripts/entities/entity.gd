@@ -107,8 +107,7 @@ func get_component(type:String) -> SKEntityComponent:
 
 ## Whether it has a component type or not. Useful for checking the capabilities of an entity.
 func has_component(type:String) -> bool:
-	var x = get_component(type)
-	return not x == null
+	return get_node_or_null(type) != null
 
 
 func add_component(c:SKEntityComponent) -> void:

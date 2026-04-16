@@ -467,7 +467,7 @@ func get_relationship_with(ref_id:String) -> Option:
 func determine_opinion_of(id:StringName) -> float:
 	var e:SKEntity = SKEntityManager.instance.get_entity(id)
 
-	if not threatening_enemy_types.any(func(x:String): return not e.get_component(x) == null): # if it doesn't have any components that are marked as threatening, return neutral.
+	if not threatening_enemy_types.any(func(x:String): return e.has_component(x)): # if it doesn't have any components that are marked as threatening, return neutral.
 		return 0
 
 	var e_cc = e.get_component("CovensComponent")
