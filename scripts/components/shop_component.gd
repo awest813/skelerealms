@@ -10,3 +10,7 @@ extends ChestComponent
 @export var blacklist:Array[StringName] = []
 ## Whether this merchant accepts stolen goods.
 @export var accept_stolen:bool
+
+
+func _init() -> void:
+	name = "ShopComponent"

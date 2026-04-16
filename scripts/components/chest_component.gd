@@ -12,9 +12,14 @@ extends SKEntityComponent
 var looted_time:Timestamp
 
 
+func _init() -> void:
+	name = "ChestComponent"
+
+
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
+	super._ready()
 	if reset_time_minutes > 0:
 		GameInfo.minute_incremented.connect(_check_should_restore.bind())
 	# If none provided, just generate a dummy loot table that will do nothing.

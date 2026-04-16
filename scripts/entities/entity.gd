@@ -28,9 +28,9 @@ var in_scene: bool:
 		in_scene = val
 
 
-## Emitted when an entity enters a scene.
-signal left_scene
 ## Emitted when an entity leaves a scene.
+signal left_scene
+## Emitted when an entity enters a scene.
 signal entered_scene
 ## This signal is emitted when all components have been added once [SKEntityManager.add_entity] is called.
 ## Await this when you want to connect with other nodes.
@@ -52,9 +52,9 @@ func _ready():
 
 func _enter_tree() -> void:
 	if Engine.is_editor_hint():
-		print(scene_file_path)
 		return
 	if not get_parent() is SKEntityManager:
+		push_error("SKEntity '%s' must be a child of SKEntityManager, not '%s'. Removing." % [name, get_parent().name if get_parent() else "null"])
 		queue_free()
 
 
@@ -100,6 +100,8 @@ func _on_set_rotation(q:Quaternion) -> void:
 ## [/codeblock]
 func get_component(type:String) -> SKEntityComponent:
 	var n = get_node_or_null(type)
+	if n == null:
+		push_warning("SKEntity '%s': component '%s' not found." % [name, type])
 	return n
 
 
@@ -113,15 +115,16 @@ func add_component(c:SKEntityComponent) -> void:
 	add_child(c)
 
 
-func save() -> Dictionary: # TODO: Determine if instance is saved to disk. If not, save that as well. This will Theoretically allow for dynamic instances.
+func save() -> Dictionary:
 	var data:Dictionary = {
 		"entity_data": {
 			"world" = world,
 			"position" = position,
 			"unique" = unique
-		}
+		},
+		"components": {}
 	}
-	for c in get_children().filter(func(x:SKEntityComponent): return x.dirty): # filter to get dirty acomponents
+	for c in get_children().filter(func(x:SKEntityComponent): return x.dirty):
 		data["components"][c.name] = ((c as SKEntityComponent).save())
 	return data
 
@@ -131,17 +134,22 @@ func load_data(data:Dictionary) -> void:
 	position = JSON.parse_string(data["entity_data"]["position"])
 	unique = JSON.parse_string(data["entity_data"]["unique"])
 
-	# loop through all saved components and call load
+	if not data.has("components"):
+		return
 	for d in data["components"]:
-		(get_node(d) as SKEntityComponent).load_data(data[d])
-	pass
+		var comp = get_node_or_null(d)
+		if comp:
+			(comp as SKEntityComponent).load_data(data["components"][d])
+		else:
+			push_warning("SKEntity '%s': saved component '%s' not found on entity." % [name, d])
 
 
 func reset_data() -> void:
-	# TODO: Figure out how to reset entities that are generated at runtime. oh boy that's gonna be fun.
-	var i = SKEntityManager.instance.get_disk_data_for_entity(name)
-	if i:
-		_init()
+	var asset_path := SKEntityManager.instance.get_disk_data_for_entity(name)
+	if asset_path.is_empty():
+		push_warning("SKEntity '%s': no disk data found, cannot reset." % name)
+		return
+	_init()
 
 
 func reset_stale_timer() -> void:
