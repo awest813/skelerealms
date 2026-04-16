@@ -117,28 +117,39 @@ func add_component(c:SKEntityComponent) -> void:
 func save() -> Dictionary:
 	var data:Dictionary = {
 		"entity_data": {
-			"world" = world,
-			"position" = position,
-			"unique" = unique
+			"form_id" = str(form_id),
+			"world" = str(world),
+			"position" = [position.x, position.y, position.z],
+			"rotation" = [rotation.x, rotation.y, rotation.z, rotation.w],
+			"unique" = unique,
 		},
 		"components": {}
 	}
-	for c in get_children().filter(func(x:SKEntityComponent): return x.dirty):
-		data["components"][c.name] = ((c as SKEntityComponent).save())
+	for c in get_children().filter(func(x): return x is SKEntityComponent and x.dirty):
+		data["components"][c.name] = (c as SKEntityComponent).save()
 	return data
 
 
 func load_data(data:Dictionary) -> void:
-	world = data["entity_data"]["world"]
-	position = JSON.parse_string(data["entity_data"]["position"])
-	unique = JSON.parse_string(data["entity_data"]["unique"])
+	var ed:Dictionary = data.get("entity_data", {})
+	world = ed.get("world", world)
+	# Position: accept [x, y, z] array (v2+) or fall back to current value
+	var pos_data = ed.get("position", null)
+	if pos_data is Array and pos_data.size() >= 3:
+		position = Vector3(float(pos_data[0]), float(pos_data[1]), float(pos_data[2]))
+	# Rotation: accept [x, y, z, w] array (v2+) or fall back to current value
+	var rot_data = ed.get("rotation", null)
+	if rot_data is Array and rot_data.size() >= 4:
+		rotation = Quaternion(float(rot_data[0]), float(rot_data[1]), float(rot_data[2]), float(rot_data[3]))
+	unique = ed.get("unique", unique)
+	if ed.has("form_id") and not str(ed["form_id"]).is_empty():
+		form_id = StringName(ed["form_id"])
 
-	if not data.has("components"):
-		return
-	for d in data["components"]:
+	var components_data:Dictionary = data.get("components", {})
+	for d in components_data:
 		var comp = get_node_or_null(d)
 		if comp:
-			(comp as SKEntityComponent).load_data(data["components"][d])
+			(comp as SKEntityComponent).load_data(components_data[d])
 		else:
 			push_warning("SKEntity '%s': saved component '%s' not found on entity." % [name, d])
 

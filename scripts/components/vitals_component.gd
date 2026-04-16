@@ -119,11 +119,22 @@ func change_will(val:float) -> void:
 
 func save() -> Dictionary:
 	dirty = false
-	return vitals
+	return {
+		"health" = vitals.get("health", 100.0),
+		"moxie" = vitals.get("moxie", 100.0),
+		"will" = vitals.get("will", 100.0),
+		"max_health" = vitals.get("max_health", 100.0),
+		"max_moxie" = vitals.get("max_moxie", 100.0),
+		"max_will" = vitals.get("max_will", 100.0),
+		"return_to_will" = vitals.get("return_to_will", 0.0),
+	}
 
 
 func load_data(data:Dictionary):
-	vitals = data
+	# Merge loaded values into current vitals so missing keys keep defaults
+	for key in ["health", "moxie", "will", "max_health", "max_moxie", "max_will", "return_to_will"]:
+		if data.has(key):
+			vitals[key] = float(data[key])
 	dirty = false
 
 

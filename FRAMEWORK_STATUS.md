@@ -98,7 +98,7 @@ Values baked into the source that a consumer cannot override via settings or `SK
 | `scripts/components/npc_component.gd` | `visibility_threshold = 0.3` | NPC ignores targets below this light/visibility level |
 | `scripts/ai/perception_eyes.gd` | Perception tick interval `perception_interval = 0.25` s | Fixed perception rate for all NPC eyes |
 | `scripts/skelerealms.gd` | Editor ray length `RAY_LENGTH = 500`, snap distance `SNAP_DISTANCE = 0.1` | Editor network-point placement constants |
-| `scripts/system/save_system.gd` | Save path always `user://saves/<datetime>.dat` | No custom save names or slots |
+| `scripts/system/save_system.gd` | ~~Save path always `user://saves/<datetime>.dat`~~ | Named save slots now supported via `save(slot_name)` and `load_slot(slot_name)` |
 | `scripts/entities/entity_manager.gd` | Entity ref-ID == scene filename (without extension) | File naming is a strict contract for entity identity |
 
 ---
@@ -153,7 +153,10 @@ These systems exist and partially work, but have documented gaps.
 | **Crime — reporting & response** | `scripts/crime/crime_master.gd:42`, `scripts/ai/Modules/default_crime_report.gd:11–12` | Crimes against non-player entities are not tracked; the crime-reporter AI module does not attempt to aggress the perpetrator after reporting |
 | **Threat response — investigate & friendly fire** | `scripts/ai/Modules/default_threat_response.gd:101,105,208` | Investigate-after-losing-sight state is stubbed; the watch-state visibility check is noted incomplete; friendly-fire response is not implemented |
 | **Furniture — animation & multi-use** | `scripts/points/furniture.gd:11–12` | NPC sitting/using animations are not triggered; only one NPC can use a furniture point at a time (sub-points not implemented) |
-| **Save system — ~~custom filenames / save slots~~** ✅ | `scripts/system/save_system.gd` | Named save slots, schema versioning with migration registry, and FNV-1a checksum validation are now implemented (Camelot integration) |
+| **Save system — ~~custom filenames / save slots~~** ✅ | `scripts/system/save_system.gd` | Named save slots, schema versioning (v2) with migration registry, FNV-1a checksum validation, and `load_complete` signal are now implemented (Camelot integration) |
+| **~~Entity serialization~~** ✅ | `scripts/entities/entity.gd` | Position serialized as `[x,y,z]` array, rotation as `[x,y,z,w]`, form_id persisted, safe dictionary access throughout (Camelot integration) |
+| **~~Inventory/Equipment persistence~~** ✅ | `scripts/components/inventory_component.gd`, `scripts/components/equipment_component.gd` | Both components now implement `save()`/`load_data()` with dirty flag tracking (Camelot integration) |
+| **~~Covens persistence~~** ✅ | `scripts/components/covens_component.gd` | Coven membership now persists across save/load with group re-sync (Camelot integration) |
 | **Spawn tracker — persistence** | `scripts/points/spawn_point.gd:7` | `spawn_tracker` is a static dictionary that resets on restart; spawn state is not saved |
 | **Barter — filtering & haggling** | `scripts/barter/barter.gd:21–22` | Per-vendor item whitelists/blacklists are not enforced; haggling (price negotiation) is not implemented |
 | **Item — worth & ownership** | `scripts/components/item_component.gd:36,76,148` | Theft determination based on item worth and owner relationships is stubbed; item size is not compensated for during drop placement |
@@ -188,7 +191,7 @@ Ordered by dependency depth and severity. Fix broken systems before building on 
 
 ### Phase 3 — World & Persistence (needed for a complete game loop)
 
-12. **Save system — custom filenames / save slots** — expose named save slots and allow the consumer to control file naming.
+12. **~~Save system — custom filenames / save slots~~** ✅ — named save slots, schema versioning (v2), migration hooks, FNV-1a checksum, safe deserialization, and `load_complete` signal are now implemented.
 13. **Spawn tracker persistence** — serialize `SpawnPoint.spawn_tracker` into the save file so respawn state survives restarts.
 14. **World loader abort handling** — crash or reset to a safe state on a failed world load rather than silently continuing.
 15. **NPC door interaction** — have NPCs open/close doors when their path crosses one.

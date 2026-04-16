@@ -36,6 +36,7 @@ func equip(item:StringName, slot:StringName, silent:bool = false) -> bool:
 	unequip_item(item)
 
 	equipment_slot[slot] = item
+	dirty = true
 	if not silent:
 		equipped.emit(item, slot)
 	return true
@@ -46,6 +47,7 @@ func clear_slot(slot:StringName, silent:bool = false) -> void:
 	if equipment_slot.has(slot):
 		var to_unequip = equipment_slot[slot]
 		equipment_slot[slot] = null
+		dirty = true
 		if not silent:
 			unequipped.emit(to_unequip, slot)
 
@@ -55,6 +57,7 @@ func unequip_item(item:StringName, silent:bool = false) -> void:
 	for s in equipment_slot:
 		if equipment_slot[s] == item:
 			equipment_slot[s] = null
+			dirty = true
 			if not silent:
 				unequipped.emit(item, s)
 			return
@@ -71,3 +74,27 @@ func is_slot_occupied(slot:StringName) -> Option:
 		return Option.wrap(equipment_slot[slot])
 	else:
 		return Option.none()
+
+
+func save() -> Dictionary:
+	dirty = false
+	# Convert StringName keys/values to strings for JSON serialization
+	var slots := {}
+	for s in equipment_slot:
+		slots[str(s)] = str(equipment_slot[s]) if equipment_slot[s] else ""
+	return {
+		"equipment_slot": slots,
+	}
+
+
+func load_data(data:Dictionary):
+	var slot_data = data.get("equipment_slot", null)
+	if slot_data is Dictionary:
+		equipment_slot = {}
+		for s in slot_data:
+			var val = slot_data[s]
+			if val is String and not val.is_empty():
+				equipment_slot[StringName(s)] = StringName(val)
+			else:
+				equipment_slot[StringName(s)] = null
+	dirty = false

@@ -29,13 +29,15 @@ func _ready():
 
 ## Add this entity to a coven.
 func add_to_coven(coven:StringName, rank:int = 1):
-	covens[coven] = 1
+	covens[coven] = rank
+	dirty = true
 	parent_entity.add_to_group(coven)
 
 
 ## Remove this entity from the coven.
 func remove_from_coven(coven:StringName):
 	covens.erase(coven)
+	dirty = true
 	parent_entity.remove_from_group(coven)
 
 
@@ -47,3 +49,28 @@ func is_in_coven(coven:StringName) -> bool:
 ## Get this entity's rank in a coven. Returns 0 if they aren't in the coven.
 func get_coven_rank(coven:StringName) -> int:
 	return covens[coven] if covens.has(coven) else 0
+
+
+func save() -> Dictionary:
+	dirty = false
+	# Convert StringName keys to strings for JSON serialization
+	var out := {}
+	for c in covens:
+		out[str(c)] = covens[c]
+	return {
+		"covens": out,
+	}
+
+
+func load_data(data:Dictionary):
+	var coven_data = data.get("covens", null)
+	if coven_data is Dictionary:
+		covens = {}
+		for c in coven_data:
+			covens[StringName(c)] = int(coven_data[c])
+		# Re-sync groups with loaded coven data
+		if parent_entity:
+			for c in covens:
+				if not parent_entity.is_in_group(c):
+					parent_entity.add_to_group(c)
+	dirty = false

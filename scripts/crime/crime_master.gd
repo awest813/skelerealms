@@ -35,8 +35,10 @@ func _ready():
 
 ## Move all unpunished crimes to punished crimes.
 func punish_crimes(coven:StringName):
-	crimes[coven]["punished"].append(crimes[coven]["unpunished"])
-	crimes[coven]["unpunished"].clear
+	if not crimes.has(coven):
+		return
+	crimes[coven]["punished"].append_array(crimes[coven]["unpunished"])
+	crimes[coven]["unpunished"].clear()
 
 
 # TODO: Track crimes against others?
@@ -100,7 +102,7 @@ func save() -> Dictionary:
 
 
 func load_data(data:Dictionary) -> void:
-	crimes = data["crime"]
+	crimes = data.get("crime", {})
 
 
 func reset_data() -> void:

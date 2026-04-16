@@ -14,6 +14,7 @@ const NONE:StringName = &""
 		return contained_inventory
 	set(val):
 		contained_inventory = val
+		dirty = true
 		if parent_entity:
 			parent_entity.supress_spawning = not contained_inventory == NONE # prevent spawning if item is in inventory
 ## Whether this item is in inventory or not.
@@ -28,6 +29,7 @@ const NONE:StringName = &""
 		return item_owner
 	set(val):
 		item_owner = val
+		dirty = true
 		if get_parent() == null: #stops this from being called while setting up
 			return
 		if val == &"":
@@ -190,15 +192,21 @@ func get_component(c:String) -> ItemDataComponent:
 
 
 func save() -> Dictionary:
+	dirty = false
 	return {
-		"contained_inventory" = contained_inventory,
-		"item_owner" = item_owner
+		"contained_inventory" = str(contained_inventory),
+		"item_owner" = str(item_owner),
 	}
 
 
 func load_data(data:Dictionary):
-	contained_inventory = data["contained_inventory"]
-	item_owner = data["item_owner"]
+	var ci = data.get("contained_inventory", null)
+	if ci != null:
+		contained_inventory = StringName(ci)
+	var io = data.get("item_owner", null)
+	if io != null:
+		item_owner = StringName(io)
+	dirty = false
 
 
 func get_translated_name() -> String:
