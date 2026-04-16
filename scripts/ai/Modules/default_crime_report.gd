@@ -111,46 +111,47 @@ func _calculate_bounty(crime: Crime) -> int:
 	return CrimeMaster.bounty_amount.get(crime.severity, 0)
 
 
-## Called by the consuming game when the perpetrator chooses to pay the fine.
-## Punishes all crimes for the relevant covens and clears the confrontation.
-func resolve_pay_fine() -> void:
-	var target: String = _npc.goap_memory.get("confrontation_target", "")
-	if target.is_empty():
-		return
+## Get the current confrontation target from GOAP memory. Returns empty string if none.
+func _get_confrontation_target() -> String:
+	return _npc.goap_memory.get("confrontation_target", "")
 
-	_npc.printe("Crime resolved: %s paid the fine" % target)
 
-	# Punish crimes in all of our covens
+## Punish crimes in all of this NPC's covens.
+func _punish_crimes_for_all_covens() -> void:
 	var our_cc = _npc.parent_entity.get_component("CovensComponent")
 	if our_cc:
 		for coven: StringName in (our_cc as CovensComponent).covens:
 			CrimeMaster.punish_crimes(coven)
 
+
+## Called by the consuming game when the perpetrator chooses to pay the fine.
+## Punishes all crimes for the relevant covens and clears the confrontation.
+func resolve_pay_fine() -> void:
+	var target := _get_confrontation_target()
+	if target.is_empty():
+		return
+
+	_npc.printe("Crime resolved: %s paid the fine" % target)
+	_punish_crimes_for_all_covens()
 	_clear_confrontation()
 
 
 ## Called by the consuming game when the perpetrator chooses to serve jail time.
 ## Punishes all crimes and emits info for the game to handle the jail mechanic.
 func resolve_serve_time() -> void:
-	var target: String = _npc.goap_memory.get("confrontation_target", "")
+	var target := _get_confrontation_target()
 	if target.is_empty():
 		return
 
 	_npc.printe("Crime resolved: %s serving time" % target)
-
-	# Punish crimes in all of our covens
-	var our_cc = _npc.parent_entity.get_component("CovensComponent")
-	if our_cc:
-		for coven: StringName in (our_cc as CovensComponent).covens:
-			CrimeMaster.punish_crimes(coven)
-
+	_punish_crimes_for_all_covens()
 	_clear_confrontation()
 
 
 ## Called by the consuming game when the perpetrator resists arrest.
 ## Begins combat with the perpetrator.
 func resolve_resist_arrest() -> void:
-	var target: String = _npc.goap_memory.get("confrontation_target", "")
+	var target := _get_confrontation_target()
 	if target.is_empty():
 		return
 
@@ -174,7 +175,7 @@ func resolve_resist_arrest() -> void:
 ## Returns true if the persuasion succeeds (based on a simple opinion check).
 ## Override or extend for more complex skill-check logic.
 func resolve_persuasion() -> bool:
-	var target: String = _npc.goap_memory.get("confrontation_target", "")
+	var target := _get_confrontation_target()
 	if target.is_empty():
 		return false
 
@@ -187,11 +188,7 @@ func resolve_persuasion() -> bool:
 
 	if success:
 		_npc.printe("Crime resolved: %s persuaded successfully" % target)
-		# Punish crimes (forgive) for our covens
-		var our_cc = _npc.parent_entity.get_component("CovensComponent")
-		if our_cc:
-			for coven: StringName in (our_cc as CovensComponent).covens:
-				CrimeMaster.punish_crimes(coven)
+		_punish_crimes_for_all_covens()
 	else:
 		_npc.printe("Crime resolved: %s persuasion failed — resisting arrest" % target)
 		resolve_resist_arrest()
