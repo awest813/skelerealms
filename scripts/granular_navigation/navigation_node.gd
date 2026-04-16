@@ -18,7 +18,6 @@ var nav_point:NavPoint:
 		return NavPoint.new(world, position)
 
 
-# TODO: Figure out connections
 func add_nav_node(pos:Vector3) -> NavNode:
 	# figure out if the dimension is less or greater than ourselves.
 	# equal is treated as greater.
