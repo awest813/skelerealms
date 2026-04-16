@@ -18,6 +18,7 @@ These singletons are registered by the plugin and are available globally at runt
 | `SaveSystem`         | `scripts/system/save_system.gd`                        | Serialize/deserialize game state to `user://saves/`   |
 | `CrimeMaster`        | `scripts/crime/crime_master.gd`                        | Tracks crimes committed against Covens; bounty calculation |
 | `DeviceNetwork`      | `scripts/misc/device_network.gd`                       | Broadcasts puzzle/device state changes (signals only) |
+| `SpawnTrackerManager`| `scripts/system/spawn_tracker_manager.gd`              | Persists spawn point state across save/load cycles    |
 
 ---
 
@@ -153,14 +154,14 @@ These systems exist and partially work, but have documented gaps.
 | **~~Entity serialization~~** ✅ | `scripts/entities/entity.gd` | Position serialized as `[x,y,z]` array, rotation as `[x,y,z,w]`, form_id persisted, safe dictionary access throughout (Camelot integration) |
 | **~~Inventory/Equipment persistence~~** ✅ | `scripts/components/inventory_component.gd`, `scripts/components/equipment_component.gd` | Both components now implement `save()`/`load_data()` with dirty flag tracking (Camelot integration) |
 | **~~Covens persistence~~** ✅ | `scripts/components/covens_component.gd` | Coven membership now persists across save/load with group re-sync (Camelot integration) |
-| **Spawn tracker — persistence** | `scripts/points/spawn_point.gd:7` | `spawn_tracker` is a static dictionary that resets on restart; spawn state is not saved |
+| **~~Spawn tracker — persistence~~** ✅ | `scripts/points/spawn_point.gd`, `scripts/system/spawn_tracker_manager.gd` | `SpawnTrackerManager` autoload persists `spawn_tracker` via `savegame_other` group; one-shot spawner state survives restarts |
 | **Barter — ~~filtering~~ & haggling** | `scripts/barter/barter.gd:21–22` | ~~Per-vendor item whitelists/blacklists are not enforced~~ `shop_will_accept_item` now correctly checks item data component types against shop whitelist/blacklist ✅; haggling (price negotiation) is not implemented |
 | **Item — worth & ownership** | `scripts/components/item_component.gd:36,76,148` | Theft determination based on item worth and owner relationships is stubbed; item size is not compensated for during drop placement |
 | **Network edge costs** | `scripts/network/Scripts/network.gd:55` | Edge cost assignment in the editor is not wired up |
-| **World loader — abort handling** | `scripts/system/world_loader.gd:100` | On a failed load, the game is not crashed or reset to a safe state; it silently emits `world_loading_ready` |
+| **~~World loader — abort handling~~** ✅ | `scripts/system/world_loader.gd` | On failure, attempts to recover previous world; pauses game as fallback; `world_loading_failed` signal emitted for UI integration |
 | **Granular navigation — memory efficiency** | `scripts/granular_navigation/navigation_master.gd:246` | KD-tree uses object references; converting to packed arrays/indices is a noted optimization |
 | **Audio emitter** | `scripts/misc/audio_emitter.gd:12` | Audio event propagation is physics-based; a non-physics alternative is desired |
-| **NPC path — door interaction** | `scripts/components/npc_component.gd:356` | When following a path that crosses a door, the NPC does not interact with (open) the door |
+| **~~NPC path — door interaction~~** ✅ | `scripts/components/npc_component.gd` | NPCs find nearest `Door` node and call `interact()` to teleport when path crosses a world boundary; `door_interacted` signal emitted for animation/sound hooks |
 
 ---
 
@@ -188,9 +189,9 @@ Ordered by dependency depth and severity. Fix broken systems before building on 
 ### Phase 3 — World & Persistence (needed for a complete game loop)
 
 12. **~~Save system — custom filenames / save slots~~** ✅ — named save slots, schema versioning (v2), migration hooks, FNV-1a checksum, safe deserialization, and `load_complete` signal are now implemented.
-13. **Spawn tracker persistence** — serialize `SpawnPoint.spawn_tracker` into the save file so respawn state survives restarts.
-14. **World loader abort handling** — crash or reset to a safe state on a failed world load rather than silently continuing.
-15. **NPC door interaction** — have NPCs open/close doors when their path crosses one.
+13. **~~Spawn tracker persistence~~** ✅ — `SpawnTrackerManager` autoload serializes `NPCSpawnPoint.spawn_tracker` via the `savegame_other` group so one-shot spawner state survives game restarts.
+14. **~~World loader abort handling~~** ✅ — on load failure, attempts to recover the previous world; pauses game as fallback. Added `world_loading_failed` signal for UI integration.
+15. **~~NPC door interaction~~** ✅ — NPCs find the nearest `Door` node and call `interact()` to teleport when their path crosses a world boundary. Added `door_interacted` signal.
 
 ### Phase 4 — Polish & Depth (enriches the simulation)
 

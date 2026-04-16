@@ -140,6 +140,50 @@ manifest-driven override system for mod support.
 
 ---
 
+## Phase 5 — World & Persistence (0.8 roadmap items) ✅
+
+### ~~5A  Spawn Tracker Persistence~~ ✅
+Serialized `NPCSpawnPoint.spawn_tracker` into the save file via a new
+`SpawnTrackerManager` autoload that registers with the `savegame_other`
+group. One-shot spawner state now survives game restarts.
+
+**Implementation:**
+- Created `SpawnTrackerManager` (`scripts/system/spawn_tracker_manager.gd`) —
+  singleton that implements `save()`, `load_data()`, `reset_data()`.
+- Integer dictionary keys are converted to strings for JSON compatibility.
+- Registered as autoload in the plugin (`skelerealms.gd`).
+- Removed the `# TODO: Save this` comment from `spawn_point.gd`.
+
+| File | Purpose |
+|---|---|
+| `scripts/system/spawn_tracker_manager.gd` | Autoload singleton — persists `NPCSpawnPoint.spawn_tracker` via `savegame_other` group |
+
+### ~~5B  World Loader Abort Handling~~ ✅
+Replaced the silent `_abort()` stub with proper error handling.
+
+**Implementation:**
+- Added `world_loading_failed(error_message)` signal for UI integration.
+- On failure, attempts to reload the previous world (`_previous_world_id`)
+  using a synchronous `ResourceLoader.load()` fallback.
+- If recovery also fails, pauses the game via `GameInfo.pause_game(true)` to
+  prevent undefined state.
+- Descriptive error messages propagated through `push_error()` and the signal.
+
+### ~~5C  NPC Door Interaction~~ ✅
+NPCs now interact with doors when their path crosses a world boundary.
+
+**Implementation:**
+- Added `_interact_with_nearest_door(near_position)` to `NPCComponent` —
+  searches for the nearest `Door` node in the scene (via `doors` group or
+  recursive tree walk) and calls `door.interact(entity_name)`.
+- The `Door.on_interact` handler uses the entity's `TeleportComponent` to
+  teleport the NPC to the destination world and position.
+- Added `door_interacted(door)` signal to `NPCComponent` for animation/sound
+  hooks.
+- Removed the `# TODO: Interact with door?` comment.
+
+---
+
 ## Phase 4 — Framework Fixes & Generalization (0.7 roadmap items) ✅
 
 ### ~~4A  GOAP Objective Assignment Fix~~ ✅
