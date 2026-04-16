@@ -45,6 +45,8 @@ const StealthDetectorModule = preload("default_stealth_detection.gd")
 var vigilant_thread:Thread
 ## Set to true to stop [member vigilant_thread]
 var pull_out_of_thread = false
+## Whether this NPC is currently investigating a position.
+var _investigating: bool = false
 
 
 func _ready() -> void:
@@ -70,6 +72,10 @@ func _handle_perception_info(what:StringName, state:int) -> void:
 			if aggression == 0: # if peaceful
 				return
 
+			# Cancel any ongoing investigation since we found a target
+			if _investigating:
+				_cancel_investigate()
+
 			if below_attack_threshold: # if attack threshold or frenzied
 				if not _npc.in_combat:
 					_npc.printe("start vigilance")
@@ -89,16 +95,17 @@ func _handle_perception_info(what:StringName, state:int) -> void:
 				else:
 					_npc.printe("needs to attack")
 		StealthDetectorModule.FSM.WARY:
-			# may be useless
+			# Awareness has fully decayed — return to patrol if was investigating
+			if _investigating:
+				_end_investigate()
 			return
 		StealthDetectorModule.FSM.UNAWARE:
 			if aggression == 0: # if peaceful
 				return
 
-			# if threat, do "huh?" behavior
+			# if threat, investigate last known position
 			if below_attack_threshold:
-				_npc.printe("needs to investigate")
-				# TODO: Stop, investigate
+				_begin_investigate(what, last_seen)
 				return
 
 
@@ -205,7 +212,10 @@ func _flee(e:SKEntity) -> void:
 ## Response to being hit.
 func _aggress(e:SKEntity) -> void:
 	# "Coward", "Cautious", "Average", "Brave", "Foolhardy"
-	# TODO: Friendly fire
+	# Check friendly fire behavior first
+	if _is_friendly(e):
+		_handle_friendly_fire(e)
+		return
 	var threat = _determine_threat(e)
 	match confidence:
 		0: # Coward - flee
@@ -269,6 +279,67 @@ func _determine_threat(e:SKEntity) -> int:
 func _clean_up() -> void:
 	if vigilant_thread:
 		vigilant_thread.wait_to_finish()
+
+
+## Begin investigating the last known position of a suspected threat.
+## Records the position in GOAP memory and adds a high-priority objective.
+func _begin_investigate(what: StringName, last_seen: Vector3) -> void:
+	if _investigating:
+		return # already investigating
+	_investigating = true
+	_npc.printe("investigating last known position of %s" % what)
+	_npc.goap_memory["investigate_position"] = NavPoint.new(_npc.parent_entity.world, last_seen)
+	_npc.add_objective({"area_investigated": true}, true, 5) # lower priority than combat/seek
+	_npc.investigate_started.emit(last_seen)
+
+
+## Cancel an ongoing investigation (e.g., because we found the target).
+func _cancel_investigate() -> void:
+	if not _investigating:
+		return
+	_investigating = false
+	_npc.goap_memory.erase("investigate_position")
+	_npc.remove_objective_by_goals({"area_investigated": true})
+
+
+## End investigation because awareness fully decayed — return to patrol.
+func _end_investigate() -> void:
+	if not _investigating:
+		return
+	_investigating = false
+	_npc.printe("investigation finished — nothing found, returning to patrol")
+	_npc.goap_memory.erase("investigate_position")
+	# The objective should already be removed since it was remove_after_satisfied,
+	# but clean up in case it's still pending.
+	_npc.remove_objective_by_goals({"area_investigated": true})
+	_npc.investigate_ended.emit()
+
+
+## Returns true if the given entity is considered friendly based on opinion.
+func _is_friendly(e: SKEntity) -> bool:
+	var opinion := _npc.determine_opinion_of(e.name)
+	return opinion > attack_threshold
+
+
+## Handle being hit by a friendly entity based on [member friendly_fire_behavior].
+func _handle_friendly_fire(e: SKEntity) -> void:
+	match friendly_fire_behavior:
+		0: # Neutral — aggro immediately
+			_begin_attack(e)
+		1: # Friend — during combat ignore a few hits, outside combat aggro
+			if _npc.in_combat:
+				# During combat, tolerate friendly fire (don't retaliate)
+				_npc.printe("friendly fire during combat from %s — tolerating" % e.name)
+			else:
+				# Outside combat, retaliate
+				_npc.printe("friendly fire outside combat from %s — retaliating" % e.name)
+				_begin_attack(e)
+		2: # Ally — during combat ignore all, outside combat tolerate
+			if _npc.in_combat:
+				_npc.printe("ally friendly fire during combat from %s — ignoring" % e.name)
+			else:
+				_npc.printe("ally friendly fire outside combat from %s — tolerating" % e.name)
+	_npc.friendly_fire_response.emit()
 
 
 func get_type() -> String:
