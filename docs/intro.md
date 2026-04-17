@@ -37,7 +37,29 @@ Skelerealms is inpsired by Creation Engine, but aims to tackle many of its short
 
 ### Concepts
 
+- [Entities and Components](concepts/entities.md)
+- [Worlds](concepts/worlds.md)
+
 ### User guide
+
+- [Quick Start](user%20guide/quick_start.md)
+- [Components](user%20guide/components.md)
+- [Entities](user%20guide/entities.md)
+- [Worlds](user%20guide/worlds.md) *(see Concepts section)*
+- [NPCs](user%20guide/npcs.md)
+- [AI Modules](user%20guide/ai_modules.md)
+- [GOAP Actions](user%20guide/goap_actions.md)
+- [Schedules](user%20guide/schedules.md)
+- [Navigation](user%20guide/navigation.md)
+- [Covens (Factions)](user%20guide/covens.md)
+- [Quests](user%20guide/quests.md)
+- [Dialogue](user%20guide/dialogue.md)
+- [Save System](user%20guide/save_system.md)
+- [Mods](user%20guide/mods.md)
+- [Loot Tables](user%20guide/loot_tables.md)
+- [Tools](user%20guide/tools.md)
+- [Stealth Provider](user%20guide/stealth_provider.md)
+- [Migrating from 0.5 to 0.6](user%20guide/migrating.md)
 
 
 ## Project Status
@@ -48,6 +70,4 @@ Despite what it may look like on the main repo's commit history, development is 
 
 ### Places to improve
 
-- The Savegame system needs to be rethought.
-- The way the navigation system is represented in code could be much more memory-efficient. I may end up rewriting it in Zig or something.
 - Lots of more processing-heavy parts of code should probably be written in a compiled language.
