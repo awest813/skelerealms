@@ -80,8 +80,13 @@ func _clamp_money(currency:StringName):
 func count_item_by_data(data_id:String) -> int:
 	var amount: int = 0
 	for i in inventory:
-		var ic:ItemComponent = SKEntityManager.instance.get_entity(i).get_component("ItemComponent")
-		if ic.data.id == data_id:
+		var e := SKEntityManager.instance.get_entity(i)
+		if not e:
+			continue
+		var ic:ItemComponent = e.get_component("ItemComponent")
+		if not ic:
+			continue
+		if ic.parent_entity.form_id == data_id:
 			amount += 1
 	return amount
 
@@ -99,7 +104,10 @@ func get_items_that(fn: Callable) -> Array[StringName]:
 
 
 func get_items_of_form(id:String) -> Array[StringName]:
-	return get_items_that(func(x:StringName): return ItemComponent.get_item_component(x).parent_entity.form_id == id)
+	return get_items_that(func(x:StringName):
+		var ic := ItemComponent.get_item_component(x)
+		return ic and ic.parent_entity and ic.parent_entity.form_id == id
+	)
 
 
 func on_generate() -> void:

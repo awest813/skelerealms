@@ -58,9 +58,9 @@ func choose(choice_id: StringName) -> DialogueEngine.DialogueAdvanceResult:
 
 	var result := active_session.choose(choice_id)
 	if result.success:
-		choice_made.emit(active_session._definition.id, choice_id)
+		choice_made.emit(active_session.get_dialogue_id(), choice_id)
 	if result.is_complete:
-		dialogue_ended.emit(active_session._definition.id)
+		dialogue_ended.emit(active_session.get_dialogue_id())
 		active_session = null
 	return result
 
@@ -75,7 +75,7 @@ func get_current_node() -> DialogueEngine.DialogueNodeView:
 ## End the active session early.
 func end_dialogue() -> void:
 	if active_session:
-		dialogue_ended.emit(active_session._definition.id)
+		dialogue_ended.emit(active_session.get_dialogue_id())
 		active_session = null
 
 

@@ -125,8 +125,10 @@ func _process(delta):
 	if Engine.is_editor_hint():
 		return
 	if in_inventory:
-		parent_entity.position = SKEntityManager.instance.get_entity(contained_inventory).position
-		parent_entity.world = SKEntityManager.instance.get_entity(contained_inventory).world
+		var container := SKEntityManager.instance.get_entity(contained_inventory)
+		if container:
+			parent_entity.position = container.position
+			parent_entity.world = container.world
 
 
 ## Move this to another inventory. Adds and removes the item from the inventories.
