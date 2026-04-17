@@ -17,6 +17,11 @@ var is_complete: bool:
 		return _completed
 
 
+## Get the ID of the dialogue this session is running.
+func get_dialogue_id() -> StringName:
+	return _definition.id
+
+
 func _init(definition: DialogueDefinition, context: DialogueContext, node_map: Dictionary) -> void:
 	_definition = definition
 	_context = context
@@ -170,6 +175,7 @@ func _evaluate_condition(condition: DialogueChoiceCondition) -> bool:
 		"skill_min":
 			return _context.get_skill_level(condition.skill_id) >= condition.min_value
 		_:
+			push_warning("DialogueSession: Unknown condition type '%s'." % condition.type)
 			return false
 
 
@@ -188,3 +194,5 @@ func _apply_effects(choice: DialogueChoice) -> void:
 				_context.consume_item(effect.item_id, effect.quantity)
 			"give_item":
 				_context.give_item(effect.item_id, effect.quantity)
+			_:
+				push_warning("DialogueSession: Unknown effect type '%s'." % effect.type)

@@ -256,7 +256,7 @@ func _process(delta):
 	# If in scene, use navmesh agent.
 	if _current_target_point:
 		if parent_entity.in_scene:
-			if _puppet.target_reached: # If puppet reached target
+			if _puppet and _puppet.target_reached: # If puppet reached target
 				_next_point()
 		else: # If not in scene, move between points.
 			if parent_entity.position.distance_to(_current_target_point.position) < _path_follow_end_distance: # if reached point

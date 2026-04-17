@@ -43,7 +43,7 @@ class QuestRuntimeState extends RefCounted:
 	func serialize() -> Dictionary:
 		var node_data := {}
 		for node_id: StringName in nodes:
-			node_data[node_id] = (nodes[node_id] as QuestNodeState).serialize()
+			node_data[str(node_id)] = (nodes[node_id] as QuestNodeState).serialize()
 		return {
 			"status": status,
 			"nodes": node_data,
@@ -210,7 +210,7 @@ func apply_event(event: QuestEvent) -> Array[QuestEventResult]:
 func get_snapshot() -> Dictionary:
 	var quests := {}
 	for quest_id: StringName in _states:
-		quests[quest_id] = (_states[quest_id] as QuestRuntimeState).serialize()
+		quests[str(quest_id)] = (_states[quest_id] as QuestRuntimeState).serialize()
 	return {"quests": quests}
 
 

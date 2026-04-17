@@ -167,27 +167,27 @@ func _on_timer_complete():
 		_internal_seconds = 0
 		minute_incremented.emit()
 	# Wrap minutes to hours
-	if world_time[&"minute"] > roundi(ProjectSettings.get_setting("skelerealms/minutes_per_hour")):
+	if world_time[&"minute"] >= roundi(ProjectSettings.get_setting("skelerealms/minutes_per_hour")):
 		world_time[&"minute"] = 0
 		world_time[&"hour"] += 1
 		hour_incremented.emit()
 	# Wrap hours to days
-	if world_time[&"hour"] > roundi(ProjectSettings.get_setting("skelerealms/hours_per_day")):
+	if world_time[&"hour"] >= roundi(ProjectSettings.get_setting("skelerealms/hours_per_day")):
 		world_time[&"hour"] = 0
 		world_time[&"day"] += 1
 		day_incremented.emit()
 	# Wrap days to weeks
-	if world_time[&"day"] > roundi(ProjectSettings.get_setting("skelerealms/days_per_week")):
+	if world_time[&"day"] >= roundi(ProjectSettings.get_setting("skelerealms/days_per_week")):
 		world_time[&"day"] = 0
 		world_time[&"week"] += 1
 		week_incremented.emit()
 	# Wrap weeks to months
-	if world_time[&"week"] > roundi(ProjectSettings.get_setting("skelerealms/weeks_in_month")):
+	if world_time[&"week"] >= roundi(ProjectSettings.get_setting("skelerealms/weeks_in_month")):
 		world_time[&"week"] = 0
 		world_time[&"month"] += 1
 		month_incremented.emit()
 	# Wrap months to years
-	if world_time[&"month"] > roundi(ProjectSettings.get_setting("skelerealms/months_in_year")):
+	if world_time[&"month"] >= roundi(ProjectSettings.get_setting("skelerealms/months_in_year")):
 		world_time[&"month"] = 0
 		world_time[&"year"] += 1
 		year_incremented.emit()

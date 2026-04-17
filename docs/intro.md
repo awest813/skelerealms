@@ -1,5 +1,5 @@
 # The Skelerealms Grimoire
-#### For Skelerealms Beta 0.6
+#### For Skelerealms Beta 0.7
 
 ## Introduction
 

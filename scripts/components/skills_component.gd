@@ -78,6 +78,6 @@ func add_character_xp(amount:int) -> void:
 	var target:int = SkeleRealmsGlobal.config.compute_character(level)
 	if target == -1:
 		return
-	if character_xp >= amount:
+	if character_xp >= target:
 		level += 1
 		character_levelled_up.emit(level)
