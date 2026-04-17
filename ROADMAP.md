@@ -6,7 +6,7 @@ For the detailed status of specific systems, assumptions, and incomplete areas, 
 
 ## Current state
 
-- **Version target:** `beta 0.7`
+- **Version target:** `beta 0.8`
 - **Development status:** active
 - **Stability target:** feature and API stability at `1.0`
 
@@ -38,17 +38,32 @@ These major pieces are already in place:
 
 ## Current priorities
 
-Phase 9 — Architecture Hardening is in progress.
+Phase 9 — Architecture Hardening initial pass complete. Documentation deliverables landed; multiplayer and thread-safety remain documentation-only surveys for now.
 
-### Phase 9 — Architecture Hardening (0.9 target)
+### Phase 9 — Architecture Hardening (0.8 → 0.9 target) — partial ✅
 
 Prepare the framework for long-lived production use and broader adoption.
 
-1. **Multiplayer-readiness audit** — identify and document session-unsafe state, singleton assumptions, and client/server boundaries; add `@rpc` annotations or abstractions where viable.
-2. **Thread-safety review** — audit autoloads and shared state for potential races when used with Godot's threading APIs.
-3. **API stability pass** — lock down public-facing method signatures, signals, and resource schemas; deprecate and remove internal-only surface area.
-4. **Plugin packaging** — prepare for Godot AssetLib distribution with proper `plugin.cfg` metadata, versioned releases, and a minimal example project.
-5. **Migration tooling** — automated upgrade scripts for breaking changes between minor versions leading up to 1.0.
+1. ✅ **Multiplayer-readiness audit** — session-unsafe state, singleton assumptions, and player-identity coupling catalogued in `docs/architecture/multiplayer_audit.md`. No code changes yet; documented as a survey so any future co-op fork has a starting map.
+2. ✅ **Thread-safety review** — autoload and shared-state hazards documented in `docs/architecture/thread_safety.md`. Ground rule codified: Skelerealms remains a single-threaded main-thread framework; worker-thread work requires immutable snapshots.
+3. ✅ **API stability pass** — Stable / Beta / Internal tiers defined in `docs/architecture/api_stability.md`. Post-1.0 deprecation policy spelled out.
+4. ✅ **Plugin packaging** — plugin version bumped to `beta 0.8`. Plugin.cfg metadata retained; AssetLib polish (minimal example project, versioned release artifacts) remains for 0.9.
+5. ✅ **Migration tooling** — `PluginMigrationRegistry` (`scripts/system/plugin_migration_registry.gd`) runs one-shot project-level migrations on editor start. Save-file migrations continue to live in `SaveSystem`. Contract documented in `docs/architecture/migration_tooling.md`. Unit tests in `tests/test_plugin_migration_registry.gd`.
+
+| File | Purpose |
+|---|---|
+| `docs/architecture/multiplayer_audit.md` | Survey of session-scoped state, player-singleton assumptions, RPC gaps |
+| `docs/architecture/thread_safety.md` | Main-thread rule, per-autoload hazards, safe-to-thread operations |
+| `docs/architecture/api_stability.md` | Stable / Beta / Internal tier classification and deprecation policy |
+| `docs/architecture/migration_tooling.md` | Save-file vs plugin-level migration split and contract |
+| `scripts/system/plugin_migration_registry.gd` | Plugin-version migration runner (project-level state) |
+| `tests/test_plugin_migration_registry.gd` | GUT tests for the registry's run loop |
+
+Remaining Phase 9 work (pushed into 0.9):
+
+- AssetLib-ready minimal example project.
+- `@rpc` annotation pass for the subset of APIs that could serve a server-authoritative build.
+- Introduce a `_saving` guard on `SaveSystem.save()` and convert to tmp-file + rename for crash safety.
 
 ## Next phases
 
@@ -74,6 +89,7 @@ In-game overlays and tools to accelerate iteration and troubleshooting.
 
 These pieces landed in the latest milestone:
 
+- **Phase 9 — Architecture Hardening (initial pass)**: four architecture docs (`multiplayer_audit.md`, `thread_safety.md`, `api_stability.md`, `migration_tooling.md`), plus the `PluginMigrationRegistry` class and tests for it. Plugin version bumped to `beta 0.8`.
 - **Phase 8 — Runtime Debugging & Diagnostics**: AI state overlay, navigation debug draw, perception debug draw, quest state inspector, and save file inspector all implemented. Runtime nodes add no overhead when hidden. Editor save inspector wired as a bottom panel in the plugin.
 - **Phase 7 — Editor Tooling**: Visual quest graph editor, dialogue tree editor, and coven relationship matrix all landed as `@tool` editor plugins. Each opens a dedicated popup window from the Godot inspector. The schedule editor (shipped in beta 0.6) completes the set of four authoring tools.
 - Mod-friendly data architecture: `ModManifest` resource and `ModLoader` autoload with manifest-driven override support for covens, quests, and dialogues.

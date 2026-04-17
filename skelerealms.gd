@@ -15,6 +15,10 @@ const DialogueEditor = preload("res://addons/skelerealms/tools/dialogue_editor.g
 const CovenMatrixPlugin = preload("res://addons/skelerealms/tools/coven_matrix_plugin.gd")
 const CovenMatrix = preload("res://addons/skelerealms/tools/coven_matrix.gd")
 const SaveInspector = preload("res://addons/skelerealms/tools/save_inspector.gd")
+const PluginMigrationRegistry = preload("res://addons/skelerealms/scripts/system/plugin_migration_registry.gd")
+
+## Plugin version — keep in sync with plugin.cfg.
+const PLUGIN_VERSION := "beta 0.8"
 
 ## Container we add the toolbar to
 const container = CONTAINER_SPATIAL_EDITOR_MENU
@@ -64,6 +68,9 @@ var _save_inspector: Control
 
 
 func _enter_tree():
+	# Run pending project-level migrations before any other plugin setup so
+	# autoloads and inspector plugins see the already-upgraded ProjectSettings.
+	_run_plugin_migrations()
 	# gizmos
 	add_node_3d_gizmo_plugin(point_gizmo)
 	add_inspector_plugin(door_jump_plugin)
@@ -264,6 +271,25 @@ func _disable_plugin() -> void:
 	ProjectSettings.set_setting("skelerealms/entity_archetypes", null)
 	ProjectSettings.set_setting("skelerealms/config_path", null)
 	ProjectSettings.set_setting("skelerealms/mods_path", null)
+
+
+## Run one-shot plugin-version migrations. Operates on ProjectSettings keys
+## and other project-level state that persists across editor sessions.
+##
+## Each migration is keyed by the FROM-version; it executes when the installed
+## version equals that key, then the installed version advances one step.
+## See `docs/architecture/migration_tooling.md` for the contract.
+func _run_plugin_migrations() -> void:
+	var registry := PluginMigrationRegistry.new(PLUGIN_VERSION)
+
+	# beta 0.7 → beta 0.8: no project-level schema changes. The stub below
+	# exists so future migrations have a reference pattern.
+	registry.register("beta 0.7", func() -> void:
+		# No-op — Phase 8 (debug overlays) and Phase 9 (architecture docs)
+		# did not change ProjectSettings keys or resource schemas.
+		pass)
+
+	registry.run()
 
 
 func _handles(object: Object) -> bool:

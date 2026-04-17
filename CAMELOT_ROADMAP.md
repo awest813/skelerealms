@@ -397,3 +397,60 @@ values, which are `SKEntityComponent | null` (not `Option` objects).
 - `e_sc = e.get_component("SkillsComponent")` guard → `if not e_sc:`.
 - Added null guard for `_npc.parent_entity.get_component("SkillsComponent")` to prevent crash when
   the NPC itself has no `SkillsComponent`.
+
+---
+
+## Phase 9 — Architecture Hardening (initial pass, 0.8 target) ✅
+
+This phase inherits Camelot's framework-layer maturity (tests, docs, validators) and applies it to architectural concerns: who can touch what, when, from which thread, in which session. The first pass is documentation-led so the remaining 0.9 work has a clear map.
+
+### ~~9A  Multiplayer-Readiness Audit~~ ✅
+**Source:** Camelot's session-scoped framework design (every framework engine in Camelot accepts a session context)
+
+**Implementation:**
+- `docs/architecture/multiplayer_audit.md` catalogues every autoload, shared mutable resource, and player-singleton assumption.
+- Risk column maps each autoload to **Critical / High / Medium / Low** so consumers planning a co-op fork can prioritise.
+- Notes on `Coven.other_coven_opinions` being a shared mutable resource, `SKEntityManager.instance` static singleton blast radius, and absent `@rpc` annotations throughout.
+
+### ~~9B  Thread-Safety Review~~ ✅
+**Source:** Pure-function boundaries from Camelot's headless framework layer
+
+**Implementation:**
+- `docs/architecture/thread_safety.md` codifies the main-thread rule.
+- Concrete hazards listed with file paths: `SaveSystem.save()` file-write race, `SKEntityManager` dictionary writes, `CrimeMaster.crime_queue` producer/consumer, `NavMaster` graph mutations under path queries, `ResourceLoader` shared-instance cache.
+- Safe-to-thread operations enumerated (`QuestGraphEngine.validate_graph`, `NavMaster._heap_push/pop`, `SaveSystem._compute_checksum` on captured strings).
+
+### ~~9C  API Stability Tiers~~ ✅
+**Source:** Camelot's exported/internal module split
+
+**Implementation:**
+- `docs/architecture/api_stability.md` classifies every autoload entry point, core class, save-schema key, project-setting, and group name into **Stable / Beta / Internal**.
+- Stable tier gets MAJOR-bump protection; Beta tier gets MINOR-bump notice; Internal has no guarantees.
+- Post-1.0 deprecation policy spelled out.
+
+### ~~9D  Plugin Packaging~~ ✅ (partial)
+**Source:** Camelot's versioned release artifacts
+
+**Implementation:**
+- `plugin.cfg` version bumped to `beta 0.8`.
+- `PLUGIN_VERSION` constant in `skelerealms.gd` so the migration registry and future tooling have a single source of truth.
+- AssetLib-ready minimal example project deferred to 0.9.
+
+### ~~9E  Plugin Migration Registry~~ ✅
+**Source:** `src/framework/save/save-migration-registry.ts` generalised beyond save files
+
+**Implementation:**
+- `PluginMigrationRegistry` (`scripts/system/plugin_migration_registry.gd`) — `RefCounted` helper that runs one-shot project-level migrations keyed by FROM-version.
+- Installed version tracked under `skelerealms/__installed_version` and persisted via `ProjectSettings.save()`.
+- Invoked from `skelerealms.gd:_enter_tree()` before any other plugin setup.
+- Contract, examples, and fresh-install-vs-upgrade behaviour documented in `docs/architecture/migration_tooling.md`.
+- GUT tests in `tests/test_plugin_migration_registry.gd` cover: fresh install stamping, no-op when up to date, single-step upgrade, chained multi-version upgrade, skipping migrations before the installed cursor.
+
+| File | Purpose |
+|---|---|
+| `docs/architecture/multiplayer_audit.md` | Session-scoped state, player-singleton assumptions, RPC gaps |
+| `docs/architecture/thread_safety.md` | Main-thread rule, per-autoload hazards, safe-to-thread operations |
+| `docs/architecture/api_stability.md` | Stable / Beta / Internal tier classification and deprecation policy |
+| `docs/architecture/migration_tooling.md` | Save-file vs plugin-level migration split and contract |
+| `scripts/system/plugin_migration_registry.gd` | Plugin-version migration runner (project-level state) |
+| `tests/test_plugin_migration_registry.gd` | GUT tests for the registry's run loop |
