@@ -38,28 +38,7 @@ These major pieces are already in place:
 
 ## Current priorities
 
-Phase 7 — Editor Tooling is in progress.
-
-### Phase 7 — Editor Tooling (0.7 target)
-
-Better authoring workflows to reduce friction for content creators.
-
-1. ✅ **Visual quest editor** — `GraphEdit`-based node editor (`tools/quest_editor.gd`, `tools/quest_editor_plugin.gd`). Inspector button on `QuestDefinition` resources opens the editor. Nodes show trigger type, description, target ID, and required count. Connections represent `next_node_ids`. Supports add node, validate (runs `QuestGraphEngine.validate_graph`), and save.
-2. ✅ **Dialogue tree editor** — `GraphEdit`-based branching editor (`tools/dialogue_editor.gd`, `tools/dialogue_editor_plugin.gd`). Each `DialogueNode` is a graph node; each choice is a separate right-port. Properties panel on the right edits speaker, text, terminal flag, and choices (with inline `next_node_id` wiring). Supports add node, add/remove choices, and save.
-3. ✅ **Coven relationship matrix** — grid view of all inter-coven opinions (`tools/coven_matrix.gd`, `tools/coven_matrix_plugin.gd`). Opens from any `Coven` inspector. Loads all covens from `skelerealms/covens_path`. Each cell is an editable `SpinBox` colour-coded by disposition (hostile/neutral/friendly/allied). "Save All Covens" persists all changes.
-4. **Schedule editor** — already shipped in beta 0.6 (`tools/schedule_editor.gd`).
-
-## Next phases
-
-### Phase 8 — Runtime Debugging & Diagnostics (0.8 target)
-
-In-game overlays and tools to accelerate iteration and troubleshooting.
-
-1. **AI state overlay** — real-time visualization of NPC GOAP state, current objective, active action, and awareness level.
-2. **Navigation debug draw** — render granular navigation graphs, active NPC paths, and portal connections in the editor and at runtime.
-3. **Perception debug draw** — visualize FOV cones, line-of-sight raycasts, and detection events.
-4. **Quest state inspector** — runtime panel showing active quests, node states, and event history for debugging quest progression.
-5. **Save file inspector** — editor tool to browse and validate save file contents without loading the game.
+Phase 9 — Architecture Hardening is in progress.
 
 ### Phase 9 — Architecture Hardening (0.9 target)
 
@@ -71,10 +50,31 @@ Prepare the framework for long-lived production use and broader adoption.
 4. **Plugin packaging** — prepare for Godot AssetLib distribution with proper `plugin.cfg` metadata, versioned releases, and a minimal example project.
 5. **Migration tooling** — automated upgrade scripts for breaking changes between minor versions leading up to 1.0.
 
+## Next phases
+
+### Phase 8 — Runtime Debugging & Diagnostics (0.8 target) ✅
+
+In-game overlays and tools to accelerate iteration and troubleshooting.
+
+1. ✅ **AI state overlay** — `AIStateOverlay` CanvasLayer (`scripts/system/ai_state_overlay.gd`). Displays each active NPC's GOAP debug info (current objective, active action, action queue via `gather_debug_info()`) and perception-memory visibility per tracked entity. Toggle with F10.
+2. ✅ **Navigation debug draw** — `NavDebugDraw` Node3D (`scripts/system/nav_debug_draw.gd`). Renders all NavNode edges for loaded worlds using `ImmediateMesh`. Same-world edges in green; cross-world portal edges in orange. Toggle with F11, configurable `rebuild_interval`.
+3. ✅ **Perception debug draw** — `PerceptionDebugDraw` Node3D (`scripts/system/perception_debug_draw.gd`). Draws horizontal FOV arcs and boundary rays for every NPC with an `EyesPerception` node, plus cross markers at last-known entity positions colour-coded by visibility. Toggle with F12.
+4. ✅ **Quest state inspector** — `QuestStateInspector` CanvasLayer (`scripts/system/quest_state_inspector.gd`). Runtime scrollable panel listing all registered quests with status and per-node progress. Active-only filter toggle. Toggle with F9.
+5. ✅ **Save file inspector** — `SaveInspector` editor tool (`tools/save_inspector.gd`). Bottom panel in the Godot editor. Opens any `.dat` save file via browse dialog or typed path, displays the full JSON as a collapsible `Tree`, reports schema version, entity count, checksum validity.
+
+| File | Purpose |
+|---|---|
+| `scripts/system/ai_state_overlay.gd` | Runtime CanvasLayer — GOAP state and perception overlay |
+| `scripts/system/nav_debug_draw.gd` | Runtime Node3D — ImmediateMesh nav-graph visualizer |
+| `scripts/system/perception_debug_draw.gd` | Runtime Node3D — FOV cone and detection-marker visualizer |
+| `scripts/system/quest_state_inspector.gd` | Runtime CanvasLayer — quest state panel |
+| `tools/save_inspector.gd` | `@tool` editor bottom panel — save file browser and validator |
+
 ## Recently completed work
 
 These pieces landed in the latest milestone:
 
+- **Phase 8 — Runtime Debugging & Diagnostics**: AI state overlay, navigation debug draw, perception debug draw, quest state inspector, and save file inspector all implemented. Runtime nodes add no overhead when hidden. Editor save inspector wired as a bottom panel in the plugin.
 - **Phase 7 — Editor Tooling**: Visual quest graph editor, dialogue tree editor, and coven relationship matrix all landed as `@tool` editor plugins. Each opens a dedicated popup window from the Godot inspector. The schedule editor (shipped in beta 0.6) completes the set of four authoring tools.
 - Mod-friendly data architecture: `ModManifest` resource and `ModLoader` autoload with manifest-driven override support for covens, quests, and dialogues.
 - Crime — non-player tracking completeness: assault and murder crimes are now broadcast by `DefaultDamageModule`; fixed `crime_committed` signal type and null safety in `CrimeMaster`.

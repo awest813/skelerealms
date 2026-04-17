@@ -14,6 +14,7 @@ const DialogueEditorPlugin = preload("res://addons/skelerealms/tools/dialogue_ed
 const DialogueEditor = preload("res://addons/skelerealms/tools/dialogue_editor.gd")
 const CovenMatrixPlugin = preload("res://addons/skelerealms/tools/coven_matrix_plugin.gd")
 const CovenMatrix = preload("res://addons/skelerealms/tools/coven_matrix.gd")
+const SaveInspector = preload("res://addons/skelerealms/tools/save_inspector.gd")
 
 ## Container we add the toolbar to
 const container = CONTAINER_SPATIAL_EDITOR_MENU
@@ -59,6 +60,7 @@ var _dialogue_editor_w: Window
 var _dialogue_editor: Control
 var _coven_matrix_w: Window
 var _coven_matrix: Control
+var _save_inspector: Control
 
 
 func _enter_tree():
@@ -140,6 +142,11 @@ func _enter_tree():
 		(_coven_matrix as CovenMatrix).refresh()
 		_coven_matrix_w.popup_centered(Vector2i(1100, 700))
 		)
+
+	# Save inspector bottom panel
+	_save_inspector = SaveInspector.new()
+	_save_inspector.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	add_control_to_bottom_panel(_save_inspector, "Save Inspector")
 	
 	# Initialize utility
 	utility = load("res://addons/skelerealms/scripts/network/Editor/editor_toolbar.tscn").instantiate()
@@ -197,6 +204,9 @@ func _exit_tree():
 	_quest_editor_w.queue_free()
 	_dialogue_editor_w.queue_free()
 	_coven_matrix_w.queue_free()
+
+	remove_control_from_bottom_panel(_save_inspector)
+	_save_inspector.queue_free()
 
 	edit_button.queue_free()
 
