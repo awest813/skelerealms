@@ -111,11 +111,9 @@ func test_activate_unknown_quest_returns_false() -> void:
 func test_activate_twice_returns_false() -> void:
 	var engine := _make_engine_with(_make_single_node_quest())
 	engine.activate_quest(&"test_single_node")
-	var ok := engine.activate_quest(&"test_single_node")
-	# Second activation is technically allowed (status stays "active"), but the
-	# intent is to start nodes again — single-node quest nodes are already active.
-	# Either true or false is acceptable; we just verify no crash.
-	assert_true(ok == true or ok == false)
+	# A second activate call should not crash; the quest stays "active".
+	engine.activate_quest(&"test_single_node")
+	assert_eq(engine.get_quest_status(&"test_single_node"), "active")
 
 
 # ── Event application ─────────────────────────────────────────────────────

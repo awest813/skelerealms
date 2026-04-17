@@ -71,8 +71,11 @@ func _start_barter_with_shop(bs: BarterSystem, tolerance: float = 0.3) -> void:
 	add_child(vendor_entity)
 	add_child(stub_shop)
 
-	# Directly call start_barter internals since InventoryComponent.parent_entity
-	# is now set to our stub.
+	# Directly populate BarterSystem's internal state rather than calling start_barter,
+	# because start_barter calls vendor.parent_entity.get_component("ShopComponent") which
+	# expects a real InventoryComponent (extends SKEntityComponent, requires scene tree).
+	# The stub InventoryComponent cast to InventoryComponent is used only as a data holder;
+	# tests here only exercise haggle arithmetic and sell/buy list toggling.
 	bs.current_transaction = Transaction.new(vendor as InventoryComponent, customer as InventoryComponent)
 	bs._haggle_modifier = 1.0
 	bs._haggle_attempts = 0
