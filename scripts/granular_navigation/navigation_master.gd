@@ -153,14 +153,17 @@ func nearest_point(pt:NavPoint) -> NavNode:
 	if not worlds.has(pt.world):
 		return null
 	
-	var root = worlds[pt.world].get_child(0)
+	var world_node:NavWorld = worlds[pt.world]
+	if not world_node.root:
+		return null
+	var root = world_node.root
 	var current_closest:NavNode = root # root by default
 	# walk down initially
 	current_closest = _walk_down(root, pt, current_closest) # walk down the tree initially
 	#walk back up the tree, searching other branches if necessary
 	var walking_node:NavNode = current_closest
-	while walking_node.get_parent() is NavNode:
-		var p = walking_node.get_parent() as NavNode
+	while walking_node.parent_node is NavNode:
+		var p = walking_node.parent_node as NavNode
 		# Recursively search the other side of the splitting hyperplane if the distance between the query point and the splitting hyperplane is less than the distance between the query point and the closest node found so far
 		if abs(p.position[p.dimension] - pt.position[p.dimension]) < walking_node.position.distance_to(current_closest.position):
 			if p.left_child == walking_node and p.right_child:
@@ -248,22 +251,19 @@ func construct_tree(points:Array[NavPoint]):
 			# add median
 			add_point(median.world, median.position)
 	
-	# Cache references to trees
-	for c in get_children():
-		worlds[c.name] = c as NavWorld
+	# Cache references to trees (worlds are now RefCounted, already in the worlds dictionary)
+	pass
 
 
 ## Add a point to the tree
 func add_point(world:String, pos:Vector3) -> NavNode:
 	print("Adding a point at %s in world %s" % [pos, world])
-	var world_node: NavWorld = get_node_or_null(world)
+	var world_node: NavWorld = worlds.get(world) as NavWorld
 	# Add world if it doesnt already exist
 	if not world_node:
 		world_node = NavWorld.new()
 		world_node.world = world
-		world_node.name = world
 		worlds[world] = world_node
-		add_child(world_node)
 	
 	return world_node.add_point(pos)
 
@@ -275,8 +275,9 @@ func connect_nodes(a:NavNode, b:NavNode, cost:float) -> void:
 
 ## Build a series of KD Trees from [Netowrk]s. Dictionary assumes the key is the world name, and the value is the network.
 func _load_from_networks(data:Dictionary):
-	# thank god we use RC instead of GC but this is still memory heavy
-	# TODO: COnvert to a system using packed arrays and indices. Will be *far* more memory efficient, but a bit difficult to reason about, which is why I did it this way first.
+	# NavNode/NavWorld are now RefCounted (not scene tree Nodes), eliminating
+	# per-object Godot Node overhead.  A further optimization to packed arrays
+	# with integer indices is possible but deferred for readability.
 	# use dictionary to hold the point and the new node it contains, to avoid duplicates and to have lookups later
 	var added_nodes = {}
 	var edges = []
@@ -339,7 +340,7 @@ func load_all_networks() -> void:
 	# Retry any portal connections that were deferred
 	_load()
 	
-	print_tree_pretty()
+	print("Navigation networks loaded: %d worlds" % worlds.size())
 
 
 static func format_point_name(pt:Vector3, world:StringName) -> String:
@@ -352,12 +353,9 @@ func save() -> Dictionary:
 	var connection_data:Array = []
 	for world_name in worlds:
 		var world_node:NavWorld = worlds[world_name]
-		# The first child of each NavWorld is the root of its KD-tree (see NavWorld.add_point)
-		if world_node.get_child_count() == 0:
+		if not world_node.root:
 			continue
-		var root = world_node.get_child(0)
-		if root is NavNode:
-			_collect_connections(root, connection_data, world_name, {})
+		_collect_connections(world_node.root, connection_data, world_name, {})
 	return {"connections": connection_data}
 
 
@@ -370,7 +368,7 @@ func _collect_connections(node:NavNode, out:Array, world:String, visited:Diction
 	visited[node] = true
 	for other:NavNode in node.connections:
 		# Avoid duplicates: only record if this node's name sorts before the other
-		if node.name < other.name:
+		if node.node_name < other.node_name:
 			out.append({
 				"from_world": world,
 				"from_pos": [node.position.x, node.position.y, node.position.z],
