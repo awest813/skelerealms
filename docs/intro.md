@@ -1,5 +1,5 @@
 # The Skelerealms Grimoire
-#### For Skelerealms Beta 0.7
+#### For Skelerealms Beta 0.8
 
 ## Introduction
 
@@ -60,6 +60,13 @@ Skelerealms is inpsired by Creation Engine, but aims to tackle many of its short
 - [Tools](user%20guide/tools.md)
 - [Stealth Provider](user%20guide/stealth_provider.md)
 - [Migrating from 0.5 to 0.6](user%20guide/migrating.md)
+
+### Architecture
+
+- [Multiplayer-Readiness Audit](architecture/multiplayer_audit.md)
+- [Thread-Safety Review](architecture/thread_safety.md)
+- [API Stability](architecture/api_stability.md)
+- [Migration Tooling](architecture/migration_tooling.md)
 
 
 ## Project Status

@@ -2,7 +2,7 @@
 
 ## Current Version Target
 
-**beta 0.7** (Godot 4 open-world RPG framework plugin)
+**beta 0.8** (Godot 4 open-world RPG framework plugin)
 
 ---
 
@@ -20,6 +20,8 @@ These singletons are registered by the plugin and are available globally at runt
 | `DeviceNetwork`      | `scripts/misc/device_network.gd`                       | Broadcasts puzzle/device state changes (signals only) |
 | `SpawnTrackerManager`| `scripts/system/spawn_tracker_manager.gd`              | Persists spawn point state across save/load cycles    |
 | `ModLoader`          | `scripts/mods/mod_loader.gd`                           | Discovers and applies mod manifests at game-start     |
+
+> `PluginMigrationRegistry` (`scripts/system/plugin_migration_registry.gd`) is **not** an autoload. It is a `RefCounted` helper instantiated once from `skelerealms.gd:_enter_tree()` to run project-level version migrations.
 
 ---
 
@@ -235,3 +237,11 @@ Ordered by dependency depth and severity. Fix broken systems before building on 
 36. **~~CrimeMaster empty-queue early exit~~** ✅ — `CrimeMaster._process()` now returns immediately when `crime_queue` is empty, avoiding the function call and loop setup overhead on every frame.
 37. **~~NavMaster debug print cleanup~~** ✅ — Removed 6 remaining bare `print()` calls from `navigation_master.gd` (`add_point`, `_load_from_networks`, `_load_from_disk`, `load_all_networks`). One deferred-connection message converted to `push_warning()`.
 38. **~~Performance test suite~~** ✅ — Added `tests/test_perf_optimizations.gd` with GUT tests covering: binary heap ordering (ascending, single-element, duplicate scores, large input), GOAP dirty-flag tracking (add/remove/empty-remove), action cache rebuild, and entity fade-distance cache initialization.
+
+### Phase 9 — Architecture Hardening (initial pass) ✅
+
+39. **~~Multiplayer-readiness audit~~** ✅ — `docs/architecture/multiplayer_audit.md` catalogues every session-scoped autoload, shared mutable resource, and player-singleton assumption. No code changes — documentation only — so a future co-op fork has a starting map.
+40. **~~Thread-safety review~~** ✅ — `docs/architecture/thread_safety.md` defines the main-thread rule and lists every concurrency hazard (`SaveSystem.save()` file-write race, `SKEntityManager` dictionary writes, `CrimeMaster.crime_queue` producer/consumer, `NavMaster` graph mutations during path queries). Safe-to-thread operations enumerated.
+41. **~~API stability tiers~~** ✅ — `docs/architecture/api_stability.md` classifies every autoload entry point, core class, save-schema key, project-setting, and group name into `Stable` / `Beta` / `Internal`. Post-1.0 deprecation policy locked.
+42. **~~Plugin version bump~~** ✅ — `plugin.cfg` and `skelerealms.gd` updated to `beta 0.8`; `PLUGIN_VERSION` constant added for migration registry and future tooling.
+43. **~~Plugin migration registry~~** ✅ — `scripts/system/plugin_migration_registry.gd` runs one-shot migrations on editor start, keyed by the `skelerealms/__installed_version` setting, so consumers upgrading the plugin in-place don't have to hand-patch their `project.godot`. Contract and example documented in `docs/architecture/migration_tooling.md`; GUT tests in `tests/test_plugin_migration_registry.gd`.

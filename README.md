@@ -115,23 +115,25 @@ Recommended reading order:
 
 ## Project status
 
-- **Current plugin version:** `beta 0.6`
+- **Current plugin version:** `beta 0.8`
 - **Status:** active development
 - **Stability:** expect breaking changes before 1.0
+
+For the API-stability commitments and the Stable / Beta / Internal tier split that will take effect at 1.0, see [`docs/architecture/api_stability.md`](docs/architecture/api_stability.md).
 
 Skelerealms is being actively developed in support of a real game project, with framework improvements flowing back upstream as systems are hardened.
 
 ## Roadmap snapshot
 
-All prior framework gaps (quests, dialogue, saves, barter haggling, item ownership, furniture multi-use, player damage generalization, network edge costs, navigation memory optimization, mod support) have been completed. Current and upcoming focus areas:
+All prior framework gaps (quests, dialogue, saves, barter haggling, item ownership, furniture multi-use, player damage generalization, network edge costs, navigation memory optimization, mod support) have been completed. Recent and upcoming focus areas:
 
-- Performance profiling and hot-path optimization for large worlds
-- Editor tooling improvements (visual quest editor, dialogue editor, schedule editor)
-- Runtime debugging overlays (AI state, navigation, perception)
-- Multiplayer-readiness audit and session-safe architecture
-- Plugin packaging and AssetLib distribution
+- **Phase 7 (done):** Performance profiling and hot-path optimization for large worlds
+- **Phase 7 editor tooling (done):** Visual quest editor, dialogue editor, coven relationship matrix
+- **Phase 8 (done):** Runtime debugging overlays — AI state, navigation, perception, quest state, save inspector
+- **Phase 9 (in progress):** Architecture hardening — multiplayer audit, thread-safety review, API stability tiers, plugin migration tooling
+- **Next:** AssetLib-ready minimal example project, `@rpc` annotation pass, save-write crash safety
 
-See [`ROADMAP.md`](ROADMAP.md) for the fuller roadmap.
+See [`ROADMAP.md`](ROADMAP.md) for the fuller roadmap and [`docs/architecture/`](docs/architecture/) for the Phase 9 deliverables.
 
 ## Attribution
 

@@ -24,6 +24,7 @@ godot --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -gexit
 | `test_network_edge_costs.gd` | Network graph edge cost computation: dissolve (cost summing), subdivide (cost halving), merge (distance-based). |
 | `test_save_system.gd` | Save system internals: checksum computation, serialization round-trip, migration pipeline, v1→v2 migration specifics. |
 | `test_perf_optimizations.gd` | Phase 7 performance optimizations: binary heap ordering, GOAP objectives dirty-flag tracking, action cache rebuild, entity fade-distance caching. |
+| `test_plugin_migration_registry.gd` | Phase 9 migration tooling: fresh-install stamping, no-op when up to date, single-step and chained multi-version upgrades, skipping pre-cursor migrations. |
 
 ## Notes
 
