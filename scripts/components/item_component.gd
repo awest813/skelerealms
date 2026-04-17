@@ -32,11 +32,13 @@ const NONE:StringName = &""
 		dirty = true
 		if get_parent() == null: #stops this from being called while setting up
 			return
-		if val == &"":
-			inv.interact_verb = "TAKE"
-		else:
-			# TODO: Determine using worth and owner relationships
-			inv.interact_verb = "STEAL"
+		_update_interact_verb()
+## Base monetary worth of this item. Used by the barter system and theft
+## severity calculations.
+@export var worth:int = 0
+## Approximate radius of the item mesh, used to offset the drop position
+## away from walls so the item doesn't clip into geometry.
+@export var item_radius:float = 0.0
 var stolen:bool ## If this has been stolen or not.
 var durability:float ## This item's durability, if your game has condition/durability mechanics like Fallout or Morrowind.
 var psc:PuppetSpawnerComponent
@@ -72,10 +74,50 @@ func _ready() -> void:
 func _entity_ready() -> void:
 	inv.interacted.connect(interact.bind())
 	inv.translation_callback = get_translated_name.bind()
+	_update_interact_verb()
+
+
+## Determine whether taking this item counts as theft for a given entity.
+## Returns true (theft) when the item has an owner and the entity does not
+## share a coven with friendly-or-better disposition toward the owner's covens.
+func _is_theft_for(entity_ref:StringName) -> bool:
+	if item_owner == &"":
+		return false
+	if entity_ref == item_owner:
+		return false
+	
+	# Check coven relationships between entity and owner
+	var entity := SKEntityManager.instance.get_entity(entity_ref)
+	var owner_entity := SKEntityManager.instance.get_entity(item_owner)
+	if not entity or not owner_entity:
+		return true # no relationship data — assume theft
+	
+	var entity_covens:CovensComponent = entity.get_component("CovensComponent") as CovensComponent
+	var owner_covens:CovensComponent = owner_entity.get_component("CovensComponent") as CovensComponent
+	if not entity_covens or not owner_covens:
+		return true
+	
+	# For each coven the entity belongs to, check disposition toward the owner's covens
+	for coven_id in entity_covens.covens:
+		var coven:Coven = CovenSystem.get_coven(coven_id)
+		if not coven:
+			continue
+		var opinions:Array[int] = coven.get_coven_opinions(owner_covens.covens.keys())
+		for opinion in opinions:
+			var disposition = coven.get_disposition(opinion)
+			if disposition == Coven.Disposition.FRIENDLY or disposition == Coven.Disposition.ALLIED:
+				return false
+	
+	return true
+
+
+## Update the interact verb based on ownership.
+func _update_interact_verb() -> void:
+	if not inv:
+		return
 	if item_owner == &"":
 		inv.interact_verb = "TAKE"
 	else:
-		# TODO: Determine using worth and owner relationships
 		inv.interact_verb = "STEAL"
 
 
@@ -141,8 +183,12 @@ func drop():
 				psc.spawn()
 				return
 			else:
-				# if hit something, spawn at hit position
-				parent_entity.position = res["position"] # TODO: Compensate for item size
+				# if hit something, spawn at hit position, offset by item radius
+				var hit_pos:Vector3 = res["position"]
+				var hit_normal:Vector3 = res.get("normal", -drop_forward).normalized()
+				if item_radius > 0.0:
+					hit_pos += hit_normal * item_radius
+				parent_entity.position = hit_pos
 				contained_inventory = NONE
 				psc.spawn()
 				return
@@ -156,7 +202,7 @@ func drop():
 ## Interact with this item. Called from [InteractiveComponent].
 func interact(interacted_refID):
 	move_to_inventory(interacted_refID)
-	if not interacted_refID == item_owner and not item_owner == "":
+	if _is_theft_for(interacted_refID):
 		printe("Stolen.")
 		stolen = true
 		CrimeMaster.crime_committed.emit(
@@ -191,6 +237,8 @@ func save() -> Dictionary:
 	return {
 		"contained_inventory" = str(contained_inventory),
 		"item_owner" = str(item_owner),
+		"stolen" = stolen,
+		"worth" = worth,
 	}
 
 
@@ -201,6 +249,12 @@ func load_data(data:Dictionary):
 	var io = data.get("item_owner", null)
 	if io != null:
 		item_owner = StringName(io)
+	var st = data.get("stolen", null)
+	if st != null:
+		stolen = bool(st)
+	var w = data.get("worth", null)
+	if w != null:
+		worth = int(w)
 	dirty = false
 
 
@@ -218,10 +272,14 @@ func gather_debug_info() -> String:
 	Contained Inventory: %s
 	Owner: %s
 	Quest Item?: %s
+	Worth: %s
+	Stolen: %s
 	""" % [
 		contained_inventory if in_inventory else "None",
 		item_owner,
-		quest_item
+		quest_item,
+		worth,
+		stolen
 	]
 
 

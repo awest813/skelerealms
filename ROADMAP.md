@@ -26,32 +26,33 @@ These major pieces are already in place:
 - World-loader abort handling
 - NPC door interaction across world boundaries
 - Generalized vitals and improved perception coverage
+- Barter haggling with skill-factor negotiation
+- Item worth, ownership, and coven-aware theft detection
+- Furniture animation hooks and multi-user sub-point support
+- Player damage generalization across all damage types with buff/debuff modifiers
+- Network edge cost computation on dissolve, merge, and subdivide
+- Granular navigation memory optimization (RefCounted KD-tree nodes)
+- Audio emitter refactor to non-physics distance checks
 
 ## Current priorities
 
 These are the most important remaining framework gaps.
 
-1. **Barter haggling**
-   - Add negotiation depth to the existing barter framework.
-2. **Item worth and ownership**
-   - Finish theft logic, ownership checks, and related item-handling rules.
-3. **Furniture animation and multi-use**
-   - Support richer NPC use points and multiple simultaneous users where appropriate.
-4. **Player damage generalization**
-   - Expand the player damage pipeline beyond the currently limited handling.
+1. **Mod-friendly data architecture**
+   - Make data-driven extension and override workflows easier for downstream projects.
+2. **Crime — non-player tracking completeness**
+   - Finish any remaining edge cases in crime tracking for non-player entities.
 
 ## Next-tier improvements
 
-After the core gaps above, the next focus is editor polish, performance, and extensibility.
+After the core gaps above, the next focus is documentation, testing, and extensibility.
 
-1. **Network edge costs in the editor**
-   - Finish authoring support for navigation edge weighting.
-2. **Granular navigation memory optimization**
-   - Reduce memory overhead in the navigation runtime.
-3. **Audio emitter refactor**
-   - Replace the current physics-based sound propagation approach.
-4. **Mod-friendly data architecture**
-   - Make data-driven extension and override workflows easier for downstream projects.
+1. **Documentation & tutorials**
+   - Expand wiki and in-code documentation for downstream consumers.
+2. **Integration test coverage**
+   - Add automated tests for critical systems (save/load, quests, dialogue, barter).
+3. **Performance profiling**
+   - Profile and optimize hot paths in large-world scenarios.
 
 ## Path to 1.0
 

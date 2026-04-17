@@ -10,16 +10,71 @@ signal begun_barter(vendor:InventoryComponent, customer:InventoryComponent, tx:T
 signal ended_barter
 ## Emitted when the barter is cancelled. Note that `ended_barter` is also called when this happens.
 signal cancelled_barter
+## Emitted when a haggle attempt succeeds, carrying the new modifier.
+signal haggle_succeeded(new_modifier:float)
+## Emitted when a haggle attempt fails.
+signal haggle_failed
+
+## The current haggle modifier applied to the customer's side of the transaction.
+## Starts at 1.0 (no discount) and moves toward 0 as haggling succeeds.
+var _haggle_modifier:float = 1.0
+## How many haggle attempts have been made this session.
+var _haggle_attempts:int = 0
+## Maximum number of haggle rounds per barter session.
+@export var max_haggle_attempts:int = 3
+## Reference to the shop being bartered with (set on start_barter).
+var _current_shop:ShopComponent
 
 
 ## Begin the barter process.
 func start_barter(vendor:InventoryComponent, customer:InventoryComponent) -> void:
 	current_transaction = Transaction.new(vendor, customer)
+	_haggle_modifier = 1.0
+	_haggle_attempts = 0
+	_current_shop = vendor.parent_entity.get_component("ShopComponent") as ShopComponent
 	begun_barter.emit(vendor, customer, current_transaction)
 
 
-# TODO: Allow for checking what items can and cannot be sold to this vendor
-# TODO: Allow haggling?
+## Attempt to haggle for a better price. [param skill_factor] is a 0–1 value
+## representing the customer's persuasion/speech skill (higher = better chance).
+## Returns true if the haggle succeeded.
+func haggle(skill_factor:float = 0.5) -> bool:
+	if not current_transaction:
+		return false
+	if _haggle_attempts >= max_haggle_attempts:
+		haggle_failed.emit()
+		return false
+	
+	_haggle_attempts += 1
+	
+	var tolerance:float = 0.1 # default if no shop
+	if _current_shop:
+		tolerance = _current_shop.haggle_tolerance
+	
+	if tolerance <= 0.0:
+		haggle_failed.emit()
+		return false
+	
+	# Success chance: skill_factor vs (1 - tolerance).
+	# Higher tolerance = vendor more willing to haggle.
+	# Higher skill_factor = customer more persuasive.
+	var threshold:float = 1.0 - tolerance
+	if skill_factor >= threshold:
+		# Discount scales with tolerance and attempt number
+		var discount_step:float = tolerance / float(max_haggle_attempts)
+		_haggle_modifier = maxf(_haggle_modifier - discount_step, 1.0 - tolerance)
+		haggle_succeeded.emit(_haggle_modifier)
+		return true
+	else:
+		haggle_failed.emit()
+		return false
+
+
+## Get the current haggle modifier (1.0 = no discount, lower = better deal).
+func get_haggle_modifier() -> float:
+	return _haggle_modifier
+
+
 ## Sell or cancel buying an item. Returns whether it succeeded.
 ## Will return false if the item cannot be sold, or is cancelling a buy.
 func sell_item(item:String) -> bool:
@@ -60,17 +115,22 @@ func buy_item(item:String) -> bool:
 func cancel_barter() -> void:
 	if current_transaction:
 		current_transaction = null
+		_current_shop = null
 		ended_barter.emit()
 		cancelled_barter.emit()
 
 
-## Resolve the transaction, and stop the trandaction. The arguments are multipliers for the money being moved around - for vendor to customer, and customer to vendor, respectively.
+## Resolve the transaction, and stop the transaction. The arguments are multipliers for the money being moved around - for vendor to customer, and customer to vendor, respectively.
+## The haggle modifier is applied to the buying modifier automatically.
 ## Will return false if either part doesn't have enough money to complete the transaction.
 func accept_barter(selling_modifier:float, buying_modifier:float, currency: StringName) -> bool:
 	if not current_transaction:
 		return false
 
-	var total: int = current_transaction.total_transaction(selling_modifier, buying_modifier)
+	# Apply haggle discount to buying price
+	var effective_buying_modifier:float = buying_modifier * _haggle_modifier
+
+	var total: int = current_transaction.total_transaction(selling_modifier, effective_buying_modifier)
 	# Adding and subtracting is done here because the total is how much money is leaving the customer
 	# If vendor cash is less than 0 when the balance is applied, return failure
 	if current_transaction.vendor.currencies[currency] - total < 0: # subtracting because if selling the total will be positive flow to customer
@@ -100,6 +160,7 @@ func accept_barter(selling_modifier:float, buying_modifier:float, currency: Stri
 
 	#clean up
 	current_transaction = null
+	_current_shop = null
 	ended_barter.emit()
 	return true
 

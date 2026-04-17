@@ -52,21 +52,25 @@ func remove_point(pt:NetworkPoint) -> void:
 
 ## Dissolve a point in the network, connecting all nodes it was connected to together. See [method remove_point].
 func dissolve_point(pt:NetworkPoint) -> void:
-	# TODO: Cost?
 	# Just delete the node if there is 0 or 1 connections, since there's nothing to dissolve
 	if edge_map[pt].size() <= 1:
 		remove_point(pt)
 		return
-	# The nodes this point was connected to, so we can connect them to eachother.
+	# The nodes this point was connected to and their costs, so we can connect them to each other.
 	var to_connect = []
-	# Loop through edges and get the other point.
+	var edge_costs:Dictionary = {} # NetworkPoint -> cost from pt to that point
+	# Loop through edges and get the other point and cost.
 	for edge in edge_map[pt]:
-		to_connect.append(edge.point_a if edge.point_b == pt else edge.point_b)
+		var other = edge.point_a if edge.point_b == pt else edge.point_b
+		to_connect.append(other)
+		edge_costs[other] = edge.cost
 	# Remove the point and associated connections
 	remove_point(pt)
-	# For unique pairs of to connect, connect edge
+	# For unique pairs of to connect, connect edge with combined cost
 	for pair in _find_unique_pairs(to_connect):
-		add_edge(pair[0], pair[1])
+		var cost_a:float = edge_costs.get(pair[0], 1.0)
+		var cost_b:float = edge_costs.get(pair[1], 1.0)
+		add_edge(pair[0], pair[1], cost_a + cost_b)
 	
 	redraw.emit()
 
@@ -75,8 +79,8 @@ func dissolve_point(pt:NetworkPoint) -> void:
 func merge_points(a:NetworkPoint, b:NetworkPoint) -> NetworkPoint:
 	# Create a new node from the average of 2 points
 	var new_node = add_point((a.position + b.position)/2)
-	# Track other edges to reconnect to the new node
-	var to_connect = []
+	# Track other edges to reconnect to the new node, with their costs
+	var to_connect:Array[Dictionary] = []
 
 	# Add other side of edges for a
 	for edge in edge_map[a]:
@@ -84,23 +88,22 @@ func merge_points(a:NetworkPoint, b:NetworkPoint) -> NetworkPoint:
 		# Skip connections to other node we are merging
 		if other == b:
 			continue
-		
-		to_connect.append(other)
+		to_connect.append({"point": other, "cost": edge.cost})
 	# Add other side of edges for b
 	for edge in edge_map[b]:
 		var other = edge.point_a if edge.point_b == b else edge.point_b
 		# Skip connections to other node we are merging
 		if other == a:
 			continue
-		
-		to_connect.append(other)
+		to_connect.append({"point": other, "cost": edge.cost})
 	
 	remove_point(a)
 	remove_point(b)
 
-	# Reconnect everything
-	for other in to_connect:
-		add_edge(new_node, other)
+	# Reconnect everything using distance-based cost from new node
+	for entry in to_connect:
+		var dist_cost:float = new_node.position.distance_to(entry["point"].position)
+		add_edge(new_node, entry["point"], dist_cost)
 
 	redraw.emit()
 	return new_node
@@ -159,14 +162,16 @@ func subdivide_edge(edge:NetworkEdge) -> NetworkPoint:
 	# Add a new node in between them
 	var new_node = add_point((edge.point_a.position + edge.point_b.position)/2)
 
-	# Get other connections
-	var to_connect = [edge.point_a, edge.point_b]
+	# Get other connections and original cost
+	var pt_a = edge.point_a
+	var pt_b = edge.point_b
+	var half_cost:float = edge.cost / 2.0
 	
-	remove_edge(edge) # remove the bubdivided edge
+	remove_edge(edge) # remove the subdivided edge
 
-	# Reconnect everything
-	for other in to_connect:
-		add_edge(new_node, other)
+	# Reconnect with half the original cost each
+	add_edge(new_node, pt_a, half_cost)
+	add_edge(new_node, pt_b, half_cost)
 
 	redraw.emit()
 	return new_node

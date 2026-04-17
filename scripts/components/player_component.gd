@@ -5,6 +5,11 @@ extends SKEntityComponent
 
 var _set_up:bool
 
+## Per-damage-type resistance modifiers. Keys are StringName damage types,
+## values are multipliers (1.0 = full damage, 0.5 = half damage, 0.0 = immune).
+## Any damage type not listed here uses a multiplier of 1.0.
+@export var damage_modifiers:Dictionary = {}
+
 
 func _init() -> void:
 	name = "PlayerComponent"
@@ -16,8 +21,30 @@ func _ready():
 
 
 func on_damage(info:DamageInfo) -> void:
-	# TODO: Genericize, calculate buffs and debuffs
-	(parent_entity.get_component("VitalsComponent") as VitalsComponent).change_health(-info.damage_effects[&"blunt"])
+	var vitals:VitalsComponent = parent_entity.get_component("VitalsComponent") as VitalsComponent
+	if not vitals:
+		return
+	
+	var accumulated_damage:float = 0.0
+	for effect_name in info.damage_effects:
+		var effect_amount:float = info.damage_effects[effect_name]
+		var modifier:float = damage_modifiers.get(effect_name, 1.0)
+		match effect_name:
+			&"moxie":
+				vitals.change_moxie(-effect_amount * modifier)
+			&"will":
+				vitals.change_will(-effect_amount * modifier)
+			_:
+				accumulated_damage += effect_amount * modifier
+	
+	if not is_zero_approx(accumulated_damage):
+		vitals.change_health(-accumulated_damage)
+	
+	# Apply spell effects
+	var spell_target:SpellTargetComponent = parent_entity.get_component("SpellTargetComponent") as SpellTargetComponent
+	if spell_target:
+		for eff in info.spell_effects:
+			spell_target.add_effect(eff)
 
 
 ## Set the entity's position.

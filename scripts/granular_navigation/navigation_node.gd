@@ -1,6 +1,8 @@
 class_name NavNode
-extends Node3D
+extends RefCounted
 ## A single navigation node in the granular navigation system.
+## Uses RefCounted instead of Node3D for memory efficiency — no scene tree
+## overhead per navigation point.
 
 
 ## The connections/edges this node has to other nodes. [br]
@@ -13,6 +15,12 @@ var dimension:int
 var world:String
 var left_child:NavNode
 var right_child:NavNode
+## Explicit parent reference (replaces Node.get_parent() from the old Node3D hierarchy).
+var parent_node:NavNode
+## Position in the world (replaces Node3D.position).
+var position:Vector3
+## Human-readable identifier (replaces Node.name).
+var node_name:String
 var nav_point:NavPoint:
 	get:
 		return NavPoint.new(world, position)
@@ -31,8 +39,8 @@ func add_nav_node(pos:Vector3) -> NavNode:
 			new_n.position = pos # set position
 			new_n.dimension = (dimension + 1) % 3 # set dimension and wrap to 3 dimensions
 			new_n.world = world
-			new_n.name = NavMaster.format_point_name(pos, world)
-			add_child(new_n)
+			new_n.node_name = NavMaster.format_point_name(pos, world)
+			new_n.parent_node = self
 			left_child = new_n
 			return new_n
 	else:
@@ -43,14 +51,15 @@ func add_nav_node(pos:Vector3) -> NavNode:
 			new_n.position = pos
 			new_n.dimension = (dimension + 1) % 3
 			new_n.world = world
-			new_n.name = NavMaster.format_point_name(pos, world)
-			add_child(new_n)
+			new_n.node_name = NavMaster.format_point_name(pos, world)
+			new_n.parent_node = self
 			right_child = new_n
 			return new_n
 
 
 func get_closest_point(pos:Vector3) -> NavNode:
-	var is_left:bool = pos[get_parent().dimension] < position[get_parent().dimension]
+	var split_dim:int = dimension
+	var is_left:bool = pos[split_dim] < position[split_dim]
 	
 	if is_left:
 		if left_child: # if we have a left child, call it instead, 

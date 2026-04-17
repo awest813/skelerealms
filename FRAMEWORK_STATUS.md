@@ -93,7 +93,7 @@ Values baked into the source that a consumer cannot override via settings or `SK
 | `scripts/system/game_info.gd` | `Input.MOUSE_MODE_CAPTURED` on `_ready` | Overrides mouse mode unconditionally at startup |
 | `scripts/entities/entity.gd` | Component lookup uses child node name == class name string (e.g., `get_node_or_null("NPCComponent")`) | Entity component naming is a strict contract |
 | `scripts/components/player_component.gd` | Hardcoded sibling paths `$"../TeleportComponent"` and `$"../DamageableComponent"` | Player entity must include both components as siblings |
-| `scripts/components/player_component.gd` | Damage handler reads only `damage_effects[&"blunt"]` | Only blunt damage affects player health |
+| `scripts/components/player_component.gd` | ~~Damage handler reads only `damage_effects[&"blunt"]`~~ Now iterates all damage types with configurable `damage_modifiers` dictionary export ✅ | Configure per-type resistances via inspector |
 | `scripts/components/npc_component.gd` | Off-screen walk speed `_walk_speed = 1` (m/s) | All NPCs move at the same speed when not in scene |
 | `scripts/components/npc_component.gd` | Path follow end distance `_path_follow_end_distance = 1` (m) | Snap-to-point threshold is fixed |
 | `scripts/components/npc_component.gd` | `visibility_threshold = 0.3` | NPC ignores targets below this light/visibility level |
@@ -146,21 +146,21 @@ These systems exist and partially work, but have documented gaps.
 |---|---|---|
 | **~~Perception (FOV)~~** ✅ | `scripts/ai/perception_eyes.gd` | Vertical FOV check now uses pitch angle comparison; AABB-based occlusion coverage percentage calculated via multi-point raycast sampling; horizontal check uses proper `cos(deg_to_rad())` threshold |
 | **~~Vitals (generalized)~~** ✅ | `scripts/components/vitals_component.gd` | Now works for both player and NPC entities; `is_player` and `dishonored_mode` exports gate player-specific mechanics; recharge rates are configurable via `@export` |
-| **Player damage handling** | `scripts/components/player_component.gd:19` | Only `&"blunt"` damage type is wired; buff/debuff pipeline is not implemented |
+| **~~Player damage handling~~** ✅ | `scripts/components/player_component.gd` | `on_damage()` now iterates all damage types with configurable `damage_modifiers` dictionary export; handles moxie/will attribute damage separately; applies spell effects via `SpellTargetComponent` |
 | **Crime — reporting & response** | `scripts/crime/crime_master.gd:42`, `scripts/ai/Modules/default_crime_report.gd` | ~~Crimes against non-player entities are not tracked; the crime-reporter AI module does not attempt to aggress the perpetrator after reporting~~ Crime report module now evaluates coven membership, supports configurable other-coven reporting, and provides four confrontation resolution branches (pay fine, serve time, resist arrest, persuasion). Crimes against non-player entities are tracked. (Camelot integration) |
 | **~~Threat response — investigate & friendly fire~~** ✅ | `scripts/ai/Modules/default_threat_response.gd` | Investigate-after-losing-sight state implemented with `_begin_investigate` / `_end_investigate` / `_cancel_investigate` flow. Friendly-fire response implemented based on `friendly_fire_behavior` export (Neutral/Friend/Ally). (Camelot integration) |
-| **Furniture — animation & multi-use** | `scripts/points/furniture.gd:11–12` | NPC sitting/using animations are not triggered; only one NPC can use a furniture point at a time (sub-points not implemented) |
+| **~~Furniture — animation & multi-use~~** ✅ | `scripts/points/furniture.gd` | `max_users` export with sub-point support via child `IdlePoint` nodes; `play_animation`/`stop_animation` signals emitted on occupy/unoccupy for animation hooks; `occupy()`/`unoccupy_entity()`/`has_room()` API |
 | **Save system — ~~custom filenames / save slots~~** ✅ | `scripts/system/save_system.gd` | Named save slots, schema versioning (v2) with migration registry, FNV-1a checksum validation, and `load_complete` signal are now implemented (Camelot integration) |
 | **~~Entity serialization~~** ✅ | `scripts/entities/entity.gd` | Position serialized as `[x,y,z]` array, rotation as `[x,y,z,w]`, form_id persisted, safe dictionary access throughout (Camelot integration) |
 | **~~Inventory/Equipment persistence~~** ✅ | `scripts/components/inventory_component.gd`, `scripts/components/equipment_component.gd` | Both components now implement `save()`/`load_data()` with dirty flag tracking (Camelot integration) |
 | **~~Covens persistence~~** ✅ | `scripts/components/covens_component.gd` | Coven membership now persists across save/load with group re-sync (Camelot integration) |
 | **~~Spawn tracker — persistence~~** ✅ | `scripts/points/spawn_point.gd`, `scripts/system/spawn_tracker_manager.gd` | `SpawnTrackerManager` autoload persists `spawn_tracker` via `savegame_other` group; one-shot spawner state survives restarts |
-| **Barter — ~~filtering~~ & haggling** | `scripts/barter/barter.gd:21–22` | ~~Per-vendor item whitelists/blacklists are not enforced~~ `shop_will_accept_item` now correctly checks item data component types against shop whitelist/blacklist ✅; haggling (price negotiation) is not implemented |
-| **Item — worth & ownership** | `scripts/components/item_component.gd:36,76,148` | Theft determination based on item worth and owner relationships is stubbed; item size is not compensated for during drop placement |
-| **Network edge costs** | `scripts/network/Scripts/network.gd:55` | Edge cost assignment in the editor is not wired up |
+| **~~Barter — filtering & haggling~~** ✅ | `scripts/barter/barter.gd` | `shop_will_accept_item` correctly checks item data component types against shop whitelist/blacklist; `haggle()` method with skill-factor-based negotiation using `ShopComponent.haggle_tolerance`, configurable `max_haggle_attempts`, `haggle_succeeded`/`haggle_failed` signals; haggle modifier auto-applied on `accept_barter` |
+| **~~Item — worth & ownership~~** ✅ | `scripts/components/item_component.gd` | `worth` export for monetary value; `item_radius` export for drop-position wall offset; `_is_theft_for()` checks coven disposition — items owned by entities sharing friendly/allied covens are not theft; `stolen` and `worth` persisted in save data |
+| **~~Network edge costs~~** ✅ | `scripts/network/Scripts/network.gd` | `dissolve_point()` sums costs from dissolved edges; `merge_points()` uses distance-based costs; `subdivide_edge()` splits cost in half; editor cost popup wired to `find_edge().cost` |
 | **~~World loader — abort handling~~** ✅ | `scripts/system/world_loader.gd` | On failure, attempts to recover previous world; pauses game as fallback; `world_loading_failed` signal emitted for UI integration |
-| **Granular navigation — memory efficiency** | `scripts/granular_navigation/navigation_master.gd:246` | KD-tree uses object references; converting to packed arrays/indices is a noted optimization |
-| **Audio emitter** | `scripts/misc/audio_emitter.gd:12` | Audio event propagation is physics-based; a non-physics alternative is desired |
+| **~~Granular navigation — memory efficiency~~** ✅ | `scripts/granular_navigation/navigation_master.gd`, `navigation_node.gd`, `navigation_world.gd` | `NavNode` converted from `Node3D` to `RefCounted`; `NavWorld` converted from `Node` to `RefCounted`; eliminates scene tree overhead per navigation point; explicit `parent_node`/`position`/`node_name` fields replace inherited Node properties |
+| **~~Audio emitter~~** ✅ | `scripts/misc/audio_emitter.gd` | Replaced physics-based `PhysicsShapeQueryParameters3D` sphere query with direct distance checks against `audio_listener` group members using `global_position`; no physics bodies required |
 | **~~NPC path — door interaction~~** ✅ | `scripts/components/npc_component.gd` | NPCs find nearest `Door` node and call `interact()` to teleport when path crosses a world boundary; `door_interacted` signal emitted for animation/sound hooks |
 
 ---
@@ -193,12 +193,12 @@ Ordered by dependency depth and severity. Fix broken systems before building on 
 14. **~~World loader abort handling~~** ✅ — on load failure, attempts to recover the previous world; pauses game as fallback. Added `world_loading_failed` signal for UI integration.
 15. **~~NPC door interaction~~** ✅ — NPCs find the nearest `Door` node and call `interact()` to teleport when their path crosses a world boundary. Added `door_interacted` signal.
 
-### Phase 4 — Polish & Depth (enriches the simulation)
+### Phase 4 — Polish & Depth (enriches the simulation) ✅
 
-16. **Barter — haggling** — add a haggling negotiation round. (Filtering is now implemented via `shop_will_accept_item`.)
-17. **Item worth & ownership** — implement the theft-detection and item-drop-size-compensation stubs.
-18. **Furniture animation & multi-use** — trigger NPC use animations; support sub-points for multiple simultaneous users.
-19. **Player damage generalization** — extend the damage pipeline to all damage types and buff/debuff modifiers.
-20. **Network edge costs in editor** — wire up cost assignment in the network editor toolbar.
-21. **Granular navigation memory optimization** — convert the KD-tree from object references to packed arrays.
-22. **Audio emitter refactor** — replace the physics-based sound propagation with a non-physics alternative.
+16. **~~Barter — haggling~~** ✅ — `haggle()` method with skill-factor-based negotiation using `ShopComponent.haggle_tolerance`; configurable max attempts; `haggle_succeeded`/`haggle_failed` signals; haggle modifier auto-applied on `accept_barter`.
+17. **~~Item worth & ownership~~** ✅ — `worth` and `item_radius` exports; coven-disposition-based theft detection via `_is_theft_for()`; item radius wall offset on drop; `stolen` and `worth` persisted.
+18. **~~Furniture animation & multi-use~~** ✅ — `max_users` export with child `IdlePoint` sub-points; `play_animation`/`stop_animation` signals; `occupy()`/`unoccupy_entity()`/`has_room()` API.
+19. **~~Player damage generalization~~** ✅ — iterates all damage types with configurable `damage_modifiers` dictionary; handles moxie/will attribute damage; applies spell effects via `SpellTargetComponent`.
+20. **~~Network edge costs in editor~~** ✅ — `dissolve_point()` sums costs; `merge_points()` uses distance-based costs; `subdivide_edge()` splits cost in half.
+21. **~~Granular navigation memory optimization~~** ✅ — `NavNode` converted from `Node3D` to `RefCounted`; `NavWorld` from `Node` to `RefCounted`; eliminates scene tree overhead per navigation point.
+22. **~~Audio emitter refactor~~** ✅ — replaced physics-based sphere query with direct distance checks against `audio_listener` group members.

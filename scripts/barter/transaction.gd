@@ -29,7 +29,6 @@ func total_transaction(selling_modifier:float, buying_modifier:float) -> int:
 			return accum + roundi(( SKEntityManager.instance.get_entity(item)\
 				.get_component("ItemComponent")\
 				as ItemComponent)\
-				.data\
 				.worth * selling_modifier)
 	,0
 	)
@@ -39,7 +38,6 @@ func total_transaction(selling_modifier:float, buying_modifier:float) -> int:
 			return accum + roundi(( SKEntityManager.instance.get_entity(item)\
 				.get_component("ItemComponent")\
 				as ItemComponent)\
-				.data\
 				.worth * buying_modifier)
 	,0
 	)

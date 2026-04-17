@@ -214,3 +214,79 @@ forward vector. Removed stale debug prints.
 Fixed type hint from `Resource` to `ShopComponent`. Replaced non-existent
 `ic.data.tags` with `ItemDataComponent` children lookup via `get_type()`. Added
 null safety for entity and component access.
+
+---
+
+## Phase 6 — Polish & Depth (0.6 roadmap items) ✅
+
+### ~~6A  Barter Haggling~~ ✅
+Added negotiation mechanics to the barter system.
+
+**Implementation:**
+- `haggle(skill_factor)` method with skill-factor-based success calculation using
+  `ShopComponent.haggle_tolerance` (vendor willingness to negotiate).
+- Configurable `max_haggle_attempts` export (default 3 rounds per session).
+- Discount accumulates per successful haggle, capped at `1.0 - tolerance`.
+- `haggle_succeeded(new_modifier)` and `haggle_failed` signals for UI integration.
+- Haggle modifier automatically applied to buying prices in `accept_barter()`.
+
+### ~~6B  Item Worth & Ownership~~ ✅
+Completed theft logic, ownership checks, and item-drop-size compensation.
+
+**Implementation:**
+- Added `worth: int` export for monetary value (used by barter and theft severity).
+- Added `item_radius: float` export for drop-position wall offset.
+- `_is_theft_for(entity_ref)` checks coven disposition — items owned by entities
+  sharing friendly/allied covens with the taker are not considered theft.
+- Drop position now offsets by `item_radius` along hit normal when near walls.
+- `stolen` and `worth` persisted across save/load.
+- Fixed `transaction.gd` to use `ItemComponent.worth` directly (removed broken `.data.worth`).
+
+### ~~6C  Furniture Animation & Multi-Use~~ ✅
+Support richer NPC use points and multiple simultaneous users.
+
+**Implementation:**
+- `max_users: int` export (default 1) for concurrent occupancy.
+- Child `IdlePoint` nodes act as sub-points for additional occupants.
+- `play_animation(entity_name, anim)` signal emitted on occupy for animation hooks.
+- `stop_animation(entity_name)` signal emitted on unoccupy.
+- `occupy(who) -> bool` returns false when full; `unoccupy_entity(who)` frees a
+  specific slot; `has_room() -> bool` checks availability.
+
+### ~~6D  Player Damage Generalization~~ ✅
+Extended the player damage pipeline beyond blunt-only handling.
+
+**Implementation:**
+- `on_damage()` now iterates all entries in `DamageInfo.damage_effects`.
+- Per-type `damage_modifiers: Dictionary` export (StringName → float multiplier).
+- Attribute damage types (`&"moxie"`, `&"will"`) handled separately via
+  `change_moxie()`/`change_will()`.
+- Spell effects applied via `SpellTargetComponent.add_effect()`.
+
+### ~~6E  Network Edge Costs~~ ✅
+Wired up cost computation in network graph operations.
+
+**Implementation:**
+- `dissolve_point()` sums costs from the two dissolved edges when reconnecting.
+- `merge_points()` computes distance-based costs from the new merged node.
+- `subdivide_edge()` splits the original edge cost in half for each new edge.
+
+### ~~6F  Granular Navigation Memory Optimization~~ ✅
+Reduced memory overhead in the navigation runtime.
+
+**Implementation:**
+- Converted `NavNode` from `Node3D` to `RefCounted` — eliminates Godot scene tree
+  overhead (transforms, signals, groups, visibility) per navigation point.
+- Converted `NavWorld` from `Node` to `RefCounted` — no longer part of scene tree.
+- Added explicit `parent_node`, `position`, and `node_name` fields to `NavNode`
+  (replacing inherited Node3D properties).
+- `NavMaster` now manages worlds via Dictionary instead of child nodes.
+
+### ~~6G  Audio Emitter Refactor~~ ✅
+Replaced physics-based sound propagation with a direct approach.
+
+**Implementation:**
+- Removed `PhysicsShapeQueryParameters3D` / `SphereShape3D` sphere query.
+- Iterates `audio_listener` group members directly via `get_tree().get_nodes_in_group()`.
+- Distance check uses `global_position.distance_squared_to()` against range².
+- No physics bodies required for audio event detection.
