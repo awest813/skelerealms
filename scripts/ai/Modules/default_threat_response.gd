@@ -134,7 +134,7 @@ func _stay_vigilant(e:SKEntity) -> void:
 			_enter_normal_state()
 			return
 		# if within ring and not player, attack
-		if distance_to_e <= attack_radius ** 2 and not e.get_component("PlayerComponent").some():
+		if distance_to_e <= attack_radius ** 2 and not e.has_component("PlayerComponent"):
 			_npc.printe("frenzied immediate attack")
 			_begin_attack(e)
 			return
@@ -256,10 +256,13 @@ func _aggress(e:SKEntity) -> void:
 func _determine_threat(e:SKEntity) -> int:
 	var e_sc = e.get_component("SkillsComponent")
 	# if no skills component associated with the entity, default is 0
-	if not e_sc.some():
+	if not e_sc:
 		return 0
 
-	var npc_level = _npc.parent_entity.get_component("SkillsComponent").level
+	var npc_sc = _npc.parent_entity.get_component("SkillsComponent")
+	if not npc_sc:
+		return 0
+	var npc_level = npc_sc.level
 	var e_level = e_sc.level
 	var difference = e_level - npc_level # negative is weaker
 
