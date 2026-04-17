@@ -6,7 +6,7 @@ For the detailed status of specific systems, assumptions, and incomplete areas, 
 
 ## Current state
 
-- **Version target:** `beta 0.6`
+- **Version target:** `beta 0.7`
 - **Development status:** active
 - **Stability target:** feature and API stability at `1.0`
 
@@ -34,13 +34,14 @@ These major pieces are already in place:
 - Granular navigation memory optimization (RefCounted KD-tree nodes)
 - Audio emitter refactor to non-physics distance checks
 - Debug, audit, and polish pass across Phases 1-6: fixed NPC damage accumulation bug, added barter null safety, cleaned up 20+ raw debug prints, added test suites for coven disposition, network edge costs, and save system internals
+- Performance profiling and optimization: GOAP objective/action caching (eliminates per-frame sort and child filter), entity fade-distance caching, NPC perception entity-reference caching, A* binary heap (replaces per-iteration array sort), CrimeMaster empty-queue early exit, NavMaster debug print cleanup
 
 ## Current priorities
 
 These are the most important remaining framework gaps.
 
-1. **Performance profiling**
-   - Profile and optimize hot paths in large-world scenarios.
+1. ~~**Performance profiling**~~
+   - ~~Profile and optimize hot paths in large-world scenarios.~~ ✅
 
 ## Next phases
 
