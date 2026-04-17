@@ -33,6 +33,7 @@ These major pieces are already in place:
 - Network edge cost computation on dissolve, merge, and subdivide
 - Granular navigation memory optimization (RefCounted KD-tree nodes)
 - Audio emitter refactor to non-physics distance checks
+- Debug, audit, and polish pass across Phases 1-6: fixed NPC damage accumulation bug, added barter null safety, cleaned up 20+ raw debug prints, added test suites for coven disposition, network edge costs, and save system internals
 
 ## Current priorities
 

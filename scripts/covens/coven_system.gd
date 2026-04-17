@@ -37,7 +37,7 @@ func _cache_covens(path:String):
 			file_name = dir.get_next()
 		dir.list_dir_end()
 	else:
-		print("An error occurred when trying to access the path.")
+		push_warning("CovenSystem: Could not open directory '%s'." % path)
 
 
 ## Add coven to system.

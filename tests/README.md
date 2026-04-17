@@ -20,8 +20,13 @@ godot --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -gexit
 | `test_quest_graph_engine.gd` | Quest activation, event advancement, graph completion, save/restore snapshots, validation. |
 | `test_dialogue_engine.gd` | Dialogue session creation, choice evaluation, condition blocking, effect application, terminal nodes. |
 | `test_barter.gd` | `BarterSystem` sell/buy toggling, haggle discount accumulation, `accept_barter` modifier application. |
+| `test_coven_disposition.gd` | Coven disposition thresholds (`get_disposition`), boundary values, custom thresholds, disposition names, coven opinions. |
+| `test_network_edge_costs.gd` | Network graph edge cost computation: dissolve (cost summing), subdivide (cost halving), merge (distance-based). |
+| `test_save_system.gd` | Save system internals: checksum computation, serialization round-trip, migration pipeline, v1→v2 migration specifics. |
 
 ## Notes
 
 - `QuestGraphEngine` and `DialogueEngine` are pure `RefCounted` classes with no scene-tree dependencies, so their tests run in headless mode without additional setup.
 - `BarterSystem` tests use lightweight stub objects for `InventoryComponent` and `ShopComponent`.
+- `Coven` and `Network` / `NetworkEdge` / `NetworkPoint` are pure `Resource` classes, so their tests also run headless.
+- `SaveSystem` tests exercise private helper methods (`_compute_checksum`, `_serialize`, `_deserialize`, `_apply_migrations`) directly.

@@ -40,22 +40,22 @@ func process_damage(info:DamageInfo) -> void:
 		match effect:
 			# Physical
 			&"sharp":
-				accumulated_damage = effect_amount * sharp_modifier
+				accumulated_damage += effect_amount * sharp_modifier
 			&"piercing":
-				accumulated_damage = effect_amount * piercing_modifier
+				accumulated_damage += effect_amount * piercing_modifier
 			&"blunt":
-				accumulated_damage = effect_amount * blunt_modifier
+				accumulated_damage += effect_amount * blunt_modifier
 			&"poison":
-				accumulated_damage = effect_amount * poison_modifier
+				accumulated_damage += effect_amount * poison_modifier
 			# Magic
 			&"light":
-				accumulated_damage = effect_amount * light_modifier * magic_modifier
+				accumulated_damage += effect_amount * light_modifier * magic_modifier
 			&"frost":
-				accumulated_damage = effect_amount * frost_modifier * magic_modifier
+				accumulated_damage += effect_amount * frost_modifier * magic_modifier
 			&"flame":
-				accumulated_damage = effect_amount * flame_modifier * magic_modifier
+				accumulated_damage += effect_amount * flame_modifier * magic_modifier
 			&"plant":
-				accumulated_damage = effect_amount * plant_modifier * magic_modifier
+				accumulated_damage += effect_amount * plant_modifier * magic_modifier
 			# Attribute
 			&"moxie":
 				vitals_component.vitals["moxie"] -= effect_amount * stamina_modifier

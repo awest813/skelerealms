@@ -44,7 +44,6 @@ func _process(_delta: float) -> void:
 	var prog = []
 	match ResourceLoader.load_threaded_get_status(loading_path, prog):
 		ResourceLoader.THREAD_LOAD_LOADED:
-			print("Finishing up...")
 			var ps := ResourceLoader.load_threaded_get(loading_path) as PackedScene
 			if not ps:
 				push_error("Failed to load world at %s" % loading_path)
@@ -62,8 +61,6 @@ func _process(_delta: float) -> void:
 
 ## Load a new world.
 func load_world(wid:String) -> void:
-	print("loading world")
-	
 	if not world_paths.has(wid):
 		push_error("World not found: %s" % wid)
 		return
@@ -75,7 +72,6 @@ func load_world(wid:String) -> void:
 	begin_world_loading.emit()
 	GameInfo.game_loading.emit(wid)
 	await get_tree().process_frame
-	print("Processed frame. Continuing...")
 	GameInfo.is_loading = true
 	var e:Error = ResourceLoader.load_threaded_request(world_paths[wid], "PackedScene", true)
 	if not e == OK:
@@ -90,12 +86,9 @@ func load_world(wid:String) -> void:
 
 
 func _finish_load(w:PackedScene) -> void:
-	print("finished loading world")
 	add_child(w.instantiate())
-	print("finished loading world. Instantiating...")
 	world_loading_ready.emit()
 	GameInfo.is_loading = false
-	print("World instantiated.")
 	GameInfo.game_loaded.emit()
 
 
@@ -150,4 +143,4 @@ func _cache_worlds(path:String):
 		dir.list_dir_end()
 	
 	else:
-		print("An error occurred when trying to access the path.")
+		push_warning("WorldLoader: Could not open directory '%s'." % path)

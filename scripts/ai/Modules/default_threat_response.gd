@@ -135,41 +135,41 @@ func _stay_vigilant(e:SKEntity) -> void:
 			return
 		# if within ring and not player, attack
 		if distance_to_e <= attack_radius ** 2 and not e.get_component("PlayerComponent").some():
-			print("frenzied immediate attack")
+			_npc.printe("frenzied immediate attack")
 			_begin_attack(e)
 			return
 		# if frenzied and within ring attack immediately
 		if distance_to_e <= warn_radius ** 2 and aggression == 3:
-			print("frenzied immediate attack")
+			_npc.printe("frenzied immediate attack")
 			_begin_attack(e)
 			return
 		# if within warn ring
 		if distance_to_e <= warn_radius ** 2 and distance_to_e > attack_radius ** 2:
 			# if not already warned, warn and set warned
 			if not warned:
-				print("become warned")
+				_npc.printe("become warned")
 				_warn(e)
 				warned = true
 		# if in attack distance, attack
 		if distance_to_e <= attack_radius ** 2:
-			print("in attack distance")
+			_npc.printe("in attack distance")
 			_begin_attack(e)
 			return
 
 
 func _begin_attack(e:SKEntity) -> void:
 	# figure out response to confrontation
-	print("beginning attack")
+	_npc.printe("beginning attack")
 	match aggression:
 		0: # Peaceful
-			print("peaceful response")
+			_npc.printe("peaceful response")
 			return
 		1: # Bluffing
-			print("bluffing response")
+			_npc.printe("bluffing response")
 			_flee(e)
 		2, 3:
 			# Add to goap memory
-			print("aggressive/frenzied response")
+			_npc.printe("aggressive/frenzied response")
 			_npc.in_combat = true
 			_add_enemy(e)
 			# This will begin combat, because NPCs have a recurring goal where all enemies must be dead
@@ -178,33 +178,33 @@ func _begin_attack(e:SKEntity) -> void:
 func _add_enemy(e:SKEntity) -> void:
 	if _npc.goap_memory.has("enemies"):
 		if not _npc.goap_memory["enemies"].has(e.name):
-			print("Adding enemy %s" % e.name)
+			_npc.printe("Adding enemy %s" % e.name)
 			_npc.goap_memory["enemies"].append(e)
 	else:
 		_npc.goap_memory["enemies"] = [e.name]
-		print("Adding enemy %s" % e.name)
+		_npc.printe("Adding enemy %s" % e.name)
 		_npc._goap_component.interrupt() # interrupt current task if entering combat
 
 
 func _warn(e:SKEntity) -> void:
 	# Issue warning to entity
-	print("warning!")
+	_npc.printe("warning!")
 	_npc.warning.emit(e.name)
 
 
 func _enter_normal_state() -> void:
 	# undo vigilant stance
-	print("exit vigilant stance")
+	_npc.printe("exit vigilant stance")
 
 
 func _enter_vigilant_stance() -> void:
 	# draw weapons, turn towards threat
-	print("enter vigilant stance")
+	_npc.printe("enter vigilant stance")
 
 
 func _flee(e:SKEntity) -> void:
 	# tell GOAP to flee from enemies
-	print("flee")
+	_npc.printe("flee")
 	_npc.add_objective({"flee_from_enemies" : true}, true, 10)
 	_npc.flee.emit(e.name)
 
