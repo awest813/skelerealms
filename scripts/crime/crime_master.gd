@@ -26,7 +26,7 @@ var crimes:Dictionary = {}
 ## This is so that the same crime doesn't get reported over and over again. 
 var crime_queue:Dictionary = {}
 signal crimes_against_covens_updated(affected:Array[StringName])
-signal crime_committed(crime:Crime, position:NavPoint)
+signal crime_committed(crime:Crime, position:Vector3)
 
 
 func _ready():
@@ -41,7 +41,6 @@ func punish_crimes(coven:StringName):
 	crimes[coven]["unpunished"].clear()
 
 
-# TODO: Track crimes against others?
 ## Report a crime. The caller is also added as a witness.
 func add_crime(crime:Crime, witness:StringName):
 	crime_queue[crime] = true
@@ -58,7 +57,10 @@ func _process_crime_queue() -> void:
 			if crime.victim == "":
 				continue
 		# add crime to covens
-			var cc = SKEntityManager.instance.get_entity(crime.victim).get_component("CovensComponent")
+			var victim_entity = SKEntityManager.instance.get_entity(crime.victim)
+			if not victim_entity:
+				continue
+			var cc = victim_entity.get_component("CovensComponent")
 			if cc:
 				for coven in (cc as CovensComponent).covens:
 					## Skip if doesn't track crime

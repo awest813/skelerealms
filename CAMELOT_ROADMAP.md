@@ -132,11 +132,28 @@ pay fine, serve jail time, resist arrest, attempt persuasion.~~ ✅
 - `crime_confrontation` signal added to `NPCComponent` for UI/dialogue integration.
 - Added `can_see_entity()` helper to `NPCComponent`.
 
-### 3C  Mod-Friendly Data Architecture
+### ~~3C  Mod-Friendly Data Architecture~~ ✅
 **Source:** `src/framework/mods/content-merge.ts`
 
-Design coven resources, quest definitions, and entity templates with a
-manifest-driven override system for mod support.
+~~Design coven resources, quest definitions, and entity templates with a
+manifest-driven override system for mod support.~~ ✅
+
+**Implementation:**
+- `ModManifest` resource — declares covens, quests, dialogues, and
+  `CovenOpinionOverride` entries a mod contributes.
+- `CovenOpinionOverride` resource — declares an opinion delta from one coven
+  toward another, applied via `CovenSystem.change_opinion()`.
+- `ModLoader` autoload — scans `skelerealms/mods_path` (default `res://mods`)
+  at game-start, loads every `.tres`/`.res` that is a `ModManifest`, and
+  registers all declared content. Also exposes `load_mod(manifest)` for
+  programmatic loading.
+- `skelerealms/mods_path` project setting added to control the scan directory.
+
+| File | Purpose |
+|---|---|
+| `scripts/mods/mod_manifest.gd` | Resource class — declares mod content |
+| `scripts/mods/coven_opinion_override.gd` | Resource class — opinion delta entry |
+| `scripts/mods/mod_loader.gd` | Autoload singleton — discovers and applies manifests |
 
 ---
 

@@ -38,21 +38,19 @@ These major pieces are already in place:
 
 These are the most important remaining framework gaps.
 
-1. **Mod-friendly data architecture**
-   - Make data-driven extension and override workflows easier for downstream projects.
-2. **Crime — non-player tracking completeness**
-   - Finish any remaining edge cases in crime tracking for non-player entities.
-
-## Next-tier improvements
-
-After the core gaps above, the next focus is documentation, testing, and extensibility.
-
 1. **Documentation & tutorials**
    - Expand wiki and in-code documentation for downstream consumers.
 2. **Integration test coverage**
    - Add automated tests for critical systems (save/load, quests, dialogue, barter).
 3. **Performance profiling**
    - Profile and optimize hot paths in large-world scenarios.
+
+## Recently completed work
+
+These pieces landed in the latest milestone:
+
+- Mod-friendly data architecture: `ModManifest` resource and `ModLoader` autoload with manifest-driven override support for covens, quests, and dialogues.
+- Crime — non-player tracking completeness: assault and murder crimes are now broadcast by `DefaultDamageModule`; fixed `crime_committed` signal type and null safety in `CrimeMaster`.
 
 ## Path to 1.0
 
