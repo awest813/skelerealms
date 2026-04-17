@@ -307,3 +307,93 @@ Replaced physics-based sound propagation with a direct approach.
 - Iterates `audio_listener` group members directly via `get_tree().get_nodes_in_group()`.
 - Distance check uses `global_position.distance_squared_to()` against range².
 - No physics bodies required for audio event detection.
+
+---
+
+## Phase 7 — Quality, Audit & Performance ✅
+
+### ~~7A  User-Guide Documentation~~ ✅
+Added user-guide markdown files for every new Camelot-ported system.
+
+**Implementation:**
+- `docs/user guide/quests.md` — QuestGraphEngine setup, registration, events, save integration.
+- `docs/user guide/dialogue.md` — DialogueEngine setup, conditions, effects, session lifecycle.
+- `docs/user guide/save_system.md` — named slots, schema versioning, migrations, checksum.
+- `docs/user guide/mods.md` — ModManifest format, coven-opinion overrides, programmatic loading.
+- Updated `docs/intro.md` table of contents with links to all guide pages.
+
+### ~~7B  Integration Test Coverage~~ ✅
+GUT-compatible test suites added for every new Camelot system.
+
+| File | Coverage |
+|---|---|
+| `tests/test_quest_graph_engine.gd` | Registration, activation, event advancement, partial progress, parallel nodes, snapshot/restore, graph validation |
+| `tests/test_dialogue_engine.gd` | Session creation, choice conditions, effects, terminal nodes, snapshot/restore |
+| `tests/test_barter.gd` | Haggle arithmetic, sell/buy toggling, cancel signals |
+| `tests/test_coven_disposition.gd` | Disposition thresholds — HOSTILE / NEUTRAL / FRIENDLY / ALLIED boundaries |
+| `tests/test_network_edge_costs.gd` | `dissolve_point()` cost sum, `merge_points()` distance cost, `subdivide_edge()` half-cost |
+| `tests/test_save_system.gd` | Checksum computation, serialization round-trip, migration pipeline, v1→v2 migration |
+| `tests/test_perf_optimizations.gd` | Binary heap ordering, GOAP dirty-flag tracking, action cache rebuild, entity fade-distance cache |
+
+### ~~7C  QuestGraphEngine Performance~~ ✅
+Eliminated repeated linear scans in hot paths.
+
+**Implementation:**
+- Added `_node_maps` dictionary (quest_id → node_id → `QuestNodeDefinition`) built at `register_quest` time.
+- Added `_successor_maps` dictionary (quest_id → node_id → `Array[StringName]`) precomputed at registration.
+- `_get_immediate_next_node_ids`, `_are_prerequisites_completed`, `_activate_implicit_nodes`, and
+  `_get_all_successors` all reduced from O(n) per call to O(1) via cached dictionaries.
+
+### ~~7D  NPC Damage Accumulation Bug~~ ✅
+`DefaultDamageModule.process_damage()` used `=` (assignment) instead of `+=` for `accumulated_damage`,
+meaning only the last damage type in a multi-type `DamageInfo` was applied.  Fixed to `+=`.
+
+### ~~7E  Barter Null Safety~~ ✅
+Added null checks on `vendor.parent_entity` in `start_barter()` and safe entity/component lookups
+in `accept_barter()` item-move loops to prevent null reference errors.
+
+### ~~7F  Debug Print Cleanup~~ ✅
+Replaced bare `print()` calls throughout with entity-tagged `printe()` logging or `push_warning()`.
+
+- `default_threat_response.gd` — 15+ bare `print()` → `_npc.printe()`.
+- `world_loader.gd` — 7 debug `print()` removed; directory-error print → `push_warning()`.
+- `coven_system.gd` — stray `print()` → `push_warning()`.
+- `machine_perception.gd` — debug `print()` removed.
+- `navigation_master.gd` — 6 remaining bare `print()` removed; deferred-connection message → `push_warning()`.
+
+### ~~7G  GOAP Per-Frame Overhead~~ ✅
+`GOAPComponent._process()` previously sorted objectives and rebuilt child action lists every frame.
+
+**Implementation:**
+- Objectives sorted only when `_objectives_dirty` flag is set (on add/remove).
+- Child `GOAPAction` nodes cached in `_cached_actions`; rebuilt only when `_actions_dirty` is set.
+
+### ~~7H  Entity Fade-Distance Caching~~ ✅
+`SKEntity._should_be_in_scene()` called `ProjectSettings.get_setting()` every frame for every entity.
+Now caches `actor_fade_distance²` in `_actor_fade_dist_sq` on first access.
+
+### ~~7I  NPC Perception Entity-Reference Caching~~ ✅
+`NPCComponent._process()` perception loop previously walked the scene tree via
+`SkeleRealmsGlobal.get_entity_in_tree()` every frame per visible object.  Added
+`_entity_ref_cache` dictionary mapping perceived `Object` → `SKEntity`; stale entries are
+evicted when `is_instance_valid()` fails.
+
+### ~~7J  A-Star Binary Heap~~ ✅
+`NavMaster.calculate_path()` replaced per-iteration `Array.sort_custom()` (O(n log n) per step)
+with a binary min-heap using `_heap_push()` / `_heap_pop()` static helpers (O(log n) per
+insertion/extraction).  Closed-list membership check changed from `Array.has()` (O(n)) to
+`Dictionary.has()` (O(1)).
+
+### ~~7K  CrimeMaster Empty-Queue Early Exit~~ ✅
+`CrimeMaster._process()` now returns immediately when `crime_queue` is empty, avoiding
+function-call and loop-setup overhead every frame while the queue is idle.
+
+### ~~7L  Audit Polish — `_determine_threat` Null Safety~~ ✅
+`DefaultThreatResponseModule._determine_threat()` called `.some()` on `get_component()` return
+values, which are `SKEntityComponent | null` (not `Option` objects).
+
+**Implementation:**
+- `e.get_component("PlayerComponent").some()` → `e.has_component("PlayerComponent")`.
+- `e_sc = e.get_component("SkillsComponent")` guard → `if not e_sc:`.
+- Added null guard for `_npc.parent_entity.get_component("SkillsComponent")` to prevent crash when
+  the NPC itself has no `SkillsComponent`.
