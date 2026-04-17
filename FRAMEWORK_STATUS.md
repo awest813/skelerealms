@@ -212,3 +212,9 @@ Ordered by dependency depth and severity. Fix broken systems before building on 
 22. **~~Audio emitter refactor~~** ✅ — replaced physics-based sphere query with direct distance checks against `audio_listener` group members.
 23. **~~Crime — non-player tracking completeness~~** ✅ — `DefaultDamageModule` broadcasts `assault` and `murder` crimes via `CrimeMaster.crime_committed` when health damage is dealt by another entity. Fixed `crime_committed` signal type (`NavPoint` → `Vector3`) and added null safety in `_process_crime_queue`.
 24. **~~Mod-friendly data architecture~~** ✅ — `ModManifest` resource (covens, quests, dialogues, coven opinion overrides); `ModLoader` autoload scans `res://mods` at game-start and registers all declared content. `skelerealms/mods_path` project setting controls the scan directory.
+
+### Phase 5 — Quality & Documentation ✅
+
+25. **~~User-guide documentation for new systems~~** ✅ — Added `docs/user guide/quests.md`, `docs/user guide/dialogue.md`, `docs/user guide/save_system.md`, and `docs/user guide/mods.md`. Updated `docs/intro.md` table of contents with all guide pages.
+26. **~~Integration test coverage~~** ✅ — GUT-compatible test suites added: `tests/test_quest_graph_engine.gd` (registration, activation, event advancement, partial progress, parallel nodes, snapshot/restore, graph validation), `tests/test_dialogue_engine.gd` (session creation, choice conditions, effects, terminal nodes, snapshot/restore), `tests/test_barter.gd` (haggle arithmetic, sell/buy toggling, cancel signals). See `tests/README.md` for how to run.
+27. **~~QuestGraphEngine performance~~** ✅ — Added `_node_maps` and `_successor_maps` dictionaries built at `register_quest` time, eliminating repeated O(n) linear scans in `_get_immediate_next_node_ids`, `_are_prerequisites_completed`, `_activate_implicit_nodes`, and `_get_all_successors` during `apply_event` and `validate_graph`.

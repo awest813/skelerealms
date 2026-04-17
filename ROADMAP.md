@@ -38,11 +38,7 @@ These major pieces are already in place:
 
 These are the most important remaining framework gaps.
 
-1. **Documentation & tutorials**
-   - Expand wiki and in-code documentation for downstream consumers.
-2. **Integration test coverage**
-   - Add automated tests for critical systems (save/load, quests, dialogue, barter).
-3. **Performance profiling**
+1. **Performance profiling**
    - Profile and optimize hot paths in large-world scenarios.
 
 ## Recently completed work
@@ -51,6 +47,9 @@ These pieces landed in the latest milestone:
 
 - Mod-friendly data architecture: `ModManifest` resource and `ModLoader` autoload with manifest-driven override support for covens, quests, and dialogues.
 - Crime — non-player tracking completeness: assault and murder crimes are now broadcast by `DefaultDamageModule`; fixed `crime_committed` signal type and null safety in `CrimeMaster`.
+- **Documentation**: Added user-guide pages for the Quest system, Dialogue system, Save system, and Mods system. Updated the documentation table of contents in `docs/intro.md`.
+- **Integration tests**: Added GUT-compatible test suites for `QuestGraphEngine` (`tests/test_quest_graph_engine.gd`), `DialogueEngine` (`tests/test_dialogue_engine.gd`), and `BarterSystem` (`tests/test_barter.gd`).
+- **Performance**: `QuestGraphEngine` now builds precomputed node-lookup and successor-edge maps at registration time, eliminating O(n) list scans during `apply_event` and graph traversal.
 
 ## Path to 1.0
 

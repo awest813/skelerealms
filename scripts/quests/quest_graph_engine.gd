@@ -87,6 +87,10 @@ class QuestValidationReport extends RefCounted:
 var _definitions: Dictionary = {}
 ## quest_id -> QuestRuntimeState
 var _states: Dictionary = {}
+## quest_id -> { node_id -> QuestNodeDefinition } — O(1) node lookup per quest.
+var _node_maps: Dictionary = {}
+## quest_id -> { node_id -> Array[StringName] } — precomputed forward edges (explicit + implicit).
+var _successor_maps: Dictionary = {}
 
 
 # ── Public API ──────────────────────────────────────────────────────────────
@@ -97,6 +101,12 @@ func register_quest(definition: QuestDefinition) -> void:
 	_validate_definition(definition)
 	_definitions[definition.id] = definition
 	_states[definition.id] = _create_empty_runtime_state(definition)
+	# Build O(1) lookup structures
+	var node_map: Dictionary = {}
+	for node: QuestNodeDefinition in definition.nodes:
+		node_map[node.id] = node
+	_node_maps[definition.id] = node_map
+	_successor_maps[definition.id] = _build_successor_map(definition, node_map)
 
 
 ## Activate a quest. Returns true if the quest was activated.
@@ -312,6 +322,8 @@ func reset_all_state() -> void:
 	var defs := _definitions.duplicate()
 	_definitions.clear()
 	_states.clear()
+	_node_maps.clear()
+	_successor_maps.clear()
 	for quest_id: StringName in defs:
 		register_quest(defs[quest_id])
 
@@ -362,25 +374,24 @@ func _get_start_node_ids(definition: QuestDefinition) -> Array[StringName]:
 func _get_immediate_next_node_ids(node: QuestNodeDefinition, definition: QuestDefinition) -> Array[StringName]:
 	if node.next_node_ids.size() > 0:
 		return node.next_node_ids
-	# Implicit: any node that lists this node as a prerequisite
-	var ids: Array[StringName] = []
-	for candidate: QuestNodeDefinition in definition.nodes:
-		if candidate.prerequisites.has(node.id):
-			ids.append(candidate.id)
-	return ids
+	# Implicit: use precomputed successor map (O(1) lookup)
+	var quest_successors: Dictionary = _successor_maps.get(definition.id, {})
+	return quest_successors.get(node.id, [] as Array[StringName])
 
 
 func _are_prerequisites_completed(node_id: StringName, definition: QuestDefinition, states: Dictionary) -> bool:
-	for node: QuestNodeDefinition in definition.nodes:
-		if node.id == node_id:
-			if node.prerequisites.is_empty():
-				return true
-			for prereq: StringName in node.prerequisites:
-				var ps: QuestNodeState = states.get(prereq)
-				if not ps or not ps.completed:
-					return false
-			return true
-	return false
+	# O(1) node lookup via cached node map
+	var node_map: Dictionary = _node_maps.get(definition.id, {})
+	var node: QuestNodeDefinition = node_map.get(node_id)
+	if not node:
+		return false
+	if node.prerequisites.is_empty():
+		return true
+	for prereq: StringName in node.prerequisites:
+		var ps: QuestNodeState = states.get(prereq)
+		if not ps or not ps.completed:
+			return false
+	return true
 
 
 func _activate_implicit_nodes(definition: QuestDefinition, states: Dictionary, activated_ids: Array[StringName]) -> void:
@@ -409,23 +420,39 @@ func _is_quest_completed(definition: QuestDefinition, states: Dictionary) -> boo
 
 
 ## Returns all successors (explicit next + implicit prerequisite-based) for validation.
+## Uses the precomputed successor map for O(1) access.
 func _get_all_successors(node_id: StringName, definition: QuestDefinition) -> Array[StringName]:
-	var result: Array[StringName] = []
-	var seen := {}
-	# Find the node
+	var quest_successors: Dictionary = _successor_maps.get(definition.id, {})
+	return quest_successors.get(node_id, [] as Array[StringName])
+
+
+## Build forward-edge successor map for a quest.
+## For each node, the successors are: its explicit next_node_ids, plus any node
+## whose prerequisites list includes this node (implicit edges).
+func _build_successor_map(definition: QuestDefinition, node_map: Dictionary) -> Dictionary:
+	# Pre-index prerequisite reverse edges: node_id -> [nodes_that_have_it_as_prereq]
+	var prereq_reverse: Dictionary = {}
 	for node: QuestNodeDefinition in definition.nodes:
-		if node.id == node_id:
-			for nid: StringName in node.next_node_ids:
-				if not seen.has(nid):
-					seen[nid] = true
-					result.append(nid)
-			break
-	# Implicit successors: nodes whose prerequisites include node_id
+		for prereq: StringName in node.prerequisites:
+			if not prereq_reverse.has(prereq):
+				prereq_reverse[prereq] = []
+			(prereq_reverse[prereq] as Array).append(node.id)
+
+	var successor_map: Dictionary = {}
 	for node: QuestNodeDefinition in definition.nodes:
-		if node.prerequisites.has(node_id) and not seen.has(node.id):
-			seen[node.id] = true
-			result.append(node.id)
-	return result
+		var successors: Array[StringName] = []
+		var seen: Dictionary = {}
+		for nid: StringName in node.next_node_ids:
+			if not seen.has(nid):
+				seen[nid] = true
+				successors.append(nid)
+		var implicit: Array = prereq_reverse.get(node.id, [])
+		for implicit_id: StringName in implicit:
+			if not seen.has(implicit_id):
+				seen[implicit_id] = true
+				successors.append(implicit_id)
+		successor_map[node.id] = successors
+	return successor_map
 
 
 func _dfs_cycle_check(node_id: StringName, definition: QuestDefinition, color: Dictionary, issues: Array[QuestValidationIssue]) -> bool:
