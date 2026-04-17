@@ -64,10 +64,7 @@ func calculate_path(start:NavPoint, end:NavPoint) -> Array[NavPoint]:
 				if c == end_node:
 					return _reconstruct_path(came_from, c)
 				
-				if not f_score.has(c):
-					f_score[c] = _heuristic(c, end_node) + tentative_g
-				else:
-					f_score[c] = _heuristic(c, end_node) + tentative_g
+				f_score[c] = _heuristic(c, end_node) + tentative_g
 				
 				if not in_open.has(c):
 					_heap_push(heap, f_score[c], c)

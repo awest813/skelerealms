@@ -275,11 +275,10 @@ func _process(delta):
 				if _entity_ref_cache.has(obj) and is_instance_valid(_entity_ref_cache[obj]):
 					e = _entity_ref_cache[obj]
 				else:
+					_entity_ref_cache.erase(obj) # clear stale/invalid entries
 					e = SkeleRealmsGlobal.get_entity_in_tree(obj)
 					if e:
 						_entity_ref_cache[obj] = e
-					else:
-						_entity_ref_cache[obj] = null
 				if not e:
 					continue 
 				
