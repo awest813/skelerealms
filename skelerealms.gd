@@ -8,6 +8,12 @@ const PointGizmo = preload("res://addons/skelerealms/tools/point_gizmo.gd")
 const ScheduleEditorPlugin = preload("res://addons/skelerealms/tools/schedule_editor_plugin.gd")
 const ConfigSyncPlugin = preload("res://addons/skelerealms/tools/config_sync_plugin.gd")
 const EditInWorldButton = preload("res://addons/skelerealms/tools/edit_button.gd")
+const QuestEditorPlugin = preload("res://addons/skelerealms/tools/quest_editor_plugin.gd")
+const QuestEditor = preload("res://addons/skelerealms/tools/quest_editor.gd")
+const DialogueEditorPlugin = preload("res://addons/skelerealms/tools/dialogue_editor_plugin.gd")
+const DialogueEditor = preload("res://addons/skelerealms/tools/dialogue_editor.gd")
+const CovenMatrixPlugin = preload("res://addons/skelerealms/tools/coven_matrix_plugin.gd")
+const CovenMatrix = preload("res://addons/skelerealms/tools/coven_matrix.gd")
 
 ## Container we add the toolbar to
 const container = CONTAINER_SPATIAL_EDITOR_MENU
@@ -41,9 +47,18 @@ var point_gizmo := PointGizmo.new()
 var se_plugin := ScheduleEditorPlugin.new()
 var cs_plugin := ConfigSyncPlugin.new()
 var edit_button := EditInWorldButton.new()
+var quest_editor_plugin := QuestEditorPlugin.new()
+var dialogue_editor_plugin := DialogueEditorPlugin.new()
+var coven_matrix_plugin := CovenMatrixPlugin.new()
 
 var se_w: Window
 var se: Control
+var _quest_editor_w: Window
+var _quest_editor: Control
+var _dialogue_editor_w: Window
+var _dialogue_editor: Control
+var _coven_matrix_w: Window
+var _coven_matrix: Control
 
 
 func _enter_tree():
@@ -53,6 +68,9 @@ func _enter_tree():
 	add_inspector_plugin(we_plugin)
 	add_inspector_plugin(se_plugin)
 	add_inspector_plugin(cs_plugin)
+	add_inspector_plugin(quest_editor_plugin)
+	add_inspector_plugin(dialogue_editor_plugin)
+	add_inspector_plugin(coven_matrix_plugin)
 	# autoload
 	add_autoload_singleton("SkeleRealmsGlobal", "res://addons/skelerealms/scripts/sk_global.gd")
 	add_autoload_singleton("CovenSystem", "res://addons/skelerealms/scripts/covens/coven_system.gd")
@@ -71,9 +89,56 @@ func _enter_tree():
 	EditorInterface.get_base_control().add_child(se_w)
 	se_w.hide()
 	
-	se_plugin.request_open.connect(func(events:Array[ScheduleEvent]) -> void:
+	se_plugin.request_open.connect(func(events: Array[ScheduleEvent]) -> void:
 		se.edit(events)
 		se_w.popup_centered(Vector2i(1920, 1080))
+		)
+
+	# Quest editor window
+	_quest_editor_w = Window.new()
+	_quest_editor_w.title = "Quest Graph Editor"
+	_quest_editor_w.close_requested.connect(_quest_editor_w.hide)
+	_quest_editor = QuestEditor.new()
+	_quest_editor.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_quest_editor_w.add_child(_quest_editor)
+	EditorInterface.get_base_control().add_child(_quest_editor_w)
+	_quest_editor_w.hide()
+
+	quest_editor_plugin.request_open.connect(func(definition: QuestDefinition) -> void:
+		_quest_editor.edit(definition)
+		_quest_editor_w.title = "Quest Graph Editor — %s" % str(definition.id)
+		_quest_editor_w.popup_centered(Vector2i(1200, 800))
+		)
+
+	# Dialogue editor window
+	_dialogue_editor_w = Window.new()
+	_dialogue_editor_w.title = "Dialogue Tree Editor"
+	_dialogue_editor_w.close_requested.connect(_dialogue_editor_w.hide)
+	_dialogue_editor = DialogueEditor.new()
+	_dialogue_editor.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_dialogue_editor_w.add_child(_dialogue_editor)
+	EditorInterface.get_base_control().add_child(_dialogue_editor_w)
+	_dialogue_editor_w.hide()
+
+	dialogue_editor_plugin.request_open.connect(func(definition: DialogueDefinition) -> void:
+		_dialogue_editor.edit(definition)
+		_dialogue_editor_w.title = "Dialogue Tree Editor — %s" % str(definition.id)
+		_dialogue_editor_w.popup_centered(Vector2i(1400, 900))
+		)
+
+	# Coven matrix window
+	_coven_matrix_w = Window.new()
+	_coven_matrix_w.title = "Coven Relationship Matrix"
+	_coven_matrix_w.close_requested.connect(_coven_matrix_w.hide)
+	_coven_matrix = CovenMatrix.new()
+	_coven_matrix.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_coven_matrix_w.add_child(_coven_matrix)
+	EditorInterface.get_base_control().add_child(_coven_matrix_w)
+	_coven_matrix_w.hide()
+
+	coven_matrix_plugin.request_open.connect(func() -> void:
+		(_coven_matrix as CovenMatrix).refresh()
+		_coven_matrix_w.popup_centered(Vector2i(1100, 700))
 		)
 	
 	# Initialize utility
@@ -110,6 +175,9 @@ func _exit_tree():
 	remove_inspector_plugin(we_plugin)
 	remove_inspector_plugin(se_plugin)
 	remove_inspector_plugin(cs_plugin)
+	remove_inspector_plugin(quest_editor_plugin)
+	remove_inspector_plugin(dialogue_editor_plugin)
+	remove_inspector_plugin(coven_matrix_plugin)
 	# autoload
 	remove_autoload_singleton("SkeleRealmsGlobal")
 	remove_autoload_singleton("CovenSystem")
@@ -126,7 +194,10 @@ func _exit_tree():
 	remove_node_3d_gizmo_plugin(network_gizmo)
 	
 	se_w.queue_free()
-	
+	_quest_editor_w.queue_free()
+	_dialogue_editor_w.queue_free()
+	_coven_matrix_w.queue_free()
+
 	edit_button.queue_free()
 
 

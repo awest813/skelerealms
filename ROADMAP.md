@@ -38,21 +38,18 @@ These major pieces are already in place:
 
 ## Current priorities
 
-These are the most important remaining framework gaps.
-
-1. ~~**Performance profiling**~~
-   - ~~Profile and optimize hot paths in large-world scenarios.~~ ✅
-
-## Next phases
+Phase 7 — Editor Tooling is in progress.
 
 ### Phase 7 — Editor Tooling (0.7 target)
 
 Better authoring workflows to reduce friction for content creators.
 
-1. **Visual quest editor** — graph-based node editor for quest definitions inside the Godot editor, with drag-and-drop node creation, prerequisite wiring, and live validation feedback.
-2. **Dialogue tree editor** — visual branching editor for dialogue definitions, with inline condition/effect previews, session simulation (dry-run a conversation), and export to `.tres`.
-3. **Schedule editor** — timeline-based UI for defining NPC daily schedules, with drag-to-resize time blocks and per-world location assignment.
-4. **Coven relationship matrix** — grid view of inter-coven opinions with inline editing and disposition-threshold visualization.
+1. ✅ **Visual quest editor** — `GraphEdit`-based node editor (`tools/quest_editor.gd`, `tools/quest_editor_plugin.gd`). Inspector button on `QuestDefinition` resources opens the editor. Nodes show trigger type, description, target ID, and required count. Connections represent `next_node_ids`. Supports add node, validate (runs `QuestGraphEngine.validate_graph`), and save.
+2. ✅ **Dialogue tree editor** — `GraphEdit`-based branching editor (`tools/dialogue_editor.gd`, `tools/dialogue_editor_plugin.gd`). Each `DialogueNode` is a graph node; each choice is a separate right-port. Properties panel on the right edits speaker, text, terminal flag, and choices (with inline `next_node_id` wiring). Supports add node, add/remove choices, and save.
+3. ✅ **Coven relationship matrix** — grid view of all inter-coven opinions (`tools/coven_matrix.gd`, `tools/coven_matrix_plugin.gd`). Opens from any `Coven` inspector. Loads all covens from `skelerealms/covens_path`. Each cell is an editable `SpinBox` colour-coded by disposition (hostile/neutral/friendly/allied). "Save All Covens" persists all changes.
+4. **Schedule editor** — already shipped in beta 0.6 (`tools/schedule_editor.gd`).
+
+## Next phases
 
 ### Phase 8 — Runtime Debugging & Diagnostics (0.8 target)
 
@@ -78,6 +75,7 @@ Prepare the framework for long-lived production use and broader adoption.
 
 These pieces landed in the latest milestone:
 
+- **Phase 7 — Editor Tooling**: Visual quest graph editor, dialogue tree editor, and coven relationship matrix all landed as `@tool` editor plugins. Each opens a dedicated popup window from the Godot inspector. The schedule editor (shipped in beta 0.6) completes the set of four authoring tools.
 - Mod-friendly data architecture: `ModManifest` resource and `ModLoader` autoload with manifest-driven override support for covens, quests, and dialogues.
 - Crime — non-player tracking completeness: assault and murder crimes are now broadcast by `DefaultDamageModule`; fixed `crime_committed` signal type and null safety in `CrimeMaster`.
 - **Documentation**: Added user-guide pages for the Quest system, Dialogue system, Save system, and Mods system. Updated the documentation table of contents in `docs/intro.md`.
