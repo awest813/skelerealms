@@ -41,6 +41,37 @@ These are the most important remaining framework gaps.
 1. **Performance profiling**
    - Profile and optimize hot paths in large-world scenarios.
 
+## Next phases
+
+### Phase 7 — Editor Tooling (0.7 target)
+
+Better authoring workflows to reduce friction for content creators.
+
+1. **Visual quest editor** — graph-based node editor for quest definitions inside the Godot editor, with drag-and-drop node creation, prerequisite wiring, and live validation feedback.
+2. **Dialogue tree editor** — visual branching editor for dialogue definitions, with inline condition/effect previews, session simulation (dry-run a conversation), and export to `.tres`.
+3. **Schedule editor** — timeline-based UI for defining NPC daily schedules, with drag-to-resize time blocks and per-world location assignment.
+4. **Coven relationship matrix** — grid view of inter-coven opinions with inline editing and disposition-threshold visualization.
+
+### Phase 8 — Runtime Debugging & Diagnostics (0.8 target)
+
+In-game overlays and tools to accelerate iteration and troubleshooting.
+
+1. **AI state overlay** — real-time visualization of NPC GOAP state, current objective, active action, and awareness level.
+2. **Navigation debug draw** — render granular navigation graphs, active NPC paths, and portal connections in the editor and at runtime.
+3. **Perception debug draw** — visualize FOV cones, line-of-sight raycasts, and detection events.
+4. **Quest state inspector** — runtime panel showing active quests, node states, and event history for debugging quest progression.
+5. **Save file inspector** — editor tool to browse and validate save file contents without loading the game.
+
+### Phase 9 — Architecture Hardening (0.9 target)
+
+Prepare the framework for long-lived production use and broader adoption.
+
+1. **Multiplayer-readiness audit** — identify and document session-unsafe state, singleton assumptions, and client/server boundaries; add `@rpc` annotations or abstractions where viable.
+2. **Thread-safety review** — audit autoloads and shared state for potential races when used with Godot's threading APIs.
+3. **API stability pass** — lock down public-facing method signatures, signals, and resource schemas; deprecate and remove internal-only surface area.
+4. **Plugin packaging** — prepare for Godot AssetLib distribution with proper `plugin.cfg` metadata, versioned releases, and a minimal example project.
+5. **Migration tooling** — automated upgrade scripts for breaking changes between minor versions leading up to 1.0.
+
 ## Recently completed work
 
 These pieces landed in the latest milestone:

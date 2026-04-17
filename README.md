@@ -123,18 +123,18 @@ Skelerealms is being actively developed in support of a real game project, with 
 
 ## Roadmap snapshot
 
-Near-term work is focused on finishing the remaining framework gaps rather than adding surface-level features:
+All prior framework gaps (quests, dialogue, saves, barter haggling, item ownership, furniture multi-use, player damage generalization, network edge costs, navigation memory optimization, mod support) have been completed. Current and upcoming focus areas:
 
-- Barter haggling
-- Item worth and ownership rules
-- Furniture animation and multi-use support
-- Player damage generalization
-- Network edge cost editing
-- Granular navigation memory optimization
-- Mod-friendly data architecture
+- Performance profiling and hot-path optimization for large worlds
+- Editor tooling improvements (visual quest editor, dialogue editor, schedule editor)
+- Runtime debugging overlays (AI state, navigation, perception)
+- Multiplayer-readiness audit and session-safe architecture
+- Plugin packaging and AssetLib distribution
 
 See [`ROADMAP.md`](ROADMAP.md) for the fuller roadmap.
 
-## Star history
+## Attribution
 
-[![Star History Chart](https://api.star-history.com/svg?repos=awest813/skelerealms&type=Timeline&theme=dark)](https://star-history.com/#awest813/skelerealms&Timeline)
+Skelerealms is a fork of the original [Skelerealms](https://github.com/SlashScreen/skelerealms) project by [SlashScreen](https://github.com/SlashScreen). The original project established the core open-world RPG framework architecture for Godot 4 — including persistent entities, inter-scene navigation, GOAP-based NPC AI, factions, inventory, equipment, and the component-driven entity model that this fork continues to build on.
+
+This fork extends the original with new systems (quests, dialogue, saves overhaul, mod support), bug fixes, performance improvements, and expanded documentation. See [`CAMELOT_ROADMAP.md`](CAMELOT_ROADMAP.md) for a detailed log of additions.
