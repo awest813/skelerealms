@@ -13,6 +13,10 @@ var _agent:NavigationAgent3D
 var _invoked:bool
 var _timer:Timer
 var _rebuild_plan:bool
+var _objectives_dirty:bool = true
+## Cached list of child GOAPAction nodes. Rebuilt when children change.
+var _cached_actions:Array[GOAPAction] = []
+var _actions_dirty:bool = true
 
 
 func _init() -> void:
@@ -25,10 +29,10 @@ func _init() -> void:
 
 
 func _ready() -> void:
-	for a:Node in get_children():
-		if a is GOAPAction:
-			a.entity = parent_entity
-			a.parent_goap = self
+	_rebuild_action_cache()
+	for a:GOAPAction in _cached_actions:
+		a.entity = parent_entity
+		a.parent_goap = self
 
 
 func _process(delta:float) -> void:
@@ -36,13 +40,15 @@ func _process(delta:float) -> void:
 		return
 	# if we are set to rebuild our plan
 	if _rebuild_plan:
-		# Find the highest priority objective
-		objectives.sort_custom(func(a:Objective, b:Objective): return a.priority > b.priority)
+		# Sort objectives only when the list has changed
+		if _objectives_dirty:
+			objectives.sort_custom(func(a:Objective, b:Objective): return a.priority > b.priority)
+			_objectives_dirty = false
+		# Rebuild action cache if children changed
+		if _actions_dirty:
+			_rebuild_action_cache()
 		for o in objectives:
-			action_queue = _plan(get_children()\
-				.filter(func(x): return x is GOAPAction)\
-				.map(func(x): return x as GOAPAction), o.goals, {}\
-			)
+			action_queue = _plan(_cached_actions, o.goals, {})
 			# if we made a plan, stop sorting through objectives
 			if not action_queue.is_empty():
 				_current_objective = o # assign objective before popping so the planner knows which objective is active
@@ -55,6 +61,7 @@ func _process(delta:float) -> void:
 		# if we need to remove the objective, remove it
 		if _current_objective.remove_after_satisfied:
 			objectives.erase(_current_objective)
+			_objectives_dirty = true
 		# trigger plan rebuild next frame
 		_rebuild_plan = true
 	
@@ -80,6 +87,15 @@ func _pop_action() -> void:
 	# if pre perform fails, rebuild plan
 	if not _current_action.pre_perform():
 		_rebuild_plan = true
+
+
+## Rebuild the cached list of child GOAPAction nodes.
+func _rebuild_action_cache() -> void:
+	_cached_actions.clear()
+	for a:Node in get_children():
+		if a is GOAPAction:
+			_cached_actions.append(a as GOAPAction)
+	_actions_dirty = false
 
 
 ## Creates a plan to satisfy a set of goals from all child [GOAPAction]s.
@@ -193,6 +209,7 @@ func _complete_current_action() -> void:
 func add_objective(goals:Dictionary, remove_after_satisfied:bool, priority:float) -> Objective:
 	var o = Objective.new(goals, remove_after_satisfied, priority)
 	objectives.append(o)
+	_objectives_dirty = true
 	_rebuild_plan = true
 	return o
 
@@ -201,6 +218,8 @@ func remove_objective_by_goals(goals:Dictionary) -> void:
 	var to_remove = objectives.filter(func(x:Objective): return x.goals == goals)
 	for o in to_remove:
 		objectives.erase(o)
+	if not to_remove.is_empty():
+		_objectives_dirty = true
 
 
 func regenerate_plan() -> void:

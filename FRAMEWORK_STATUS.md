@@ -2,7 +2,7 @@
 
 ## Current Version Target
 
-**beta 0.6** (Godot 4 open-world RPG framework plugin)
+**beta 0.7** (Godot 4 open-world RPG framework plugin)
 
 ---
 
@@ -225,3 +225,13 @@ Ordered by dependency depth and severity. Fix broken systems before building on 
 29. **~~Barter null safety~~** ✅ — Added null checks on `vendor.parent_entity` in `start_barter()` and safe entity/component lookups in `accept_barter()` item-move loops to prevent null reference errors.
 30. **~~Debug print cleanup~~** ✅ — Replaced 15+ bare `print()` calls in `default_threat_response.gd` with entity-tagged `_npc.printe()` logging. Removed 7 debug `print()` calls from `world_loader.gd` and converted the directory-error print to `push_warning()`. Fixed stray `print()` calls in `coven_system.gd` (→ `push_warning()`) and `machine_perception.gd` (removed).
 31. **~~Additional test suites~~** ✅ — Added GUT test suites for: coven disposition thresholds (`tests/test_coven_disposition.gd`), network edge cost computation (`tests/test_network_edge_costs.gd`), and save system internals (`tests/test_save_system.gd`) covering checksum computation, serialization round-trip, migration pipeline, and v1→v2 migration specifics.
+
+### Phase 7 — Performance Profiling & Optimization ✅
+
+32. **~~GOAP per-frame sorting and action filtering~~** ✅ — `GOAPComponent._process()` no longer sorts objectives or filters/maps child nodes every frame. Objectives are sorted only when the `_objectives_dirty` flag is set (on add/remove). Child `GOAPAction` nodes are cached in `_cached_actions` and rebuilt only when `_actions_dirty` is set.
+33. **~~Entity fade-distance caching~~** ✅ — `SKEntity._should_be_in_scene()` now caches `actor_fade_distance²` on first access instead of calling `ProjectSettings.get_setting()` every frame for every entity.
+34. **~~NPC perception entity-reference caching~~** ✅ — `NPCComponent._process()` perception loop now maintains an `_entity_ref_cache` dictionary mapping perceived `Object` → `SKEntity`, avoiding repeated `SkeleRealmsGlobal.get_entity_in_tree()` tree walks every frame per visible object.
+35. **~~A* binary heap~~** ✅ — `NavMaster.calculate_path()` replaced per-iteration `Array.sort_custom()` (O(n log n) per step) with a binary min-heap using `_heap_push()`/`_heap_pop()` static helpers (O(log n) per insertion/extraction). Closed-list membership check also changed from `Array.has()` (O(n)) to `Dictionary.has()` (O(1)).
+36. **~~CrimeMaster empty-queue early exit~~** ✅ — `CrimeMaster._process()` now returns immediately when `crime_queue` is empty, avoiding the function call and loop setup overhead on every frame.
+37. **~~NavMaster debug print cleanup~~** ✅ — Removed 6 remaining bare `print()` calls from `navigation_master.gd` (`add_point`, `_load_from_networks`, `_load_from_disk`, `load_all_networks`). One deferred-connection message converted to `push_warning()`.
+38. **~~Performance test suite~~** ✅ — Added `tests/test_perf_optimizations.gd` with GUT tests covering: binary heap ordering (ascending, single-element, duplicate scores, large input), GOAP dirty-flag tracking (add/remove/empty-remove), action cache rebuild, and entity fade-distance cache initialization.

@@ -63,6 +63,8 @@ var _current_target_point:NavPoint:
 var ai_modules:Array[AIModule] = []
 ## Keeps track of entities and vision data. Used for stealth mechanics. Pattern is ref_id:StringName -> data:Variant.
 var perception_memory:Dictionary = {}
+## Cache mapping perceived Object -> SKEntity to avoid repeated tree walking.
+var _entity_ref_cache:Dictionary = {}
 #* Private
 ## Navigator.
 var _nav_component:NavigatorComponent
@@ -268,7 +270,15 @@ func _process(delta):
 			for obj:Object in d:
 				if obj is not Node:
 					continue
-				var e:SKEntity = SkeleRealmsGlobal.get_entity_in_tree(obj)
+				# Use cached entity reference to avoid tree walking every frame
+				var e:SKEntity
+				if _entity_ref_cache.has(obj) and is_instance_valid(_entity_ref_cache[obj]):
+					e = _entity_ref_cache[obj]
+				else:
+					_entity_ref_cache.erase(obj) # clear stale/invalid entries
+					e = SkeleRealmsGlobal.get_entity_in_tree(obj)
+					if e:
+						_entity_ref_cache[obj] = e
 				if not e:
 					continue 
 				

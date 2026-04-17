@@ -48,34 +48,35 @@ func add_crime(crime:Crime, witness:StringName):
 
 
 func _process(_delta: float) -> void:
+	if crime_queue.is_empty():
+		return
 	_process_crime_queue()
 
 
 func _process_crime_queue() -> void:
-	if crime_queue.size() > 0:
-		for crime in crime_queue:
-			if crime.victim == "":
-				continue
+	for crime in crime_queue:
+		if crime.victim == "":
+			continue
 		# add crime to covens
-			var victim_entity = SKEntityManager.instance.get_entity(crime.victim)
-			if not victim_entity:
-				continue
-			var cc = victim_entity.get_component("CovensComponent")
-			if cc:
-				for coven in (cc as CovensComponent).covens:
-					## Skip if doesn't track crime
-					if not CovenSystem.get_coven(coven).track_crime:
-						continue
+		var victim_entity = SKEntityManager.instance.get_entity(crime.victim)
+		if not victim_entity:
+			continue
+		var cc = victim_entity.get_component("CovensComponent")
+		if cc:
+			for coven in (cc as CovensComponent).covens:
+				## Skip if doesn't track crime
+				if not CovenSystem.get_coven(coven).track_crime:
+					continue
 
-					if crimes.has(coven):
-						crimes[coven]["unpunished"].append(crime)
-					else: # if coven doesnt have crimes against it, initialize table
-						crimes[coven] = {
-							"punished" : [],
-							"unpunished" : [crime]
-						}
-				crimes_against_covens_updated.emit((cc as CovensComponent).covens)
-		crime_queue.clear()
+				if crimes.has(coven):
+					crimes[coven]["unpunished"].append(crime)
+				else: # if coven doesnt have crimes against it, initialize table
+					crimes[coven] = {
+						"punished" : [],
+						"unpunished" : [crime]
+					}
+			crimes_against_covens_updated.emit((cc as CovensComponent).covens)
+	crime_queue.clear()
 
 
 ## Returns the max wanted level for crimes against a Coven.

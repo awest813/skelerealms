@@ -31,49 +31,91 @@ func calculate_path(start:NavPoint, end:NavPoint) -> Array[NavPoint]:
 	var start_node:NavNode = nearest_point(start)
 	var end_node:NavNode = nearest_point(end)
 	
-	var open_list:Array[NavNode] = [start_node]
-	var closed_list:Array[NavNode] = []
+	# Binary min-heap for the open set, keyed by f_score.
+	# Each element is [f_value, NavNode].
+	var heap:Array = []
+	var in_open:Dictionary = {} # NavNode -> true
+	var closed_set:Dictionary = {} # NavNode -> true (replaces closed_list Array.has())
 	
 	var g_score:Dictionary = {start_node:0}
 	var f_score:Dictionary = {start_node:_heuristic(start_node, end_node)}
 	var came_from:Dictionary = {}
 	
-	while not open_list.is_empty():
-		# sort to find lowest f score descending, pushing the lowest score to the end of the list.
-		# sorting descending is an optimization: popping from the front of a large array is slower, since it has to reindex everything.
-		open_list.sort_custom(func(a:NavNode, b:NavNode): 
-			# Lazy add heuristics to f_score
-			if not f_score.has(a):
-				f_score[a] = _heuristic(a, end_node) + g_score[a]
-			if not f_score.has(b):
-				f_score[b] = _heuristic(b, end_node) + g_score[b]
-				
-			if f_score[a] == f_score[b]:
-				return g_score[a] > g_score[b]
-			else:
-				return f_score[a] > f_score[b]
-		)
-		var current:NavNode = open_list.pop_back() # pop from end of list to get lowest f value
+	_heap_push(heap, f_score[start_node], start_node)
+	in_open[start_node] = true
+	
+	while not heap.is_empty():
+		var current:NavNode = _heap_pop(heap)[1]
+		in_open.erase(current)
 		
 		for c in current.connections:
 			# if connection already closed, skip
-			if closed_list.has(c):
+			if closed_set.has(c):
 				continue
 			
-			came_from[c] = current # set path parent
+			var tentative_g:float = g_score[current] + current.connections[c]
 			
-			# If connection is the end node, we found a path.
-			if c == end_node:
-				return _reconstruct_path(came_from, c)
-			
-			open_list.append(c) # add to current
-			
-			# update G score from previosu to 
-			g_score[c] = g_score[current] + current.connections[c]
+			# If we haven't seen this node or found a cheaper path
+			if not g_score.has(c) or tentative_g < g_score[c]:
+				came_from[c] = current
+				g_score[c] = tentative_g
+				
+				# If connection is the end node, we found a path.
+				if c == end_node:
+					return _reconstruct_path(came_from, c)
+				
+				f_score[c] = _heuristic(c, end_node) + tentative_g
+				
+				if not in_open.has(c):
+					_heap_push(heap, f_score[c], c)
+					in_open[c] = true
 		
-		closed_list.append(current)
+		closed_set[current] = true
 	
 	return []
+
+
+## Push an element onto the binary min-heap. Each element is [f_value, NavNode].
+static func _heap_push(heap:Array, f:float, node:NavNode) -> void:
+	heap.append([f, node])
+	# Sift up
+	var i:int = heap.size() - 1
+	while i > 0:
+		var parent_idx:int = (i - 1) / 2
+		if heap[i][0] < heap[parent_idx][0]:
+			var tmp = heap[i]
+			heap[i] = heap[parent_idx]
+			heap[parent_idx] = tmp
+			i = parent_idx
+		else:
+			break
+
+
+## Pop the element with the smallest f_value from the binary min-heap.
+static func _heap_pop(heap:Array) -> Array:
+	if heap.size() == 1:
+		return heap.pop_back()
+	var result = heap[0]
+	heap[0] = heap.pop_back()
+	# Sift down
+	var i:int = 0
+	var size:int = heap.size()
+	while true:
+		var smallest:int = i
+		var left:int = 2 * i + 1
+		var right:int = 2 * i + 2
+		if left < size and heap[left][0] < heap[smallest][0]:
+			smallest = left
+		if right < size and heap[right][0] < heap[smallest][0]:
+			smallest = right
+		if smallest != i:
+			var tmp = heap[i]
+			heap[i] = heap[smallest]
+			heap[smallest] = tmp
+			i = smallest
+		else:
+			break
+	return result
 
 
 func _reconstruct_path(came_from:Dictionary, current:NavNode) -> Array[NavPoint]:
@@ -257,7 +299,6 @@ func construct_tree(points:Array[NavPoint]):
 
 ## Add a point to the tree
 func add_point(world:String, pos:Vector3) -> NavNode:
-	print("Adding a point at %s in world %s" % [pos, world])
 	var world_node: NavWorld = worlds.get(world) as NavWorld
 	# Add world if it doesnt already exist
 	if not world_node:
@@ -285,7 +326,6 @@ func _load_from_networks(data:Dictionary):
 	var portal_edges = []
 	# add each point from each network
 	for world in data:
-		print("loading world network %s" % world)
 		edges.append_array(data[world].edges)
 		portals.append_array(data[world].portals)
 		portal_edges.append_array(data[world].portal_edges)
@@ -304,7 +344,7 @@ func _load_from_networks(data:Dictionary):
 		else:
 			# Store for later retry when the connecting world is loaded
 			_pending_portal_edges.append(edge)
-			print("Portal connection deferred. Connecting world not yet loaded.")
+			push_warning("NavMaster: Portal connection deferred. Connecting world not yet loaded.")
 
 
 func _load_from_disk(path:String, networks:Dictionary, regex:RegEx) -> void:
@@ -320,27 +360,21 @@ func _load_from_disk(path:String, networks:Dictionary, regex:RegEx) -> void:
 			else: # if filename, cache filename
 				var result = regex.search(file_name)
 				if result:
-					print("%s/%s" % [path, file_name])
 					networks[result.get_string(1) as StringName] = load("%s/%s" % [path, file_name])
 			file_name = dir.get_next()
 		dir.list_dir_end()
 
 
 func load_all_networks() -> void:
-	print("Loading all networks...")
 	var networks = {}
 	var path = ProjectSettings.get_setting("skelerealms/networks_path")
 	var regex = RegEx.new()
 	regex.compile("([^\\/\n\\r]+).tres")
 	
-	print("Loading from disk...")
 	_load_from_disk(path, networks, regex)
-	print("Compiling networks...")
 	_load_from_networks(networks)
 	# Retry any portal connections that were deferred
 	_load()
-	
-	print("Navigation networks loaded: %d worlds" % worlds.size())
 
 
 static func format_point_name(pt:Vector3, world:StringName) -> String:

@@ -16,6 +16,8 @@ var stale_timer:float
 ## This is used to prevent items from spawning, even if they are supposed to be in scene.
 ## For example, items in invcentories should not spawn despite technically being "in the scene".
 var supress_spawning:bool
+## Cached actor fade distance squared, refreshed once.
+var _actor_fade_dist_sq:float = -1.0
 ## Whether this entity is in the scene or not.
 var in_scene: bool:
 	get:
@@ -79,8 +81,12 @@ func _should_be_in_scene():
 	if GameInfo.world != world:
 		in_scene = false
 		return
+	# Cache squared distance threshold once
+	if _actor_fade_dist_sq < 0.0:
+		var d:float = ProjectSettings.get_setting("skelerealms/actor_fade_distance")
+		_actor_fade_dist_sq = d * d
 	# if we are outside of actor fade distance
-	if position.distance_squared_to(GameInfo.world_origin.global_position) > ProjectSettings.get_setting("skelerealms/actor_fade_distance") ** 2:
+	if position.distance_squared_to(GameInfo.world_origin.global_position) > _actor_fade_dist_sq:
 		in_scene = false
 		return
 	in_scene = true
