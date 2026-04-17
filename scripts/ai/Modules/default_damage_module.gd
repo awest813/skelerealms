@@ -64,8 +64,20 @@ func process_damage(info:DamageInfo) -> void:
 		
 		_npc.damaged_with_effect.emit(effect)
 	
+	# Track whether this entity was alive before applying health damage
+	var was_alive := not vitals_component.is_dead
+
 	# Apply damage
 	vitals_component.vitals["health"] -= accumulated_damage
+	
+	# Broadcast assault or murder crime when another entity deals health damage
+	if accumulated_damage > 0 and not info.offender.is_empty() and was_alive:
+		var victim_name := _npc.parent_entity.name
+		var crime_type: StringName = &"murder" if vitals_component.is_dead else &"assault"
+		CrimeMaster.crime_committed.emit(
+			Crime.new(crime_type, info.offender, victim_name),
+			_npc.parent_entity.position
+		)
 	
 	# Add magic effects
 	for eff in info.spell_effects:

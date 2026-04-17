@@ -63,6 +63,7 @@ func _enter_tree():
 	add_autoload_singleton("QuestSystem", "res://addons/skelerealms/scripts/quests/quest_system.gd")
 	add_autoload_singleton("DialogueSystem", "res://addons/skelerealms/scripts/dialogue/dialogue_system.gd")
 	add_autoload_singleton("SpawnTrackerManager", "res://addons/skelerealms/scripts/system/spawn_tracker_manager.gd")
+	add_autoload_singleton("ModLoader", "res://addons/skelerealms/scripts/mods/mod_loader.gd")
 	
 	se_w = Window.new()
 	se = ScheduleEditorPlugin.ScheduleEditor.instantiate()
@@ -119,6 +120,7 @@ func _exit_tree():
 	remove_autoload_singleton("QuestSystem")
 	remove_autoload_singleton("DialogueSystem")
 	remove_autoload_singleton("SpawnTrackerManager")
+	remove_autoload_singleton("ModLoader")
 
 	remove_control_from_container(container, utility)
 	remove_node_3d_gizmo_plugin(network_gizmo)
@@ -150,6 +152,8 @@ func _enable_plugin() -> void:
 	
 	ProjectSettings.set_setting("skelerealms/config_path", "res://sk_config.res")
 	
+	ProjectSettings.set_setting("skelerealms/mods_path", "res://mods")
+	
 	ProjectSettings.set_setting("skelerealms/entity_archetypes", PackedStringArray([
 		"res://addons/skelerealms/npc_entity_template.tscn",
 		"res://addons/skelerealms/item_entity_template.tscn"
@@ -178,6 +182,7 @@ func _disable_plugin() -> void:
 	
 	ProjectSettings.set_setting("skelerealms/entity_archetypes", null)
 	ProjectSettings.set_setting("skelerealms/config_path", null)
+	ProjectSettings.set_setting("skelerealms/mods_path", null)
 
 
 func _handles(object: Object) -> bool:

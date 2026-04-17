@@ -19,6 +19,7 @@ These singletons are registered by the plugin and are available globally at runt
 | `CrimeMaster`        | `scripts/crime/crime_master.gd`                        | Tracks crimes committed against Covens; bounty calculation |
 | `DeviceNetwork`      | `scripts/misc/device_network.gd`                       | Broadcasts puzzle/device state changes (signals only) |
 | `SpawnTrackerManager`| `scripts/system/spawn_tracker_manager.gd`              | Persists spawn point state across save/load cycles    |
+| `ModLoader`          | `scripts/mods/mod_loader.gd`                           | Discovers and applies mod manifests at game-start     |
 
 ---
 
@@ -55,6 +56,12 @@ All keys are under the `skelerealms/` namespace. Set automatically when the plug
 | `skelerealms/doors_path`          | `res://doors`         | Directory for door data (referenced in settings; usage TBD) |
 | `skelerealms/networks_path`       | `res://networks`      | Directory scanned for granular-navigation Network resources |
 | `skelerealms/config_path`         | `res://sk_config.res` | Path to the project's `SKConfig` resource                   |
+
+### Mods
+
+| Key                                | Default       | Description                                                        |
+|------------------------------------|---------------|--------------------------------------------------------------------|
+| `skelerealms/mods_path`            | `res://mods`  | Directory scanned for `ModManifest` resources (`.tres`/`.res`)     |
 
 ### Misc
 
@@ -147,7 +154,7 @@ These systems exist and partially work, but have documented gaps.
 | **~~Perception (FOV)~~** ✅ | `scripts/ai/perception_eyes.gd` | Vertical FOV check now uses pitch angle comparison; AABB-based occlusion coverage percentage calculated via multi-point raycast sampling; horizontal check uses proper `cos(deg_to_rad())` threshold |
 | **~~Vitals (generalized)~~** ✅ | `scripts/components/vitals_component.gd` | Now works for both player and NPC entities; `is_player` and `dishonored_mode` exports gate player-specific mechanics; recharge rates are configurable via `@export` |
 | **~~Player damage handling~~** ✅ | `scripts/components/player_component.gd` | `on_damage()` now iterates all damage types with configurable `damage_modifiers` dictionary export; handles moxie/will attribute damage separately; applies spell effects via `SpellTargetComponent` |
-| **Crime — reporting & response** | `scripts/crime/crime_master.gd:42`, `scripts/ai/Modules/default_crime_report.gd` | ~~Crimes against non-player entities are not tracked; the crime-reporter AI module does not attempt to aggress the perpetrator after reporting~~ Crime report module now evaluates coven membership, supports configurable other-coven reporting, and provides four confrontation resolution branches (pay fine, serve time, resist arrest, persuasion). Crimes against non-player entities are tracked. (Camelot integration) |
+| **~~Crime — reporting & response~~** ✅ | `scripts/crime/crime_master.gd`, `scripts/ai/Modules/default_crime_report.gd`, `scripts/ai/Modules/default_damage_module.gd` | Crime report module evaluates coven membership, supports configurable other-coven reporting, and provides four confrontation resolution branches. Fixed `crime_committed` signal type (`NavPoint` → `Vector3`). Added null safety for missing victim entities. Assault and murder crimes are now broadcast from `DefaultDamageModule` when health damage is dealt by another entity, completing non-player crime tracking. |
 | **~~Threat response — investigate & friendly fire~~** ✅ | `scripts/ai/Modules/default_threat_response.gd` | Investigate-after-losing-sight state implemented with `_begin_investigate` / `_end_investigate` / `_cancel_investigate` flow. Friendly-fire response implemented based on `friendly_fire_behavior` export (Neutral/Friend/Ally). (Camelot integration) |
 | **~~Furniture — animation & multi-use~~** ✅ | `scripts/points/furniture.gd` | `max_users` export with sub-point support via child `IdlePoint` nodes; `play_animation`/`stop_animation` signals emitted on occupy/unoccupy for animation hooks; `occupy()`/`unoccupy_entity()`/`has_room()` API |
 | **Save system — ~~custom filenames / save slots~~** ✅ | `scripts/system/save_system.gd` | Named save slots, schema versioning (v2) with migration registry, FNV-1a checksum validation, and `load_complete` signal are now implemented (Camelot integration) |
@@ -162,6 +169,7 @@ These systems exist and partially work, but have documented gaps.
 | **~~Granular navigation — memory efficiency~~** ✅ | `scripts/granular_navigation/navigation_master.gd`, `navigation_node.gd`, `navigation_world.gd` | `NavNode` converted from `Node3D` to `RefCounted`; `NavWorld` converted from `Node` to `RefCounted`; eliminates scene tree overhead per navigation point; explicit `parent_node`/`position`/`node_name` fields replace inherited Node properties |
 | **~~Audio emitter~~** ✅ | `scripts/misc/audio_emitter.gd` | Replaced physics-based `PhysicsShapeQueryParameters3D` sphere query with direct distance checks against `audio_listener` group members using `global_position`; no physics bodies required |
 | **~~NPC path — door interaction~~** ✅ | `scripts/components/npc_component.gd` | NPCs find nearest `Door` node and call `interact()` to teleport when path crosses a world boundary; `door_interacted` signal emitted for animation/sound hooks |
+| **~~Mod-friendly data architecture~~** ✅ | `scripts/mods/mod_manifest.gd`, `scripts/mods/mod_loader.gd`, `scripts/mods/coven_opinion_override.gd` | `ModManifest` resource declares covens, quests, dialogues, and coven opinion overrides. `ModLoader` autoload scans `skelerealms/mods_path` (default `res://mods`) at game-start and registers all declared content; `load_mod()` is also callable programmatically. |
 
 ---
 
@@ -181,7 +189,7 @@ Ordered by dependency depth and severity. Fix broken systems before building on 
 
 6. **~~Generalize `VitalsComponent`~~** ✅ — decoupled from player-only use; `is_player` and `dishonored_mode` exports gate player-specific mechanics; recharge rates are configurable via `@export`.
 7. **~~Complete Perception FOV~~** ✅ — vertical FOV check using pitch angle, AABB coverage percentage via multi-point raycast sampling, horizontal check uses proper `cos(deg_to_rad())` threshold.
-8. **~~Complete Crime system~~** ✅ — crime report module now evaluates coven membership, supports configurable other-coven reporting, and provides four confrontation resolution branches. Crimes against non-player entities are tracked. (Camelot integration)
+8. **~~Complete Crime system~~** ✅ — crime report module now evaluates coven membership, supports configurable other-coven reporting, and provides four confrontation resolution branches. Crimes against non-player entities are tracked. `DefaultDamageModule` now broadcasts assault and murder crimes. Fixed `crime_committed` signal type and null safety in `_process_crime_queue`. (Camelot integration)
 9. **~~Complete Threat response~~** ✅ — investigate state, watch-state visibility check, and friendly-fire response all implemented. (Camelot integration)
 10. **~~Fix Item drop direction~~** ✅ — replaced incorrect `get_euler().normalized()` with proper `-Basis(quaternion).z` forward vector.
 11. **~~Fix `shop_will_accept_item`~~** ✅ — fixed type hint to `ShopComponent`, replaced `ic.data.tags` with proper `ItemDataComponent` children lookup, added null safety.
@@ -202,3 +210,5 @@ Ordered by dependency depth and severity. Fix broken systems before building on 
 20. **~~Network edge costs in editor~~** ✅ — `dissolve_point()` sums costs; `merge_points()` uses distance-based costs; `subdivide_edge()` splits cost in half.
 21. **~~Granular navigation memory optimization~~** ✅ — `NavNode` converted from `Node3D` to `RefCounted`; `NavWorld` from `Node` to `RefCounted`; eliminates scene tree overhead per navigation point.
 22. **~~Audio emitter refactor~~** ✅ — replaced physics-based sphere query with direct distance checks against `audio_listener` group members.
+23. **~~Crime — non-player tracking completeness~~** ✅ — `DefaultDamageModule` broadcasts `assault` and `murder` crimes via `CrimeMaster.crime_committed` when health damage is dealt by another entity. Fixed `crime_committed` signal type (`NavPoint` → `Vector3`) and added null safety in `_process_crime_queue`.
+24. **~~Mod-friendly data architecture~~** ✅ — `ModManifest` resource (covens, quests, dialogues, coven opinion overrides); `ModLoader` autoload scans `res://mods` at game-start and registers all declared content. `skelerealms/mods_path` project setting controls the scan directory.
