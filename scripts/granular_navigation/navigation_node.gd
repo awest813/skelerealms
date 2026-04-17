@@ -58,8 +58,8 @@ func add_nav_node(pos:Vector3) -> NavNode:
 
 
 func get_closest_point(pos:Vector3) -> NavNode:
-	var parent_dim:int = parent_node.dimension if parent_node else 0
-	var is_left:bool = pos[parent_dim] < position[parent_dim]
+	var split_dim:int = dimension
+	var is_left:bool = pos[split_dim] < position[split_dim]
 	
 	if is_left:
 		if left_child: # if we have a left child, call it instead, 
