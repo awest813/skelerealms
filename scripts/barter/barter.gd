@@ -28,6 +28,9 @@ var _current_shop:ShopComponent
 
 ## Begin the barter process.
 func start_barter(vendor:InventoryComponent, customer:InventoryComponent) -> void:
+	if not vendor or not vendor.parent_entity:
+		push_error("BarterSystem: vendor or vendor.parent_entity is null.")
+		return
 	current_transaction = Transaction.new(vendor, customer)
 	_haggle_modifier = 1.0
 	_haggle_attempts = 0
@@ -147,16 +150,18 @@ func accept_barter(selling_modifier:float, buying_modifier:float, currency: Stri
 	#? Could optimize
 	for item in current_transaction.selling:
 		# Move from customer to vendor.
-		SKEntityManager.instance\
-			.get_entity(item)\
-			.get_component("ItemComponent")\
-			.move_to_inventory(current_transaction.vendor.parent_entity.name)
+		var entity = SKEntityManager.instance.get_entity(item)
+		if entity:
+			var ic = entity.get_component("ItemComponent")
+			if ic:
+				ic.move_to_inventory(current_transaction.vendor.parent_entity.name)
 	for item in current_transaction.buying:
 		# Move from vendor to customer.
-		SKEntityManager.instance\
-			.get_entity(item)\
-			.get_component("ItemComponent")\
-			.move_to_inventory(current_transaction.customer.parent_entity.name)
+		var entity = SKEntityManager.instance.get_entity(item)
+		if entity:
+			var ic = entity.get_component("ItemComponent")
+			if ic:
+				ic.move_to_inventory(current_transaction.customer.parent_entity.name)
 
 	#clean up
 	current_transaction = null

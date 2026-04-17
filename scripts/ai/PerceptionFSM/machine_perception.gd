@@ -32,7 +32,7 @@ func _init(tracked_obj:String, vis:float) -> void:
 
 
 func _ready() -> void:
-	print("Machine created")
+	pass
 
 
 ## Remove this FSM from the system.
