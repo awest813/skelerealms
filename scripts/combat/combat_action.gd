@@ -31,7 +31,7 @@ enum ActionType {
 @export_category("Cost")
 ## Stamina (moxie) cost to perform this action.
 @export var stamina_cost:float = 0.0
-## Magica (will) cost to perform this action.
+## Magicka (will) cost to perform this action.
 @export var mana_cost:float = 0.0
 
 @export_category("Animation")
