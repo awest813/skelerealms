@@ -108,7 +108,7 @@ func save(slot_name: String = ""):
 	# Write to a temporary file first, then rename to the final path.
 	# This ensures a crash or error during writing cannot corrupt an existing
 	# save file — the final .dat is only replaced once the write is complete.
-	var tmp_name: String = file_name.get_basename() + ".tmp"
+	var tmp_name: String = file_name.replace(".dat", ".tmp")
 	var file = FileAccess.open("user://saves/%s" % tmp_name, FileAccess.WRITE)
 	if not file:
 		push_error("SaveSystem: Failed to open tmp file for writing: 'user://saves/%s'." % tmp_name)

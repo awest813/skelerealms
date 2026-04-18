@@ -252,7 +252,7 @@ func test_saving_flag_starts_false() -> void:
 	assert_false(ss._saving, "_saving flag should start as false.")
 
 
-func test_saving_flag_is_false_after_successful_flag_guard_check() -> void:
+func test_saving_flag_remains_true_when_concurrent_save_rejected() -> void:
 	# Manually set the flag and verify the guard logic path resets correctly
 	# when a concurrent save would be rejected.
 	var ss := _make_save_system()
