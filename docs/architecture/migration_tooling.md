@@ -133,3 +133,15 @@ consumer upgraded from.
 - `tests/test_plugin_migration_registry.gd` — unit tests for the run loop.
 - `docs/user guide/save_system.md` — save-file migration docs.
 - `docs/user guide/migrating.md` — end-user release notes per version.
+
+---
+
+## Migration history
+
+### beta 0.7 → beta 0.8
+
+No project-level schema changes. Phase 8 (debug overlays) and Phase 9 (architecture docs, crash-safe saves, `@rpc` annotations) did not change ProjectSettings keys or resource schemas.
+
+### beta 0.8 → beta 0.9
+
+Godot 4.4 modernization. No project-level schema changes — typed dictionaries and `store_*` return-value handling are code-only changes with no effect on ProjectSettings keys or resource schemas. The migration stub is registered in `skelerealms.gd:_run_plugin_migrations()` as a no-op for chain continuity.
