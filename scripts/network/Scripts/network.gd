@@ -178,7 +178,7 @@ func subdivide_edge(edge:NetworkEdge) -> NetworkPoint:
 
 
 ## Find all unique pairs of an array
-func _find_unique_pairs(arr:Array):
+func _find_unique_pairs(arr:Array) -> Array:
 	# this sucks lol
 	var pairs = {}
 

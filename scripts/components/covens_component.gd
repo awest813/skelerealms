@@ -7,7 +7,7 @@ extends SKEntityComponent
 
 ## IDs of covens this entity is a member of.
 ## This dictionary is of type StringName:Int, where key is the coven, and int is the rank of this member.
-@export var covens:Dictionary
+@export var covens:Dictionary[StringName, int] = {}
 
 
 func _init(coven_list:Array[CovenRankData] = []) -> void:
@@ -20,7 +20,7 @@ func _init(coven_list:Array[CovenRankData] = []) -> void:
 		covens[crd.coven.coven_id] = crd.rank
 
 
-func _ready():
+func _ready() -> void:
 	super._ready()
 	# Add corresponding covens.
 	for c in covens:
@@ -28,14 +28,14 @@ func _ready():
 
 
 ## Add this entity to a coven.
-func add_to_coven(coven:StringName, rank:int = 1):
+func add_to_coven(coven:StringName, rank:int = 1) -> void:
 	covens[coven] = rank
 	dirty = true
 	parent_entity.add_to_group(coven)
 
 
 ## Remove this entity from the coven.
-func remove_from_coven(coven:StringName):
+func remove_from_coven(coven:StringName) -> void:
 	covens.erase(coven)
 	dirty = true
 	parent_entity.remove_from_group(coven)
@@ -62,7 +62,7 @@ func save() -> Dictionary:
 	}
 
 
-func load_data(data:Dictionary):
+func load_data(data:Dictionary) -> void:
 	var coven_data = data.get("covens", null)
 	if coven_data is Dictionary:
 		covens = {}

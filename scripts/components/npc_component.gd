@@ -25,12 +25,12 @@ extends SKEntityComponent
 ## NPC relationships.
 @export var relationships:Array[Relationship]
 ## Component types that the AI will looks for to determine threats. 
-@export var threatening_enemy_types = [
+@export var threatening_enemy_types:Array[String] = [
 	"NPCComponent",
 	"PlayerComponent",
 ]
 ## Opinions of entities. StringName:float
-@export var npc_opinions = {}
+@export var npc_opinions:Dictionary[StringName, float] = {}
 ## Loyalty of this NPC. Determines weights of opinion calculations.
 @export_enum("None", "Covens", "Self") var loyalty:int = 0
 ## How the opinion of something is calculated.
@@ -192,7 +192,7 @@ func _init() -> void:
 	name = "NPCComponent"
 
 
-func _ready():
+func _ready() -> void:
 	if Engine.is_editor_hint():
 		return 
 	
@@ -240,15 +240,15 @@ func _ready():
 		a.initialize()
 
 
-func _on_enter_scene():
+func _on_enter_scene() -> void:
 	_sim_level = SimulationLevel.FULL
 
 
-func _on_exit_scene():
+func _on_exit_scene() -> void:
 	_sim_level = SimulationLevel.GRANULAR
 
 
-func _process(delta):
+func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	#* Section 1: Path following
@@ -456,7 +456,7 @@ func _collect_doors(root: Node, out: Array[Door]) -> void:
 
 
 ## Add a Goap objective.
-func add_objective(goals:Dictionary, remove_after_satisfied:bool, priority:float):
+func add_objective(goals:Dictionary, remove_after_satisfied:bool, priority:float) -> void:
 	_goap_component.add_objective(goals, remove_after_satisfied, priority)
 
 

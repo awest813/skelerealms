@@ -15,7 +15,7 @@ extends SKEntityComponent
 ## Character level of this character
 var level:int = 0
 ## Used to determine how to save levels.
-var _manually_set_level = false
+var _manually_set_level:bool = false
 var skill_xp:Dictionary[StringName, int] = {}
 var character_xp:int = 0
 

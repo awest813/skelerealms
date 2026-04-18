@@ -20,25 +20,25 @@ var _caster:SpellHand
 
 
 ## When the spell is first cast.
-func on_spell_cast():
+func on_spell_cast() -> void:
 	pass
 
 
 ## Called every frame as the spell is being held by the player; eg. as the button is being held to blast flames.
 ## You can use the delta to drain willpower, or whatever.
-func on_spell_held(delta):
+func on_spell_held(delta:float) -> void:
 	pass
 
 
 ## When the spell is released; eg. when the button is released.
 ## This doesn't just have to cancel the spell, though; perhaps the player needs to hold a spell to choose a target or charge a kamehameha, and then release to cast.
-func on_spell_released():
+func on_spell_released() -> void:
 	pass
 
 
 ## Called when the spell needs to be reset to cast again, and also when it is loaded for the first time; so this is also like a _ready() function.
 ## Only reset your own variables; the variables defined in this parent class will not be re-initialized.
-func reset():
+func reset() -> void:
 	pass
 
 
@@ -78,7 +78,7 @@ func _find_spell_targets_in_range(pos:Vector3, radius:float, ignore_self:bool = 
 
 ## Apply a spell effect to an object.
 ## Only works if target is of type [SpellTargetComponent] or [SpellTargetObject].
-func _apply_spell_effect_to(target, effect:StringName):
+func _apply_spell_effect_to(target:Variant, effect:StringName) -> void:
 	# return early if invalid object
 	if not target is SpellTargetComponent and not target is SpellTargetObject:
 		return

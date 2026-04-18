@@ -6,7 +6,7 @@ extends SKEntityComponent
 signal damaged(info:DamageInfo)
 
 
-func damage(info:DamageInfo):
+func damage(info:DamageInfo) -> void:
 	damaged.emit(info)
 
 

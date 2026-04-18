@@ -8,11 +8,11 @@ var _viewports:Array[Node] = []
 var _cams:Array[Camera3D] = []
 
 
-func _can_handle(object):
+func _can_handle(object:Object) -> bool:
 	return object is Door
 
 
-func _parse_begin(obj:Object):
+func _parse_begin(obj:Object) -> void:
 	var go_to_button:Button = Button.new()
 	go_to_button.text = "Jump to door location"
 	go_to_button.pressed.connect(func(): _jump_to_door_location(obj as Door))
@@ -23,7 +23,7 @@ func _parse_begin(obj:Object):
 	add_custom_control(set_position_button)
 
 
-func _jump_to_door_location(obj:Door):
+func _jump_to_door_location(obj:Door) -> void:
 	var path = ProjectSettings.get_setting("skelerealms/worlds_path")
 	var res = _find_world(path, obj.destination_instance.world)
 	if res == "":
@@ -66,7 +66,7 @@ func _find_world(path:String, target:String) -> String:
 	return ""
 
 
-func _init(plug:EditorPlugin):
+func _init(plug:EditorPlugin) -> void:
 	p = plug
 	_populate_data()
 

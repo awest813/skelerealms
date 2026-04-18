@@ -2,7 +2,7 @@ class_name EquipmentComponent
 extends SKEntityComponent
 
 
-var equipment_slot:Dictionary
+var equipment_slot:Dictionary[StringName, Variant] = {}
 
 signal equipped(item:StringName, slot:StringName)
 signal unequipped(item:StringName, slot:StringName)
@@ -87,7 +87,7 @@ func save() -> Dictionary:
 	}
 
 
-func load_data(data:Dictionary):
+func load_data(data:Dictionary) -> void:
 	var slot_data = data.get("equipment_slot", null)
 	if slot_data is Dictionary:
 		equipment_slot = {}

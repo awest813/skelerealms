@@ -14,5 +14,5 @@ func _ready() -> void:
 	add_to_group("audio_listener")
 
 
-func hear_audio(emitter:AudioEventEmitter):
+func hear_audio(emitter:AudioEventEmitter) -> void:
 	heard_something.emit(emitter)

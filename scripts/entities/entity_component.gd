@@ -11,7 +11,7 @@ extends Node
 var dirty:bool = false
 
 # Called when the node enters the scene tree for the first time.
-func _ready():
+func _ready() -> void:
 	if Engine.is_editor_hint():
 		return 
 	
@@ -27,12 +27,12 @@ func _entity_ready() -> void:
 
 
 ## Called when the parent entity enters a scene. See [signal SKEntity.entered_scene].
-func _on_enter_scene():
+func _on_enter_scene() -> void:
 	pass
 
 
 ## Called when the parent entity exits a scene. See [signal SKEntity.left_scene].
-func _on_exit_scene():
+func _on_exit_scene() -> void:
 	pass
 
 
@@ -47,7 +47,7 @@ func save() -> Dictionary:
 
 
 ## Load a data blob from the savegame system.
-func load_data(data:Dictionary):
+func load_data(data:Dictionary) -> void:
 	pass
 
 

@@ -449,3 +449,78 @@ A targeted pass applying Godot 4.4-specific language features throughout the rem
 
 - **`scripts/sk_global.gd`** — `world_states:Dictionary[String, Variant]` was declared without an initializer, leaving it `null` on first access. Added `= {}`.
 - **`tools/template_selector.gd`** — Added null guard on `FileAccess.open()` result. Failing to open a file no longer crashes with a null-dereference; a descriptive `push_error()` is emitted instead.
+
+---
+
+### Phase 13 — Godot 4.4 Return-Type & Typed-Variable Pass ✅
+
+A complete sweep over every remaining script to apply Godot 4.4 best-practice type annotations.
+
+#### `-> void` Return-Type Annotations
+
+Every function that produces no return value now carries an explicit `-> void` declaration. Files updated:
+
+| File | Functions annotated |
+|---|---|
+| `scripts/entities/entity_component.gd` | `_ready`, `_on_enter_scene`, `_on_exit_scene`, `load_data` |
+| `scripts/entities/entity.gd` | `_ready`, `_process`, `_should_be_in_scene`, `_on_set_position` |
+| `scripts/entities/entity_manager.gd` | `_cache_entities`, `_cleanup_stale_entities` |
+| `scripts/covens/coven_system.gd` | `_ready`, `_cache_covens` |
+| `scripts/components/covens_component.gd` | `_ready`, `add_to_coven`, `remove_from_coven`, `load_data` |
+| `scripts/components/equipment_component.gd` | `load_data` |
+| `scripts/components/attributes_component.gd` | `load_data` |
+| `scripts/components/damageable_component.gd` | `damage` |
+| `scripts/components/vitals_component.gd` | `load_data` |
+| `scripts/components/npc_component.gd` | `_ready`, `_process`, `_on_enter_scene`, `_on_exit_scene`, `add_objective` |
+| `scripts/components/interactive_component.gd` | `interact_by_player`, `interact` |
+| `scripts/components/puppet_spawner_component.gd` | `_ready`, `spawn`, `despawn`, `set_puppet_position` |
+| `scripts/components/inventory_component.gd` | `add_to_inventory`, `remove_from_inventory`, `add_money`, `remove_money`, `_clamp_money`, `load_data` |
+| `scripts/components/item_component.gd` | `_process`, `move_to_inventory`, `drop`, `interact`, `load_data` |
+| `scripts/components/teleport_component.gd` | `teleport` |
+| `scripts/crime/crime_master.gd` | `punish_crimes`, `add_crime` |
+| `scripts/granular_navigation/navigation_master.gd` | `_load`, `construct_tree`, `_load_from_networks` |
+| `scripts/puppets/item_puppet.gd` | `_ready`, `_process` |
+| `scripts/world_objects/door.gd` | `_ready`, `_handle_teleport_request` |
+| `scripts/world_objects/interactive_object.gd` | `interact` |
+| `scripts/world_objects/damageable_object.gd` | `damage` |
+| `scripts/world_objects/spell_target_object.gd` | `hit`, `apply_effect` |
+| `scripts/system/world_loader.gd` | `_unload_world`, `_cache_worlds` |
+| `scripts/spell_casting/spell.gd` | `on_spell_cast`, `on_spell_held`, `on_spell_released`, `reset`, `_apply_spell_effect_to` |
+| `scripts/spell_casting/spell_hand.gd` | `cast_spell`, `hold_spell`, `release_spell`, `load_spell` |
+| `scripts/spell_casting/spell_projectile.gd` | `_ready` |
+| `scripts/misc/audio_emitter.gd` | `send_play_event` |
+| `scripts/ai/perception_ears.gd` | `hear_audio` |
+| `scripts/network/Scripts/network.gd` | `_find_unique_pairs` annotated `-> Array` |
+| `skelerealms.gd` | `_enter_tree`, `_exit_tree`, `_redraw_gizmo` |
+| `tools/door_connect.gd` | `_can_handle` → `-> bool`, `_parse_begin`, `_jump_to_door_location`, `_init` |
+| `tools/span.gd` | `_init` |
+
+#### Typed Dictionaries (`Dictionary[K, V]`)
+
+| File | Variable | Old type | New type |
+|---|---|---|---|
+| `scripts/covens/coven_system.gd` | `covens` | `Dictionary` | `Dictionary[StringName, Coven]` |
+| `scripts/covens/coven.gd` | `other_coven_opinions` | `Dictionary` | `Dictionary[StringName, int]` |
+| `scripts/covens/coven.gd` | `ranks` | `Dictionary` | `Dictionary[int, String]` |
+| `scripts/components/covens_component.gd` | `covens` | `Dictionary` | `Dictionary[StringName, int]` |
+| `scripts/components/equipment_component.gd` | `equipment_slot` | `Dictionary` | `Dictionary[StringName, Variant]` |
+| `scripts/components/vitals_component.gd` | `vitals` | untyped `= {}` | `Dictionary[String, float]` |
+
+#### Typed Array Parameters
+
+| File | Variable / Parameter | Old type | New type |
+|---|---|---|---|
+| `scripts/components/npc_component.gd` | `threatening_enemy_types` | untyped `= [...]` | `Array[String]` |
+
+#### Other Typed-Variable Fixes
+
+| File | Variable | Old type | New type |
+|---|---|---|---|
+| `scripts/components/npc_component.gd` | `npc_opinions` | untyped `= {}` | `Dictionary[StringName, float]` |
+| `scripts/components/skills_component.gd` | `_manually_set_level` | untyped `= false` | `bool` |
+| `scripts/ai/Modules/default_threat_response.gd` | `pull_out_of_thread` | untyped `= false` | `bool` |
+| `scripts/spell_casting/spell.gd` | `on_spell_held` delta param | untyped | `float` |
+| `scripts/spell_casting/spell.gd` | `_apply_spell_effect_to` target param | untyped | `Variant` |
+| `scripts/components/item_component.gd` | `interact` refID param | untyped | `StringName` |
+| `tools/door_connect.gd` | `_can_handle` object param | untyped | `Object` |
+

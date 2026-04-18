@@ -29,5 +29,5 @@ func sync(r:Rect2) -> void:
 	end = r.end.x
 
 
-func _init(r:Rect2):
+func _init(r:Rect2) -> void:
 	sync(r)

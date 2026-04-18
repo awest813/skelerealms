@@ -92,7 +92,7 @@ func _finish_load(w:PackedScene) -> void:
 	GameInfo.game_loaded.emit()
 
 
-func _unload_world():
+func _unload_world() -> void:
 	if get_child_count() > 0:
 		remove_child(get_child(0))
 
@@ -125,7 +125,7 @@ func _abort(error_message: String = "Unknown world loading error.") -> void:
 
 
 ## Searches the worlds directory and caches filepaths, matching them to their name
-func _cache_worlds(path:String):
+func _cache_worlds(path:String) -> void:
 	var dir = DirAccess.open(path)
 	if dir:
 		dir.list_dir_begin()

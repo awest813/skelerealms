@@ -29,7 +29,7 @@ func _ready() -> void:
 
 
 ## Add an item to the inventory.
-func add_to_inventory(id:String):
+func add_to_inventory(id:String) -> void:
 	var e = SKEntityManager.instance.get_entity(id)
 	if e:
 		var ic = e.get_component("ItemComponent")
@@ -40,7 +40,7 @@ func add_to_inventory(id:String):
 
 
 ## Remove an item from the inventory.
-func remove_from_inventory(id:String):
+func remove_from_inventory(id:String) -> void:
 	var index = inventory.find(id)
 	if index == -1: # catch if it doesnt have the item
 		return
@@ -50,7 +50,7 @@ func remove_from_inventory(id:String):
 
 
 ## Add an amount of snails to the inventory.
-func add_money(amount:int, currency:StringName):
+func add_money(amount:int, currency:StringName) -> void:
 	added_money.emit(amount)
 	if currencies.has(currency):
 		currencies[currency] += amount
@@ -61,7 +61,7 @@ func add_money(amount:int, currency:StringName):
 
 
 ## Remove some snails from the inventory.
-func remove_money(amount:int, currency:StringName):
+func remove_money(amount:int, currency:StringName) -> void:
 	removed_money.emit(amount)
 	if not currencies.has(currency):
 		currencies[currency] = 0
@@ -72,7 +72,7 @@ func remove_money(amount:int, currency:StringName):
 
 
 ## Keeps the number of snails from going below 0.
-func _clamp_money(currency:StringName):
+func _clamp_money(currency:StringName) -> void:
 	if currencies[currency] < 0:
 		currencies[currency] = 0
 
@@ -146,7 +146,7 @@ func save() -> Dictionary:
 	}
 
 
-func load_data(data:Dictionary):
+func load_data(data:Dictionary) -> void:
 	var inv_data = data.get("inventory", null)
 	if inv_data is Array:
 		inventory = PackedStringArray(inv_data)

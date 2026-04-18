@@ -19,7 +19,7 @@ signal change_position(Vector3)
 signal change_rotation(Quaternion)
 
 
-func _ready():
+func _ready() -> void:
 	if not $"../../" is SKEntity: # TODO: Less brute force method
 		inactive = true
 		return
@@ -29,7 +29,7 @@ func _ready():
 	change_rotation.connect((get_parent().get_parent() as SKEntity)._on_set_rotation.bind())
 
 
-func _process(delta):
+func _process(delta:float) -> void:
 	if not inactive:
 		change_position.emit(position)
 		change_rotation.emit(quaternion)
