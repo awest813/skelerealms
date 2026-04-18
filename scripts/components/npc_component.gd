@@ -40,7 +40,7 @@ extends SKEntityComponent
 var player_opinion:int
 var visibility_threshold:float = 0.3
 ## Stores data of interest for GOAP to access.
-var goap_memory:Dictionary = {}
+var goap_memory:Dictionary[String, Variant] = {}
 #* Properties
 var in_combat:bool:
 	get:
@@ -62,9 +62,9 @@ var _current_target_point:NavPoint:
 		return _current_target_point
 var ai_modules:Array[AIModule] = []
 ## Keeps track of entities and vision data. Used for stealth mechanics. Pattern is ref_id:StringName -> data:Variant.
-var perception_memory:Dictionary = {}
+var perception_memory:Dictionary[StringName, Variant] = {}
 ## Cache mapping perceived Object -> SKEntity to avoid repeated tree walking.
-var _entity_ref_cache:Dictionary = {}
+var _entity_ref_cache:Dictionary[Object, SKEntity] = {}
 #* Private
 ## Navigator.
 var _nav_component:NavigatorComponent

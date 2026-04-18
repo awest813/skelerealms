@@ -7,9 +7,9 @@ extends Node
 
 
 ## The effects applied to this host. Shape is {StringName:[class StatusEffect]}.
-var effects:Dictionary = {}
+var effects:Dictionary[StringName, StatusEffect] = {}
 ## The effects are also organized by tag, for optimization purposes. The shape is {StringName:Array\[[class StatusEffect]\]}.
-var tag_map:Dictionary = {}
+var tag_map:Dictionary[StringName, Array] = {}
 ## This signal is listened to by a host's vessel (by default, [class EffectsComponent] and [class EffectsObject]), which will relay the message to other nodes.
 ## THis is called from the effects if they want to make changes to the object they are attached to.
 signal message_broadcast(what:StringName, args:Array)

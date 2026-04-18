@@ -3,7 +3,7 @@ extends Node
 ## World scene loader
 
 
-var world_paths:Dictionary = {}
+var world_paths:Dictionary[String, String] = {}
 var regex:RegEx
 var loading_path:String
 var last_load_progress := 0

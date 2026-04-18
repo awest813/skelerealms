@@ -32,7 +32,7 @@ signal load_complete
 
 ## Registered migration functions. Key is the version to migrate FROM (int -> Callable).
 ## Each callable receives a Dictionary and returns the migrated Dictionary.
-var _migrations: Dictionary = {}
+var _migrations: Dictionary[int, Callable] = {}
 
 ## Guard flag — true while a save is in progress.
 ## Prevents concurrent or re-entrant saves that could corrupt the file.

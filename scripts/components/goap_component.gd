@@ -3,7 +3,7 @@ extends SKEntityComponent
 ## Planner for [GOAPAction]s that creates action sequences to complete a set of [Objective]s.
 
 
-var agent_state:Dictionary = {}
+var agent_state:Dictionary[String, Variant] = {}
 var objectives:Array[Objective] = []
 var action_queue:Array[GOAPAction] = []
 

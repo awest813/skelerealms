@@ -84,13 +84,13 @@ class QuestValidationReport extends RefCounted:
 # ── Internal state ──────────────────────────────────────────────────────────
 
 ## quest_id -> QuestDefinition
-var _definitions: Dictionary = {}
+var _definitions: Dictionary[StringName, QuestDefinition] = {}
 ## quest_id -> QuestRuntimeState
-var _states: Dictionary = {}
+var _states: Dictionary[StringName, QuestRuntimeState] = {}
 ## quest_id -> { node_id -> QuestNodeDefinition } — O(1) node lookup per quest.
-var _node_maps: Dictionary = {}
+var _node_maps: Dictionary[StringName, Dictionary] = {}
 ## quest_id -> { node_id -> Array[StringName] } — precomputed forward edges (explicit + implicit).
-var _successor_maps: Dictionary = {}
+var _successor_maps: Dictionary[StringName, Dictionary] = {}
 
 
 # ── Public API ──────────────────────────────────────────────────────────────

@@ -7,8 +7,8 @@ extends Node
 ## The instance of the entity manager.
 static var instance: SKEntityManager
 
-var entities: Dictionary = {}
-var disk_assets: Dictionary = {}
+var entities: Dictionary[StringName, SKEntity] = {}
+var disk_assets: Dictionary[StringName, String] = {}
 var regex: RegEx
 
 

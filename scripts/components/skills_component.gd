@@ -16,7 +16,7 @@ extends SKEntityComponent
 var level:int = 0
 ## Used to determine how to save levels.
 var _manually_set_level = false
-var skill_xp:Dictionary = {}
+var skill_xp:Dictionary[StringName, int] = {}
 var character_xp:int = 0
 
 signal skill_levelled_up(skill:StringName, new_level:int)

@@ -41,7 +41,7 @@ enum ActionType {
 @export_category("Damage")
 ## Base damage effects dictionary. Keys are StringName damage types,
 ## values are float amounts. Used to build a [DamagePacket].
-@export var base_damage:Dictionary = {}
+@export var base_damage:Dictionary[StringName, float] = {}
 ## Spell effects to attach to the damage packet.
 @export var spell_effects:Array[StringName] = []
 ## High-level damage category: &"physical", &"elemental", or &"true".

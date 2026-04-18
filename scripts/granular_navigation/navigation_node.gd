@@ -10,7 +10,7 @@ extends RefCounted
 ## [Codeblock]
 ## connected_node:NavNode, cost:float
 ## [/Codeblock]
-var connections: Dictionary = {}
+var connections: Dictionary[NavNode, float] = {}
 var dimension:int
 var world:String
 var left_child:NavNode

@@ -21,10 +21,10 @@ const bounty_amount:Dictionary = {
 ##		}
 ## }
 ## [/codeblock]
-var crimes:Dictionary = {}
+var crimes:Dictionary[StringName, Dictionary] = {}
 ## This is a has set. All crimes reported will go into this set to be processed in the next frame.
 ## This is so that the same crime doesn't get reported over and over again. 
-var crime_queue:Dictionary = {}
+var crime_queue:Dictionary[Crime, bool] = {}
 signal crimes_against_covens_updated(affected:Array[StringName])
 signal crime_committed(crime:Crime, position:Vector3)
 

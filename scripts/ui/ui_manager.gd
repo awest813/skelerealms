@@ -30,7 +30,7 @@ var _hud:SKHUDShell
 ## Stack of open menus (most recent on top).
 var _menu_stack:Array[Control] = []
 ## Name-to-menu mapping for quick lookup.
-var _menus:Dictionary = {}
+var _menus:Dictionary[StringName, Control] = {}
 
 ## Layer containers.
 var _hud_layer:CanvasLayer

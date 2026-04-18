@@ -8,7 +8,7 @@ var _set_up:bool
 ## Per-damage-type resistance modifiers. Keys are StringName damage types,
 ## values are multipliers (1.0 = full damage, 0.5 = half damage, 0.0 = immune).
 ## Any damage type not listed here uses a multiplier of 1.0.
-@export var damage_modifiers:Dictionary = {}
+@export var damage_modifiers:Dictionary[StringName, float] = {}
 
 
 func _init() -> void:
