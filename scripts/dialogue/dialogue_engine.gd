@@ -54,9 +54,9 @@ class DialogueSessionSnapshot extends RefCounted:
 # ── Internal state ──────────────────────────────────────────────────────────
 
 ## dialogue_id -> DialogueDefinition
-var _definitions: Dictionary = {}
+var _definitions: Dictionary[StringName, DialogueDefinition] = {}
 ## dialogue_id -> { node_id -> DialogueNode }
-var _node_maps: Dictionary = {}
+var _node_maps: Dictionary[StringName, Dictionary] = {}
 
 
 # ── Public API ──────────────────────────────────────────────────────────────

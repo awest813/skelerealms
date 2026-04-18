@@ -7,8 +7,8 @@ extends Node
 ## The instance of the entity manager.
 static var instance: SKEntityManager
 
-var entities: Dictionary = {}
-var disk_assets: Dictionary = {}
+var entities: Dictionary[StringName, SKEntity] = {}
+var disk_assets: Dictionary[StringName, String] = {}
 var regex: RegEx
 
 
@@ -16,7 +16,7 @@ func _init() -> void:
 	instance = self
 
 
-func _ready():
+func _ready() -> void:
 	regex = RegEx.new()
 	regex.compile("([^\\/\n\\r]+)\\.t?scn")
 	_cache_entities(ProjectSettings.get_setting("skelerealms/entities_path"))

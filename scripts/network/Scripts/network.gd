@@ -9,7 +9,7 @@ extends Resource
 ## The edges in this network.
 @export var edges:Array[NetworkEdge] = []
 ## This dictionary contains an array (value) of edges that involve a point (key).
-@export var edge_map:Dictionary = {}
+@export var edge_map:Dictionary[NetworkPoint, Array[NetworkEdge]] = {}
 ## The portals this network has.
 @export var portals:Array[NetworkPortal] = []
 ## Connections between worlds

@@ -8,7 +8,7 @@ extends SKEntityComponent
 ## Stores references to all components of this entity, save for this one.
 ## Dictionary layout is "ComponentType" : SKEntityComponent.
 ## This is declared in _ready(), so be careful when overriding.
-var _components:Dictionary = {}
+var _components:Dictionary[String, SKEntityComponent] = {}
 
 
 func _init(sc:Script = null) -> void:

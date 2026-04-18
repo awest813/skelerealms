@@ -32,7 +32,7 @@ signal load_complete
 
 ## Registered migration functions. Key is the version to migrate FROM (int -> Callable).
 ## Each callable receives a Dictionary and returns the migrated Dictionary.
-var _migrations: Dictionary = {}
+var _migrations: Dictionary[int, Callable] = {}
 
 ## Guard flag — true while a save is in progress.
 ## Prevents concurrent or re-entrant saves that could corrupt the file.
@@ -54,7 +54,7 @@ func register_migration(from_version: int, migration: Callable) -> void:
 ## [param slot_name]: optional name for the save slot (e.g. "quicksave", "slot_1").
 ## If empty, falls back to a datetime string.
 ## Returns without saving if a save is already in progress.
-func save(slot_name: String = ""):
+func save(slot_name: String = "") -> void:
 	if _saving:
 		push_warning("SaveSystem: save() called while a save is already in progress. Ignoring.")
 		return
@@ -115,7 +115,9 @@ func save(slot_name: String = ""):
 		_saving = false
 		return
 	file.store_string(save_text)
-	file.flush()
+	var flush_ok := file.flush() == OK
+	if not flush_ok:
+		push_error("SaveSystem: flush() failed for 'user://saves/%s'." % tmp_name)
 	file.close()
 
 	# Atomically rename .tmp -> .dat, replacing any existing save for this slot.
@@ -135,7 +137,7 @@ func save(slot_name: String = ""):
 
 
 ## Load the most recent savegame, if applicable.
-func load_most_recent():
+func load_most_recent() -> void:
 	var most_recent = _get_most_recent_savegame()
 	# only load most recent if there are some
 	if most_recent.some():
@@ -143,7 +145,7 @@ func load_most_recent():
 
 
 ## Load a game from a filepath.
-func load_game(path:String):
+func load_game(path:String) -> void:
 	var file = FileAccess.open(path, FileAccess.READ) # open file
 	if not file:
 		push_error("SaveSystem: Failed to open save file '%s'." % path)

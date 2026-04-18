@@ -13,12 +13,12 @@ extends Node
 
 static var instance:NavMaster
 ## Dictionary of references to the roots of KD trees.
-var worlds:Dictionary = {}
+var worlds:Dictionary[String, NavWorld] = {}
 ## Portal edges that failed to connect because the destination world was not yet loaded.
 ## Each entry is a PortalEdge resource.
 var _pending_portal_edges:Array = []
 ## Lookup table mapping formatted point name -> NavNode for connection persistence.
-var _node_lookup:Dictionary = {}
+var _node_lookup:Dictionary[Variant, NavNode] = {}
 
 
 func _ready() -> void:

@@ -34,7 +34,7 @@ signal parry_landed(hitbox:SKHitbox)
 ## Per-damage-type resistance modifiers. Keys are [StringName] damage types,
 ## values are multipliers (1.0 = full damage, 0.5 = half, 0.0 = immune).
 ## Any damage type not listed uses 1.0.
-@export var resistances:Dictionary = {}
+@export var resistances:Dictionary[StringName, float] = {}
 
 @export_category("Block")
 ## Damage multiplier applied when the entity is blocking (0.0 = full mitigation, 1.0 = no reduction).

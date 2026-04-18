@@ -2,7 +2,7 @@
 
 ![Skelerealms logo](skelerealms_logo.png)
 
-Skelerealms is an extensible open-world RPG framework for Godot 4, built for projects that need Creation Engine-style world simulation without inheriting Creation Engine-style limitations.
+Skelerealms is an extensible open-world RPG framework for Godot 4.4+, built for projects that need Creation Engine-style world simulation without inheriting Creation Engine-style limitations.
 
 It focuses on the hard framework problems behind Bethesda-inspired games: persistent worlds, cross-scene navigation, NPC simulation, inventories, factions, saves, quests, dialogue, and reusable entity systems. It does **not** ship your game's combat, UI, story, or content.
 
@@ -57,7 +57,7 @@ Skelerealms is a framework layer, not a complete game template.
 
 ## Requirements
 
-- **Godot 4.2+**
+- **Godot 4.4+**
 - A project structure that follows the framework's expected folders and naming conventions
 
 For the current singleton list, required folders, project settings, and framework assumptions, see [`FRAMEWORK_STATUS.md`](FRAMEWORK_STATUS.md).
@@ -90,7 +90,6 @@ Recommended reading order:
 
 - [`FRAMEWORK_STATUS.md`](FRAMEWORK_STATUS.md) — current framework capabilities, assumptions, incomplete systems, and dependency-ordered priorities
 - [`ROADMAP.md`](ROADMAP.md) — high-level roadmap and current focus areas
-- [`CAMELOT_ROADMAP.md`](CAMELOT_ROADMAP.md) — historical Camelot-port roadmap and shipped integration work
 
 ### Concepts
 
@@ -115,13 +114,34 @@ Recommended reading order:
 
 ## Project status
 
-- **Current plugin version:** `beta 0.8`
+- **Current plugin version:** `beta 0.9`
+- **Minimum Godot version:** `4.4`
 - **Status:** active development
 - **Stability:** expect breaking changes before 1.0
 
 For the API-stability commitments and the Stable / Beta / Internal tier split that will take effect at 1.0, see [`docs/architecture/api_stability.md`](docs/architecture/api_stability.md).
 
 Skelerealms is being actively developed in support of a real game project, with framework improvements flowing back upstream as systems are hardened.
+
+## Godot 4.4 features
+
+This release takes advantage of several Godot 4.4 improvements:
+
+- **Typed Dictionaries** — core data structures now use `Dictionary[KeyType, ValueType]` for stronger type safety and better Inspector integration.
+- **3D Physics Interpolation** — Godot 4.4 adds opt-in 3D physics interpolation (`physics/3d/physics_interpolation`). Enable it in your project settings for smoother NPC movement when puppets update position in `_physics_process`.
+- **Jolt Physics support** — Godot 4.4 bundles the Jolt physics engine as an optional backend. Skelerealms' raycasting (editor point placement, NPC perception) and Area3D hitbox/hurtbox detection have been audited and are compatible with both Godot Physics and Jolt.
+- **FileAccess return values** — `store_string()` and `flush()` now return error codes; the save system checks these for write failures.
+
+## Migration from Godot 4.2/4.3
+
+If you are upgrading an existing project:
+
+1. Update Godot to **4.4** or later.
+2. Update the Skelerealms plugin to `beta 0.9`. The plugin migration system will handle any project-level changes automatically.
+3. Review the [official Godot 4.4 migration guide](https://docs.godotengine.org/en/stable/tutorials/migrating/) for any breaking changes in your own project code.
+4. Note that `@export_file` annotations in Godot 4.4 now store `uid://` paths instead of `res://` paths. If you have custom resources using `@export_file`, re-save them after upgrading.
+
+See [`docs/user guide/migrating.md`](docs/user%20guide/migrating.md) for full details.
 
 ## Roadmap snapshot
 
@@ -130,13 +150,15 @@ All prior framework gaps (quests, dialogue, saves, barter haggling, item ownersh
 - **Phase 7 (done):** Performance profiling and hot-path optimization for large worlds
 - **Phase 7 editor tooling (done):** Visual quest editor, dialogue editor, coven relationship matrix
 - **Phase 8 (done):** Runtime debugging overlays — AI state, navigation, perception, quest state, save inspector
-- **Phase 9 (in progress):** Architecture hardening — multiplayer audit, thread-safety review, API stability tiers, plugin migration tooling
-- **Next:** AssetLib-ready minimal example project, `@rpc` annotation pass, save-write crash safety
+- **Phase 9 (done):** Architecture hardening — multiplayer audit, thread-safety review, API stability tiers, plugin migration tooling, crash-safe saves, `@rpc` annotation pass
+- **Phase 11 (done):** Combat subsystem (DamagePacket, CombatantComponent, CombatAction, CombatStateMachine, hitbox/hurtbox, HitPipeline) and UI framework (SKUIManager, SKTheme, HUD/menu shells, widgets)
+- **Phase 12 (current):** Godot 4.4 modernization — typed dictionaries, FileAccess safety, type annotations, version bump to `beta 0.9`
+- **Next:** AssetLib-ready minimal example project
 
-See [`ROADMAP.md`](ROADMAP.md) for the fuller roadmap and [`docs/architecture/`](docs/architecture/) for the Phase 9 deliverables.
+See [`ROADMAP.md`](ROADMAP.md) for the fuller roadmap and [`docs/architecture/`](docs/architecture/) for architecture documentation.
 
 ## Attribution
 
 Skelerealms is a fork of the original [Skelerealms](https://github.com/SlashScreen/skelerealms) project by [SlashScreen](https://github.com/SlashScreen). The original project established the core open-world RPG framework architecture for Godot 4 — including persistent entities, inter-scene navigation, GOAP-based NPC AI, factions, inventory, equipment, and the component-driven entity model that this fork continues to build on.
 
-This fork extends the original with new systems (quests, dialogue, saves overhaul, mod support), bug fixes, performance improvements, and expanded documentation. See [`CAMELOT_ROADMAP.md`](CAMELOT_ROADMAP.md) for a detailed log of additions.
+This fork extends the original with new systems (quests, dialogue, saves overhaul, combat, UI framework, mod support), bug fixes, performance improvements, and expanded documentation.

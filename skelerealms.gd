@@ -18,7 +18,7 @@ const SaveInspector = preload("res://addons/skelerealms/tools/save_inspector.gd"
 const PluginMigrationRegistry = preload("res://addons/skelerealms/scripts/system/plugin_migration_registry.gd")
 
 ## Plugin version — keep in sync with plugin.cfg.
-const PLUGIN_VERSION := "beta 0.8"
+const PLUGIN_VERSION := "beta 0.9"
 
 ## Container we add the toolbar to
 const container = CONTAINER_SPATIAL_EDITOR_MENU
@@ -289,6 +289,13 @@ func _run_plugin_migrations() -> void:
 	registry.register("beta 0.7", func() -> void:
 		# No-op — Phase 8 (debug overlays) and Phase 9 (architecture docs)
 		# did not change ProjectSettings keys or resource schemas.
+		pass)
+
+	# beta 0.8 → beta 0.9: Godot 4.4 modernization.
+	# No project-level schema changes — typed dictionaries and store_*
+	# return-value handling are code-only changes with no effect on
+	# ProjectSettings keys or resource schemas.
+	registry.register("beta 0.8", func() -> void:
 		pass)
 
 	registry.run()
