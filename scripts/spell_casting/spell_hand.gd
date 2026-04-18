@@ -10,26 +10,26 @@ var _active_spell:Spell
 var entity:SKEntity
 
 
-func cast_spell():
+func cast_spell() -> void:
 	if not _active_spell:
 		return
 	_active_spell.reset()
 	_active_spell.on_spell_cast()
 
 
-func hold_spell(delta):
+func hold_spell(delta:float) -> void:
 	if not _active_spell:
 		return
 	_active_spell.on_spell_held(delta)
 
 
-func release_spell():
+func release_spell() -> void:
 	if not _active_spell:
 		return
 	_active_spell.on_spell_released()
 
 
-func load_spell(sp:Spell):
+func load_spell(sp:Spell) -> void:
 	_active_spell = sp
 	sp._caster = self
 	sp.reset()

@@ -8,7 +8,7 @@ signal teleporting(world:String, position:Vector3)
 
 
 ## Teleport the entity to a world and position.
-func teleport(world:String, position:Vector3):
+func teleport(world:String, position:Vector3) -> void:
 	parent_entity.world = world
 	parent_entity.position = position
 	teleporting.emit(world, position)

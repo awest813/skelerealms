@@ -2,11 +2,11 @@ extends Node
 ## Tracks all [Coven]s in the game.
 
 
-var covens:Dictionary
+var covens:Dictionary[StringName, Coven] = {}
 var regex:RegEx
 
 
-func _ready():
+func _ready() -> void:
 	GameInfo.game_started.connect(func():
 		regex = RegEx.new()
 		regex.compile("([^\\/\n\\r]+)\\.t?res")
@@ -20,7 +20,7 @@ func get_coven(coven:StringName) -> Coven:
 
 
 ## Caches all covens in the project.
-func _cache_covens(path:String):
+func _cache_covens(path:String) -> void:
 	var dir = DirAccess.open(path)
 	if dir:
 		dir.list_dir_begin()

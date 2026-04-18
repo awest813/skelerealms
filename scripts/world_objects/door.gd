@@ -14,12 +14,12 @@ var dest_pos:Vector3:
 		return destination_instance.position
 
 
-func _ready():
+func _ready() -> void:
 	on_interact.connect(_handle_teleport_request.bind())
 
 
 # You could also override #interact, instead of binding to signal.
-func _handle_teleport_request(id:String):
+func _handle_teleport_request(id:String) -> void:
 	var teleportee = SKEntityManager.instance.get_entity(id) # get an entity
 	if teleportee: # if there is a valid object
 		var tc = teleportee.get_component("TeleportComponent")  # Try to get a teleport component

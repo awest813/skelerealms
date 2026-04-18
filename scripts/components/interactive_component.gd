@@ -29,9 +29,9 @@ func _init() -> void:
 
 ## Interact with this as the player.
 ## Shorthand for [codeblock] interact("Player") [/codeblock].
-func interact_by_player():
+func interact_by_player() -> void:
 	interacted.emit("Player")
 
 ## Interact with this entity. Pass in the refID of the interactor.
-func interact(refID:String):
+func interact(refID:String) -> void:
 	interacted.emit(refID)

@@ -11,7 +11,7 @@ func receive_message(msg:StringName, args:Array = []) -> void:
 		damage(args[0])
 
 
-func damage(info:DamageInfo):
+func damage(info:DamageInfo) -> void:
 	damaged.emit(info)
 
 

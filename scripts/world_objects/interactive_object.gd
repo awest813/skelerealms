@@ -14,7 +14,7 @@ signal on_interact(id:String)
 @export var object_name:String = "THING"
 
 
-func interact(id:String):
+func interact(id:String) -> void:
 	on_interact.emit(id)
 
 

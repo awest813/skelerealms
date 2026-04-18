@@ -16,7 +16,7 @@ func _init() -> void:
 	name = "PuppetSpawnerComponent"
 
 
-func _ready():
+func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 	super._ready()
@@ -38,7 +38,7 @@ func _on_exit_scene() -> void:
 
 
 ## Spawn a new puppet.
-func spawn():
+func spawn() -> void:
 	var n:Node3D
 	if not prefab and get_child_count() > 0:
 		var ps: PackedScene = PackedScene.new()
@@ -58,7 +58,7 @@ func spawn():
 
 
 ## Despawn a puppet.
-func despawn():
+func despawn() -> void:
 	printe("despawned.")
 	if not prefab:
 		var ps: PackedScene = PackedScene.new()
@@ -72,6 +72,6 @@ func despawn():
 
 
 ## Set the puppet's position.
-func set_puppet_position(pos:Vector3):
+func set_puppet_position(pos:Vector3) -> void:
 	if not puppet == null:
 		(puppet as Node3D).position = pos

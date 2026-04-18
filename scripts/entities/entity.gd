@@ -46,7 +46,7 @@ func _init() -> void:
 		c._entity_ready()
 
 
-func _ready():
+func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 	add_to_group("savegame_entity")
@@ -61,7 +61,7 @@ func _enter_tree() -> void:
 
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta):
+func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	_should_be_in_scene()
@@ -73,7 +73,7 @@ func _process(delta):
 
 
 ## Determine that this entity should be in scene
-func _should_be_in_scene():
+func _should_be_in_scene() -> void:
 	if supress_spawning:
 		in_scene = false
 		return
@@ -92,7 +92,7 @@ func _should_be_in_scene():
 	in_scene = true
 
 
-func _on_set_position(p:Vector3):
+func _on_set_position(p:Vector3) -> void:
 	position = p
 
 

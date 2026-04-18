@@ -67,7 +67,7 @@ var _coven_matrix: Control
 var _save_inspector: Control
 
 
-func _enter_tree():
+func _enter_tree() -> void:
 	# Run pending project-level migrations before any other plugin setup so
 	# autoloads and inspector plugins see the already-upgraded ProjectSettings.
 	_run_plugin_migrations()
@@ -183,7 +183,7 @@ func _enter_tree():
 	add_control_to_container(EditorPlugin.CONTAINER_TOOLBAR, edit_button)
 
 
-func _exit_tree():
+func _exit_tree() -> void:
 	# gizmos
 	remove_node_3d_gizmo_plugin(point_gizmo)
 	remove_inspector_plugin(door_jump_plugin)
@@ -458,6 +458,6 @@ func _change_cost(text:String) -> void:
 	push_warning("must select two connected nodes")
 
 
-func _redraw_gizmo():
+func _redraw_gizmo() -> void:
 	if _target_node:
 		_target_node.update_gizmos()

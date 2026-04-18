@@ -63,7 +63,7 @@ func get_disk_data_for_entity(id: StringName) -> String:
 	return ""
 
 
-func _cache_entities(path: String):
+func _cache_entities(path: String) -> void:
 	var dir = DirAccess.open(path)
 	if dir:
 		dir.list_dir_begin()
@@ -90,7 +90,7 @@ func _add_entity_raw(e: SKEntity) -> SKEntity:
 
 
 ## ONLY call after save!!!
-func _cleanup_stale_entities():
+func _cleanup_stale_entities() -> void:
 	for c in get_children():
 		if (
 			(c as SKEntity).stale_timer

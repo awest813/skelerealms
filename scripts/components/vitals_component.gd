@@ -25,14 +25,14 @@ signal vitals_updated(data:Dictionary)
 ## Rate at which magica (will) regenerates per second. Set to 0 to disable.
 @export var will_recharge_rate:float = 1.0
 ## Health, stamina, magica, and max of values.
-var vitals = {
-	"health" = 100.0,
-	"moxie" = 100.0,
-	"will" = 100.0,
-	"max_health" = 100.0,
-	"max_moxie" = 100.0,
-	"max_will" = 100.0,
-	"return_to_will" = 0.0,
+var vitals:Dictionary[String, float] = {
+	"health": 100.0,
+	"moxie": 100.0,
+	"will": 100.0,
+	"max_health": 100.0,
+	"max_moxie": 100.0,
+	"max_will": 100.0,
+	"return_to_will": 0.0,
 }:
 	get:
 		return vitals
@@ -140,7 +140,7 @@ func save() -> Dictionary:
 	}
 
 
-func load_data(data:Dictionary):
+func load_data(data:Dictionary) -> void:
 	# Merge loaded values into current vitals so missing keys keep defaults
 	for key in ["health", "moxie", "will", "max_health", "max_moxie", "max_will", "return_to_will"]:
 		if data.has(key):

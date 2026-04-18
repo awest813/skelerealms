@@ -141,7 +141,7 @@ func _heuristic(a: NavNode, end:NavNode) -> float:
 ## Retry any portal connections that failed during initial load because the
 ## destination world was not yet available. Call after all networks have been
 ## loaded or when a new world is dynamically added.
-func _load():
+func _load() -> void:
 	if _pending_portal_edges.is_empty():
 		return
 	var still_pending:Array = []
@@ -217,7 +217,7 @@ func nearest_point(pt:NavPoint) -> NavNode:
 	return current_closest
 
 
-func construct_tree(points:Array[NavPoint]):
+func construct_tree(points:Array[NavPoint]) -> void:
 	# this constructs a KD tree.
 	
 	# 1) sort into worlds
@@ -315,7 +315,7 @@ func connect_nodes(a:NavNode, b:NavNode, cost:float) -> void:
 
 
 ## Build a series of KD Trees from [Netowrk]s. Dictionary assumes the key is the world name, and the value is the network.
-func _load_from_networks(data:Dictionary):
+func _load_from_networks(data:Dictionary) -> void:
 	# NavNode/NavWorld are now RefCounted (not scene tree Nodes), eliminating
 	# per-object Godot Node overhead.  A further optimization to packed arrays
 	# with integer indices is possible but deferred for readability.

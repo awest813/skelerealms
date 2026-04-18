@@ -44,7 +44,7 @@ const StealthDetectorModule = preload("default_stealth_detection.gd")
 ## Thread for an NPC to keep watch when alerted
 var vigilant_thread:Thread
 ## Set to true to stop [member vigilant_thread]
-var pull_out_of_thread = false
+var pull_out_of_thread:bool = false
 ## Whether this NPC is currently investigating a position.
 var _investigating: bool = false
 

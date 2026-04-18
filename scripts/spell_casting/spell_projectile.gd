@@ -7,7 +7,7 @@ extends RigidBody3D
 signal hit_target(target:Node3D)
 
 
-func _ready():
+func _ready() -> void:
 	body_entered.connect(func(x:Node3D):
 		hit_target.emit(x)
 	)

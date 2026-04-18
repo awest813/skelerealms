@@ -36,7 +36,7 @@ func _ready() -> void:
 ## Move all unpunished crimes to punished crimes.
 ## [annotation @rpc] — authority-only: only the server should mark crimes as punished.
 @rpc("authority", "reliable")
-func punish_crimes(coven:StringName):
+func punish_crimes(coven:StringName) -> void:
 	if not crimes.has(coven):
 		return
 	crimes[coven]["punished"].append_array(crimes[coven]["unpunished"])
@@ -46,7 +46,7 @@ func punish_crimes(coven:StringName):
 ## Report a crime. The caller is also added as a witness.
 ## [annotation @rpc] — any peer can report witnessing a crime; server processes it.
 @rpc("any_peer", "call_local", "reliable")
-func add_crime(crime:Crime, witness:StringName):
+func add_crime(crime:Crime, witness:StringName) -> void:
 	crime_queue[crime] = true
 	crime.witnesses.append(witness)
 

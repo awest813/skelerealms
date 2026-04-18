@@ -23,7 +23,7 @@ func save() -> Dictionary:
 	return attributes
 
 
-func load_data(data:Dictionary):
+func load_data(data:Dictionary) -> void:
 	attributes = data
 	dirty = false
 

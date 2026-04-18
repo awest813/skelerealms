@@ -10,7 +10,7 @@ extends Node3D
 ## Finds every node of group "audio_listener" within [param range] units and
 ## calls [code]heard_audio(self)[/code] on each one.
 ## Uses direct distance checks against group members instead of physics queries.
-func send_play_event(range:float):
+func send_play_event(range:float) -> void:
 	var listeners := get_tree().get_nodes_in_group("audio_listener")
 	var range_sq := range * range
 	for listener in listeners:

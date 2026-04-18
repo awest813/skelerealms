@@ -21,11 +21,11 @@ const DEFAULT_ALLIED_AT: int = 60
 ## ID for this coven. Also used as a key in translations. See [member coven_name].
 @export var coven_id:StringName
 ## The opinion this coven has of other covens. The dictionary shopuld be of StringName:int.
-@export var other_coven_opinions:Dictionary
+@export var other_coven_opinions:Dictionary[StringName, int] = {}
 ## Whether the player should see this in the menu if they are a part of the coven.
 @export var hidden_from_player:bool
 ## The ranks of this coven. Shape is int:String, where key is the rank, and value is the translation key for the rank.
-@export var ranks:Dictionary
+@export var ranks:Dictionary[int, String] = {}
 @export_category("Crime")
 ## Whether members of this coven ignore crimes perpetrated to other members.
 @export var ignore_crimes_against_others:bool = false

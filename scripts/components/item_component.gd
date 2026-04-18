@@ -121,7 +121,7 @@ func _update_interact_verb() -> void:
 		inv.interact_verb = "STEAL"
 
 
-func _process(delta):
+func _process(delta:float) -> void:
 	if Engine.is_editor_hint():
 		return
 	if in_inventory:
@@ -132,7 +132,7 @@ func _process(delta):
 
 
 ## Move this to another inventory. Adds and removes the item from the inventories.
-func move_to_inventory(refID:StringName):
+func move_to_inventory(refID:StringName) -> void:
 	# remove from inventory if we are in one
 	if in_inventory:
 		SKEntityManager.instance\
@@ -158,7 +158,7 @@ func move_to_inventory(refID:StringName):
 
 
 ## Drop this on the ground.
-func drop():
+func drop() -> void:
 	var e:SKEntity = SKEntityManager.instance.get_entity(contained_inventory)
 	# Use the entity's forward direction (-Z in Godot) for drop direction
 	var drop_forward := -Basis(e.quaternion).z.normalized()
@@ -202,7 +202,7 @@ func drop():
 
 
 ## Interact with this item. Called from [InteractiveComponent].
-func interact(interacted_refID):
+func interact(interacted_refID:StringName) -> void:
 	move_to_inventory(interacted_refID)
 	if _is_theft_for(interacted_refID):
 		stolen = true
@@ -243,7 +243,7 @@ func save() -> Dictionary:
 	}
 
 
-func load_data(data:Dictionary):
+func load_data(data:Dictionary) -> void:
 	var ci = data.get("contained_inventory", null)
 	if ci != null:
 		contained_inventory = StringName(ci)

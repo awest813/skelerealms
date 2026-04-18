@@ -8,9 +8,9 @@ extends Node3D
 signal hit_with_spell(sp:Spell)
 
 
-func hit(sp:Spell):
+func hit(sp:Spell) -> void:
 	hit_with_spell.emit(sp)
 
 
-func apply_effect(eff:StringName):
+func apply_effect(eff:StringName) -> void:
 	status_effects.add_effect(eff)
