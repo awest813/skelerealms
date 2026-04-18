@@ -3,13 +3,22 @@ extends Resource
 ## Defines a single objective node within a quest graph.
 
 
+## How prerequisite completion is evaluated before this node activates.
+enum JoinMode {
+	ALL,  ## Every prerequisite must be completed (default AND-join).
+	ANY,  ## At least one prerequisite must be completed (OR-join).
+}
+
+
 ## Unique ID for this node within the quest.
 @export var id: StringName
 ## Human-readable description of the objective (can be a translation key).
+## Supports [code]{variable}[/code] placeholders resolved at activation time.
 @export var description: String
 ## What kind of event completes this node.
 @export_enum("kill", "pickup", "talk", "custom") var trigger_type: String = "custom"
 ## The target entity/item ref-ID that the trigger applies to.
+## Supports [code]{variable}[/code] placeholders resolved at activation time.
 @export var target_id: StringName
 ## How many times the trigger must fire to complete this node.
 @export var required_count: int = 1
@@ -18,3 +27,7 @@ extends Resource
 ## Explicit next nodes to activate when this node completes.
 ## If empty, the engine activates any node whose prerequisites are now met.
 @export var next_node_ids: Array[StringName] = []
+## How prerequisites are joined.  [code]ALL[/code] (default) requires every
+## prerequisite to be completed.  [code]ANY[/code] activates this node as soon
+## as any single prerequisite completes.
+@export var join_mode: JoinMode = JoinMode.ALL

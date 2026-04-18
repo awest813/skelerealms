@@ -318,3 +318,185 @@ func test_validate_two_step_quest_is_valid() -> void:
 	var report := engine.validate_graph(&"test_two_step")
 	assert_true(report.valid,
 		"Two-step sequential quest should pass validation. Issues: %s" % str(report.issues))
+
+
+# ── Template parameters ───────────────────────────────────────────────────
+
+
+## Build a template quest with {target} and {count_text} placeholders.
+func _make_template_quest() -> QuestDefinition:
+	var node := QuestNodeDefinition.new()
+	node.id = &"kill_target"
+	node.description = "Kill {count_text} {target}s"
+	node.trigger_type = "kill"
+	node.target_id = &"{target}"
+	node.required_count = 3
+
+	var def := QuestDefinition.new()
+	def.id = &"test_template"
+	def.quest_name = "Hunt the {target}"
+	def.description = "Slay {count_text} {target}s for a reward."
+	def.nodes = [node]
+	def.parameters = {"target": "wolf", "count_text": "three"}
+	def.xp_reward = 50
+	return def
+
+
+func test_activate_with_default_params_resolves_placeholders() -> void:
+	var engine := _make_engine_with(_make_template_quest())
+	engine.activate_quest(&"test_template")
+
+	var def: QuestDefinition = engine._definitions.get(&"test_template")
+	assert_eq(def.quest_name, "Hunt the wolf")
+	assert_eq(def.description, "Slay three wolfs for a reward.")
+	assert_eq(str(def.nodes[0].target_id), "wolf")
+	assert_eq(def.nodes[0].description, "Kill three wolfs")
+
+
+func test_activate_with_override_params() -> void:
+	var def := _make_template_quest()
+	var engine := QuestGraphEngine.new()
+	engine.register_quest(def)
+	engine.activate_quest_with_params(&"test_template", {"target": "bear"})
+
+	var resolved_def: QuestDefinition = engine._definitions.get(&"test_template")
+	assert_eq(resolved_def.quest_name, "Hunt the bear")
+	assert_eq(str(resolved_def.nodes[0].target_id), "bear")
+
+
+func test_template_quest_events_match_resolved_target() -> void:
+	var engine := _make_engine_with(_make_template_quest())
+	engine.activate_quest(&"test_template")
+
+	# "wolf" not "{target}" should be the active target_id after resolution
+	var results := engine.apply_event(QuestEvent.new("kill", &"wolf", 3))
+	assert_eq(results.size(), 1)
+	assert_true(results[0].quest_completed)
+
+
+func test_template_quest_wrong_target_does_not_match() -> void:
+	var engine := _make_engine_with(_make_template_quest())
+	engine.activate_quest(&"test_template")
+
+	# Literal placeholder name should NOT match
+	var results := engine.apply_event(QuestEvent.new("kill", &"{target}", 3))
+	assert_eq(results.size(), 0)
+
+
+# ── "Any" join mode ───────────────────────────────────────────────────────
+
+
+## Build a quest where two branches lead to a final node with ANY join:
+##   branch_a ──┐
+##              ├── (ANY) → final_step
+##   branch_b ──┘
+func _make_any_join_quest() -> QuestDefinition:
+	var branch_a := QuestNodeDefinition.new()
+	branch_a.id = &"branch_a"
+	branch_a.trigger_type = "kill"
+	branch_a.target_id = &"wolf"
+	branch_a.required_count = 1
+
+	var branch_b := QuestNodeDefinition.new()
+	branch_b.id = &"branch_b"
+	branch_b.trigger_type = "kill"
+	branch_b.target_id = &"bear"
+	branch_b.required_count = 1
+
+	var final_step := QuestNodeDefinition.new()
+	final_step.id = &"final_step"
+	final_step.trigger_type = "talk"
+	final_step.target_id = &"captain"
+	final_step.required_count = 1
+	final_step.prerequisites = [&"branch_a", &"branch_b"]
+	final_step.join_mode = QuestNodeDefinition.JoinMode.ANY
+
+	var def := QuestDefinition.new()
+	def.id = &"test_any_join"
+	def.quest_name = "Any Join Test"
+	def.nodes = [branch_a, branch_b, final_step]
+	def.completion_node_ids = [&"final_step"]
+	def.xp_reward = 200
+	return def
+
+
+func test_any_join_activates_after_one_prereq() -> void:
+	var engine := _make_engine_with(_make_any_join_quest())
+	engine.activate_quest(&"test_any_join")
+
+	# Complete only branch_a
+	var results := engine.apply_event(QuestEvent.new("kill", &"wolf", 1))
+	assert_eq(results.size(), 1)
+	var result: QuestGraphEngine.QuestEventResult = results[0]
+	assert_has(result.completed_node_ids, &"branch_a")
+	assert_has(result.activated_node_ids, &"final_step",
+		"final_step should be activated when ANY prerequisite completes.")
+
+
+func test_any_join_completes_quest_via_single_branch() -> void:
+	var engine := _make_engine_with(_make_any_join_quest())
+	engine.activate_quest(&"test_any_join")
+
+	# Complete branch_b only, then talk to captain
+	engine.apply_event(QuestEvent.new("kill", &"bear", 1))
+	var results := engine.apply_event(QuestEvent.new("talk", &"captain", 1))
+	assert_eq(results.size(), 1)
+	assert_true(results[0].quest_completed)
+	assert_eq(engine.get_quest_status(&"test_any_join"), "completed")
+
+
+## Build an equivalent quest with ALL join (the default) for comparison.
+func _make_all_join_quest() -> QuestDefinition:
+	var branch_a := QuestNodeDefinition.new()
+	branch_a.id = &"branch_a"
+	branch_a.trigger_type = "kill"
+	branch_a.target_id = &"wolf"
+	branch_a.required_count = 1
+
+	var branch_b := QuestNodeDefinition.new()
+	branch_b.id = &"branch_b"
+	branch_b.trigger_type = "kill"
+	branch_b.target_id = &"bear"
+	branch_b.required_count = 1
+
+	var final_step := QuestNodeDefinition.new()
+	final_step.id = &"final_step"
+	final_step.trigger_type = "talk"
+	final_step.target_id = &"captain"
+	final_step.required_count = 1
+	final_step.prerequisites = [&"branch_a", &"branch_b"]
+	# join_mode defaults to ALL
+
+	var def := QuestDefinition.new()
+	def.id = &"test_all_join"
+	def.quest_name = "All Join Test"
+	def.nodes = [branch_a, branch_b, final_step]
+	def.completion_node_ids = [&"final_step"]
+	def.xp_reward = 200
+	return def
+
+
+func test_all_join_does_not_activate_after_one_prereq() -> void:
+	var engine := _make_engine_with(_make_all_join_quest())
+	engine.activate_quest(&"test_all_join")
+
+	# Complete only branch_a
+	var results := engine.apply_event(QuestEvent.new("kill", &"wolf", 1))
+	assert_eq(results.size(), 1)
+	var result: QuestGraphEngine.QuestEventResult = results[0]
+	assert_has(result.completed_node_ids, &"branch_a")
+	# final_step should NOT be activated yet (ALL join requires both)
+	assert_does_not_have(result.activated_node_ids, &"final_step",
+		"final_step must NOT activate until all prerequisites complete (ALL join).")
+
+
+func test_all_join_activates_after_both_prereqs() -> void:
+	var engine := _make_engine_with(_make_all_join_quest())
+	engine.activate_quest(&"test_all_join")
+
+	engine.apply_event(QuestEvent.new("kill", &"wolf", 1))
+	var results := engine.apply_event(QuestEvent.new("kill", &"bear", 1))
+	assert_eq(results.size(), 1)
+	var result: QuestGraphEngine.QuestEventResult = results[0]
+	assert_has(result.activated_node_ids, &"final_step",
+		"final_step should activate after both prerequisites complete.")

@@ -111,10 +111,28 @@ func register_quest(definition: QuestDefinition) -> void:
 
 ## Activate a quest. Returns true if the quest was activated.
 func activate_quest(quest_id: StringName) -> bool:
+	return activate_quest_with_params(quest_id, {})
+
+
+## Activate a quest with template parameter overrides.
+##
+## [param params] is merged on top of the quest's [member QuestDefinition.parameters]
+## defaults.  Every [code]{key}[/code] placeholder in [member QuestDefinition.quest_name],
+## [member QuestDefinition.description], [member QuestNodeDefinition.description],
+## and [member QuestNodeDefinition.target_id] is replaced with the matching value.
+##
+## Returns [code]true[/code] if the quest was activated.
+func activate_quest_with_params(quest_id: StringName, params: Dictionary = {}) -> bool:
 	var definition: QuestDefinition = _definitions.get(quest_id)
 	var state: QuestRuntimeState = _states.get(quest_id)
 	if not definition or not state or state.status == "completed":
 		return false
+
+	# Merge defaults with caller overrides and apply to the definition
+	if not definition.parameters.is_empty() or not params.is_empty():
+		var merged := definition.parameters.duplicate()
+		merged.merge(params, true)
+		_apply_template_params(definition, merged)
 
 	state.status = "active"
 	var start_ids := _get_start_node_ids(definition)
@@ -387,6 +405,16 @@ func _are_prerequisites_completed(node_id: StringName, definition: QuestDefiniti
 		return false
 	if node.prerequisites.is_empty():
 		return true
+
+	if node.join_mode == QuestNodeDefinition.JoinMode.ANY:
+		# OR-join: at least one prerequisite must be completed
+		for prereq: StringName in node.prerequisites:
+			var ps: QuestNodeState = states.get(prereq)
+			if ps and ps.completed:
+				return true
+		return false
+
+	# Default ALL (AND-join): every prerequisite must be completed
 	for prereq: StringName in node.prerequisites:
 		var ps: QuestNodeState = states.get(prereq)
 		if not ps or not ps.completed:
@@ -474,3 +502,25 @@ func _dfs_cycle_check(node_id: StringName, definition: QuestDefinition, color: D
 				return true
 	color[node_id] = BLACK
 	return false
+
+
+## Replace [code]{key}[/code] placeholders in a string with values from [param params].
+static func _resolve_variables(text: String, params: Dictionary) -> String:
+	var result := text
+	for key: String in params:
+		result = result.replace("{%s}" % key, str(params[key]))
+	return result
+
+
+## Apply template parameters to a quest definition's display text and node target IDs.
+func _apply_template_params(definition: QuestDefinition, params: Dictionary) -> void:
+	if params.is_empty():
+		return
+
+	definition.quest_name = _resolve_variables(definition.quest_name, params)
+	definition.description = _resolve_variables(definition.description, params)
+
+	for node: QuestNodeDefinition in definition.nodes:
+		node.description = _resolve_variables(node.description, params)
+		var resolved_target := _resolve_variables(str(node.target_id), params)
+		node.target_id = StringName(resolved_target)

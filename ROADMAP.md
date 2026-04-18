@@ -90,6 +90,7 @@ In-game overlays and tools to accelerate iteration and troubleshooting.
 These pieces landed in the latest milestone:
 
 - **Phase 9 — Architecture Hardening (initial pass)**: four architecture docs (`multiplayer_audit.md`, `thread_safety.md`, `api_stability.md`, `migration_tooling.md`), plus the `PluginMigrationRegistry` class and tests for it. Plugin version bumped to `beta 0.8`.
+- **Phase 10 — External Inspiration Integration**: Ported behaviour tree system from BehaviourToolkit (MIT); added `SKBlackboard` shared AI state store; added quest template variables with `{placeholder}` substitution; added `ANY` join mode for quest node prerequisites.
 - **Phase 8 — Runtime Debugging & Diagnostics**: AI state overlay, navigation debug draw, perception debug draw, quest state inspector, and save file inspector all implemented. Runtime nodes add no overhead when hidden. Editor save inspector wired as a bottom panel in the plugin.
 - **Phase 7 — Editor Tooling**: Visual quest graph editor, dialogue tree editor, and coven relationship matrix all landed as `@tool` editor plugins. Each opens a dedicated popup window from the Godot inspector. The schedule editor (shipped in beta 0.6) completes the set of four authoring tools.
 - Mod-friendly data architecture: `ModManifest` resource and `ModLoader` autoload with manifest-driven override support for covens, quests, and dialogues.
@@ -566,3 +567,70 @@ This phase inherits Camelot's framework-layer maturity (tests, docs, validators)
 | `docs/architecture/migration_tooling.md` | Save-file vs plugin-level migration split and contract |
 | `scripts/system/plugin_migration_registry.gd` | Plugin-version migration runner (project-level state) |
 | `tests/test_plugin_migration_registry.gd` | GUT tests for the registry's run loop |
+
+## Phase 10 — External Inspiration Integration ✅
+
+This phase borrows ideas from three open-source Godot 4 addons, porting the most valuable patterns into Skelerealms' own codebase without introducing external dependencies.
+
+### ~~10A  Behaviour Tree System~~ ✅
+**Inspiration:** [BehaviourToolkit](https://github.com/ThePat02/BehaviourToolkit) (MIT) by ThePat02
+
+Ported a self-contained behaviour tree framework designed to complement the existing GOAP system. GOAP selects *what* to do (high-level goals); behaviour trees handle *how* to do it (fine-grained action execution).
+
+**Classes added:**
+
+| File | Purpose |
+|---|---|
+| `scripts/ai/behaviour_tree/sk_bt_node.gd` | `SKBTNode` — base class with `Status` enum (`SUCCESS`, `FAILURE`, `RUNNING`) and `tick()` method |
+| `scripts/ai/behaviour_tree/sk_bt_leaf.gd` | `SKBTLeaf` — leaf node for custom action/condition logic |
+| `scripts/ai/behaviour_tree/sk_bt_composite.gd` | `SKBTComposite` — base for composite nodes with cached child list |
+| `scripts/ai/behaviour_tree/sk_bt_decorator.gd` | `SKBTDecorator` — base for single-child wrapper nodes |
+| `scripts/ai/behaviour_tree/sk_bt_root.gd` | `SKBTRoot` — tree root with idle/physics process, autostart, actor, and blackboard |
+| `scripts/ai/behaviour_tree/composites/sk_bt_sequence.gd` | `SKBTSequence` — succeeds when all children succeed |
+| `scripts/ai/behaviour_tree/composites/sk_bt_selector.gd` | `SKBTSelector` — succeeds when any child succeeds |
+| `scripts/ai/behaviour_tree/composites/sk_bt_parallel.gd` | `SKBTParallel` — ticks all children; SUCCESS_ON_ALL or SUCCESS_ON_ONE policy |
+| `scripts/ai/behaviour_tree/composites/sk_bt_random.gd` | `SKBTRandom` — randomly selects one child to execute |
+| `scripts/ai/behaviour_tree/decorators/sk_bt_inverter.gd` | `SKBTInverter` — flips SUCCESS ↔ FAILURE |
+| `scripts/ai/behaviour_tree/decorators/sk_bt_always_succeed.gd` | `SKBTAlwaysSucceed` — forces SUCCESS |
+| `scripts/ai/behaviour_tree/decorators/sk_bt_always_fail.gd` | `SKBTAlwaysFail` — forces FAILURE |
+| `scripts/ai/behaviour_tree/decorators/sk_bt_repeat.gd` | `SKBTRepeat` — repeats child N times |
+| `scripts/ai/behaviour_tree/decorators/sk_bt_limiter.gd` | `SKBTLimiter` — limits child to N completions |
+
+### ~~10B  SKBlackboard~~ ✅
+**Inspiration:** BehaviourToolkit's `Blackboard` resource
+
+| File | Purpose |
+|---|---|
+| `scripts/ai/sk_blackboard.gd` | `SKBlackboard` — shared key-value `Resource` with `set_value`, `get_value`, `has_value`, `erase_value`, `clear`, `serialize`/`deserialize`, and `changed` signal |
+
+### ~~10C  Quest Template Variables~~ ✅
+**Inspiration:** [Quest Weaver](https://github.com/undomick/godot_nexus_quest_weaver)'s `{target}`, `{amount}` placeholder system
+
+- `QuestDefinition.parameters: Dictionary` — default placeholder values.
+- `QuestGraphEngine.activate_quest_with_params(quest_id, params)` — merges overrides with defaults and resolves `{key}` in `quest_name`, `description`, and each node's `description` and `target_id`.
+- `QuestSystem.activate_quest_with_params()` — wrapper for the autoload.
+- Existing `activate_quest()` calls pass-through with empty params (fully backward-compatible).
+
+### ~~10D  Quest "Any" Join Mode~~ ✅
+**Inspiration:** Quest Weaver's parallel/synchronize flow nodes
+
+- `QuestNodeDefinition.join_mode` enum (`ALL`, `ANY`).
+- Default `ALL` preserves existing AND-join semantics (every prerequisite must be completed).
+- `ANY` enables OR-join: the node activates as soon as any single prerequisite completes.
+- `_are_prerequisites_completed()` updated to respect `join_mode`.
+
+### ~~10E  Tests~~ ✅
+| File | Purpose |
+|---|---|
+| `tests/test_behaviour_tree.gd` | GUT tests for SKBlackboard, all BT composites, and all BT decorators |
+| `tests/test_quest_graph_engine.gd` | Extended with template variable and ANY/ALL join mode tests |
+
+### GLoot — Reference Notes (no integration)
+**Source:** [GLoot](https://github.com/peter-kish/gloot) by peter-kish
+
+GLoot's inventory model (item stacking, weight/grid constraints, prototype inheritance) is architecturally incompatible with Skelerealms' entity-based item system. However, it serves as an excellent reference for future enhancements:
+
+- **Item stacking** — `stack_size`/`max_stack_size` pattern could be adapted into `ItemComponent`.
+- **Weight/capacity constraints** — could be added as optional exports on `InventoryComponent`.
+- **Grid inventory** — Diablo/Resident Evil style 2D layout, useful reference if ever needed.
+- **Prototype inheritance** — JSON prototree model is elegant for data-driven item definitions.
