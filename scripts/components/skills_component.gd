@@ -37,7 +37,7 @@ func save() -> Dictionary:
 	}
 
 
-func load_data(data:Dictionary):
+func load_data(data:Dictionary) -> void:
 	skills = data.get("skills", skills)
 	var l = data.get("level", -1)
 	if l is float:

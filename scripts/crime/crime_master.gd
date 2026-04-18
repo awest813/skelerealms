@@ -29,7 +29,7 @@ signal crimes_against_covens_updated(affected:Array[StringName])
 signal crime_committed(crime:Crime, position:Vector3)
 
 
-func _ready():
+func _ready() -> void:
 	add_to_group("savegame_gameinfo")
 
 

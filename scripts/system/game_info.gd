@@ -79,7 +79,7 @@ signal game_loading(wid:String)
 signal game_loaded
 
 
-func _ready():
+func _ready() -> void:
 	set_name.call_deferred("GameInfo")
 	add_to_group("savegame_gameinfo")
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -96,7 +96,7 @@ func _ready():
 
 
 ## Puase the game.
-func pause_game(silent:bool = false):
+func pause_game(silent:bool = false) -> void:
 	if command_paused:
 		return
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -108,7 +108,7 @@ func pause_game(silent:bool = false):
 
 
 ## Unpause the game.
-func unpause_game():
+func unpause_game() -> void:
 	if command_paused:
 		return
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -148,7 +148,7 @@ func toggle_console_freeze() -> void:
 		console_freeze()
 
 
-func toggle_pause():
+func toggle_pause() -> void:
 	if not is_game_started:
 		return
 	
@@ -158,7 +158,7 @@ func toggle_pause():
 		pause_game()
 
 
-func _on_timer_complete():
+func _on_timer_complete() -> void:
 	# Increment world time
 	world_time[&"world_time"] += 1
 	# Increment minute
@@ -201,7 +201,7 @@ func save() -> Dictionary:
 	}
 
 
-func load_data(data:Dictionary):
+func load_data(data:Dictionary) -> void:
 	world = StringName(data.get("world", world))
 	var wt = data.get("world_time", null)
 	if wt is Dictionary:

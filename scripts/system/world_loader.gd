@@ -30,7 +30,7 @@ func _enter_tree() -> void:
 		GameInfo.world = get_child(0).name
 
 
-func _ready():
+func _ready() -> void:
 	regex = RegEx.new()
 	regex.compile("([^\\/\n\\r]+)\\.t?scn") 
 	_cache_worlds(ProjectSettings.get_setting("skelerealms/worlds_path"))

@@ -15,7 +15,7 @@ func _init() -> void:
 	name = "PlayerComponent"
 
 
-func _ready():
+func _ready() -> void:
 	($"../TeleportComponent" as TeleportComponent).teleporting.connect(teleport.bind())
 	(parent_entity.get_component("DamageableComponent") as DamageableComponent).damaged.connect(on_damage.bind())
 
@@ -48,7 +48,7 @@ func on_damage(info:DamageInfo) -> void:
 
 
 ## Set the entity's position.
-func set_entity_position(pos:Vector3):
+func set_entity_position(pos:Vector3) -> void:
 	parent_entity.position = pos
 
 
@@ -56,7 +56,7 @@ func set_entity_rotation(q:Quaternion) -> void:
 	parent_entity.quaternion = q
 
 
-func _process(delta):
+func _process(delta: float) -> void:
 	if not parent_entity.world == GameInfo.world:
 		parent_entity.world = GameInfo.world
 	
@@ -71,7 +71,7 @@ func _process(delta):
 
 
 ## Teleport the player.
-func teleport(world:String, pos:Vector3):
+func teleport(world:String, pos:Vector3) -> void:
 	GameInfo.world = world # Set the game's world to destination world
 	parent_entity.world = world # Set this entity world to the destination
 	(%WorldLoader as WorldLoader).load_world(world) # Load world
