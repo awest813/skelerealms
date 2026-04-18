@@ -36,16 +36,20 @@ static func resolve_hit(
 	if combatant and combatant.invincible:
 		return HitResult.INVINCIBLE
 
-	# Parry check
+	# Parry check — parried hits deal no damage and notify the attacker.
 	if combatant and combatant.parrying:
+		combatant.parry_landed.emit(hitbox)
 		return HitResult.PARRIED
-
-	# Block check
-	if combatant and combatant.blocking:
-		return HitResult.BLOCKED
 
 	# Build damage packet
 	var packet := action.build_damage_packet(offender_name, source_weapon)
+
+	# Block check — blocked hits still deal reduced damage and poise damage.
+	var is_blocked := combatant != null and combatant.blocking
+	if is_blocked:
+		for key in packet.damage_effects:
+			packet.damage_effects[key] *= combatant.block_damage_multiplier
+		combatant.block_hit.emit(hitbox)
 
 	# Apply hurtbox region multiplier
 	if not is_zero_approx(hurtbox.damage_multiplier - 1.0):
@@ -61,9 +65,12 @@ static func resolve_hit(
 	if damageable:
 		damageable.damage(packet)
 
-	# Process poise
+	# Process poise (reduced when blocked)
 	if combatant:
-		var poise_broken := combatant.apply_poise_damage(action.poise_damage)
+		var effective_poise_damage := action.poise_damage
+		if is_blocked:
+			effective_poise_damage *= combatant.block_poise_multiplier
+		var poise_broken := combatant.apply_poise_damage(effective_poise_damage)
 		if poise_broken:
 			var csm:CombatStateMachine = target_entity.get_node_or_null("CombatStateMachine") as CombatStateMachine
 			if csm:
@@ -75,6 +82,8 @@ static func resolve_hit(
 	# Notify the hurtbox
 	hurtbox.hurt.emit(hitbox)
 
+	if is_blocked:
+		return HitResult.BLOCKED
 	return HitResult.LANDED
 
 
@@ -109,11 +118,15 @@ static func resolve_hitscan(
 
 	# Check if we hit a hurtbox
 	if collider is SKHurtbox:
-		# Create a temporary hitbox reference for the pipeline
+		# Create a lightweight hitbox reference for the pipeline.
+		# We only need owner_entity_ref for the self-hit check inside
+		# resolve_hit, so a bare RefCounted stand-in is fine.  Using a
+		# real SKHitbox without adding it to the tree caused a silent
+		# leak because queue_free() is a no-op on orphan nodes.
 		var temp_hitbox := SKHitbox.new()
 		temp_hitbox.owner_entity_ref = StringName(offender_name)
 		var hit_result := resolve_hit(temp_hitbox, collider as SKHurtbox, action, offender_name, source_weapon)
-		temp_hitbox.queue_free()
+		temp_hitbox.free()
 		return hit_result
 
 	# If we hit a damageable world object, apply damage directly

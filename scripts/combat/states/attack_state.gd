@@ -8,6 +8,8 @@ extends CombatState
 var _elapsed:float = 0.0
 ## Current phase: 0 = startup, 1 = active, 2 = recovery.
 var _phase:int = 0
+## Combo action queued during the recovery phase (if any).
+var _queued_combo:CombatAction = null
 
 
 func _get_state_name() -> String:
@@ -23,6 +25,7 @@ func enter(msg:Dictionary) -> void:
 	combat_machine._current_action = action
 	_elapsed = 0.0
 	_phase = 0
+	_queued_combo = null
 
 	# Pay resource cost
 	var vitals:VitalsComponent = combat_machine.entity.get_component("VitalsComponent")
@@ -59,7 +62,32 @@ func update(delta:float) -> void:
 			if _elapsed >= action.recovery_duration:
 				combat_machine.attack_finished.emit(action)
 				combat_machine._current_action = null
-				state_machine.transition("Idle")
+				# If a combo was queued during recovery, chain into it
+				if _queued_combo:
+					var combo := _queued_combo
+					_queued_combo = null
+					state_machine.transition("Idle")
+					combat_machine.execute_action(combo)
+				else:
+					state_machine.transition("Idle")
+
+
+## Queue a combo follow-up during the recovery phase. The action must
+## appear in the current action's [member CombatAction.combo_links].
+func queue_combo(action:CombatAction) -> bool:
+	if _phase != 2:
+		return false
+	var current := combat_machine._current_action
+	if not current:
+		return false
+	if not current.combo_links.has(action.id):
+		return false
+	# Ensure the entity can afford it
+	var vitals:VitalsComponent = combat_machine.entity.get_component("VitalsComponent")
+	if vitals and not action.can_afford(vitals):
+		return false
+	_queued_combo = action
+	return true
 
 
 func exit() -> void:
@@ -67,3 +95,4 @@ func exit() -> void:
 	combat_machine.hitbox_active.emit(false)
 	_phase = 0
 	_elapsed = 0.0
+	_queued_combo = null

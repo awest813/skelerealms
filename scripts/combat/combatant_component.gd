@@ -17,6 +17,10 @@ signal invincibility_changed(active:bool)
 signal block_state_changed(active:bool)
 ## Emitted when a parry window opens or closes.
 signal parry_state_changed(active:bool)
+## Emitted when a block absorbs a hit. The attacking hitbox is passed for recoil/feedback.
+signal block_hit(hitbox:SKHitbox)
+## Emitted when a parry successfully deflects a hit. The attacking hitbox is passed.
+signal parry_landed(hitbox:SKHitbox)
 
 @export_category("Poise")
 ## Maximum poise value. Poise depletes when hit; at zero the entity staggers.
@@ -31,6 +35,12 @@ signal parry_state_changed(active:bool)
 ## values are multipliers (1.0 = full damage, 0.5 = half, 0.0 = immune).
 ## Any damage type not listed uses 1.0.
 @export var resistances:Dictionary = {}
+
+@export_category("Block")
+## Damage multiplier applied when the entity is blocking (0.0 = full mitigation, 1.0 = no reduction).
+@export var block_damage_multiplier:float = 0.25
+## Poise-damage multiplier applied when the entity is blocking.
+@export var block_poise_multiplier:float = 0.5
 
 ## Current poise value.
 var poise:float
@@ -152,13 +162,13 @@ func gather_debug_info() -> String:
 [b]CombatantComponent[/b]
 	Poise: %.1f / %.1f (broken: %s)
 	Invincible: %s
-	Blocking: %s
+	Blocking: %s (damage×%.2f, poise×%.2f)
 	Parrying: %s
 	Resistances: %s
 """ % [
 	poise, max_poise, _poise_is_broken,
 	invincible,
-	blocking,
+	blocking, block_damage_multiplier, block_poise_multiplier,
 	parrying,
 	str(resistances),
 ]

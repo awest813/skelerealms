@@ -1,3 +1,4 @@
+class_name CombatActionModule
 extends AIModule
 ## AI module that selects which [CombatAction] to execute during combat.
 ##
@@ -37,7 +38,11 @@ func initialize() -> void:
 
 
 func _process(delta:float) -> void:
+	if not _npc:
+		return
 	if not _npc.in_combat:
+		return
+	if not _npc.parent_entity or not _npc.parent_entity.in_scene:
 		return
 	if not _combat_state_machine:
 		return
