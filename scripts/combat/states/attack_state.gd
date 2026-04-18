@@ -62,7 +62,10 @@ func update(delta:float) -> void:
 			if _elapsed >= action.recovery_duration:
 				combat_machine.attack_finished.emit(action)
 				combat_machine._current_action = null
-				# If a combo was queued during recovery, chain into it
+				# If a combo was queued during recovery, chain into it.
+				# We must transition to Idle first so the exit() cleanup
+				# runs (disabling hitboxes, resetting phase) before the
+				# new attack's enter() fires.
 				if _queued_combo:
 					var combo := _queued_combo
 					_queued_combo = null
@@ -88,6 +91,11 @@ func queue_combo(action:CombatAction) -> bool:
 		return false
 	_queued_combo = action
 	return true
+
+
+## Whether this attack state is in its recovery phase (combo window open).
+func is_in_recovery_phase() -> bool:
+	return _phase == 2
 
 
 func exit() -> void:

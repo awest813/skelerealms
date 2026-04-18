@@ -109,7 +109,7 @@ func queue_combo(action:CombatAction) -> bool:
 ## Whether the current state is in a recovery phase that accepts combo input.
 func is_in_combo_window() -> bool:
 	if state is CombatAttackState:
-		return (state as CombatAttackState)._phase == 2
+		return (state as CombatAttackState).is_in_recovery_phase()
 	return false
 
 
