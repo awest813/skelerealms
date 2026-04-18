@@ -2,7 +2,19 @@
 
 ## Current Version Target
 
-**beta 0.8** (Godot 4 open-world RPG framework plugin)
+**beta 0.9** (Godot 4.4+ open-world RPG framework plugin)
+
+### Godot Version
+
+- **Minimum:** Godot **4.4**
+- **Recommended:** latest Godot 4.4.x stable
+
+### Godot 4.4 Compatibility Notes
+
+- **Physics backend:** Skelerealms is compatible with both Godot Physics and the bundled Jolt physics engine. All raycasting (`PhysicsRayQueryParameters3D.create()` in the editor network tool and NPC perception) and Area3D collision (hitbox/hurtbox) use the standard API and are backend-agnostic.
+- **3D Physics Interpolation:** Godot 4.4 adds opt-in 3D physics interpolation via the `physics/3d/physics_interpolation` project setting. Enabling this can smooth NPC puppet movement when positions are updated in `_physics_process`. This is a project-level setting — Skelerealms does not enable it by default.
+- **Typed Dictionaries:** Core framework dictionaries use `Dictionary[K, V]` syntax (Godot 4.4 feature) for improved type safety and Inspector editing.
+- **FileAccess return values:** `store_string()` and `flush()` now return error status; `SaveSystem` checks these to detect write failures.
 
 ---
 
