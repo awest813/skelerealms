@@ -74,6 +74,7 @@ func apply_stagger(duration:float = CombatStaggerState.DEFAULT_STAGGER_DURATION)
 	# Can stagger from any state except death
 	if state and state.name == "Death":
 		return
+	_current_action = null
 	transition("Stagger", {"duration": duration})
 
 
@@ -81,17 +82,35 @@ func apply_stagger(duration:float = CombatStaggerState.DEFAULT_STAGGER_DURATION)
 func apply_knockdown(duration:float = CombatKnockdownState.DEFAULT_KNOCKDOWN_DURATION) -> void:
 	if state and state.name == "Death":
 		return
+	_current_action = null
 	transition("Knockdown", {"duration": duration})
 
 
 ## Transition to the death state.
 func die() -> void:
+	_current_action = null
 	transition("Death")
 
 
 ## Whether the entity can currently execute an action.
 func can_act() -> bool:
 	return state != null and state.name == "Idle"
+
+
+## Queue a combo follow-up while the current attack is in recovery.
+## Returns false if the entity is not in an attack/cast recovery phase,
+## or the action is not a valid combo link.
+func queue_combo(action:CombatAction) -> bool:
+	if state is CombatAttackState:
+		return (state as CombatAttackState).queue_combo(action)
+	return false
+
+
+## Whether the current state is in a recovery phase that accepts combo input.
+func is_in_combo_window() -> bool:
+	if state is CombatAttackState:
+		return (state as CombatAttackState).is_in_recovery_phase()
+	return false
 
 
 ## Get the name of the current combat state.

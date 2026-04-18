@@ -342,7 +342,7 @@ Built-in combat layer providing the building blocks for Skyrim-ish melee, Fallou
 | `hitbox.gd` | `SKHitbox` | `Area3D` wrapper for weapon/projectile hit detection. Deduplicates hits per swing. |
 | `hurtbox.gd` | `SKHurtbox` | `Area3D` wrapper for body-region damage reception. Supports locational damage multipliers. |
 | `hit_pipeline.gd` | `HitPipeline` | Stateless utility resolving melee (hitbox/hurtbox overlap) and hitscan (raycast) hits through invincibility/block/parry checks, resistance application, poise damage, and damage delivery via `DamageableComponent`. |
-| `combat_action_module.gd` | (extends `AIModule`) | AI module selecting which `CombatAction` to execute based on distance, resources, and target state. Integrates with `CombatStateMachine` and existing GOAP combat objectives. |
+| `combat_action_module.gd` | `CombatActionModule` | AI module selecting which `CombatAction` to execute based on distance, resources, and target state. Integrates with `CombatStateMachine` and existing GOAP combat objectives. |
 
 **Integration points:**
 - `DamageableComponent.damage()` remains the entry point — `HitPipeline` calls it
@@ -350,6 +350,22 @@ Built-in combat layer providing the building blocks for Skyrim-ish melee, Fallou
 - `NPCComponent` combat signals (`entered_combat`, `left_combat`) wire to `CombatStateMachine` transitions
 - Existing spell system (`SpellHand`, `SpellProjectile`) can drive `CombatAction` spell types
 - `PuppetSpawnerComponent` puppets gain `SKHitbox`/`SKHurtbox` `Area3D` children
+
+#### Combat Module Audit
+
+Targeted audit pass over the Phase 11 combat subsystem.
+
+| ID | Issue | Fix |
+|---|---|---|
+| A | `HitPipeline.resolve_hit()` returned `BLOCKED` but skipped all damage — blocks had the same effect as invincibility. | Blocked hits now deal `block_damage_multiplier` × normal damage and `block_poise_multiplier` × poise damage. New `block_hit(hitbox)` signal on `CombatantComponent`. |
+| B | Parry returned `PARRIED` with no follow-up — no signal or callback for attacker stagger/feedback. | Parried hits now emit `parry_landed(hitbox)` on `CombatantComponent` so puppets or AI can react (e.g., attacker stagger). |
+| C | `HitPipeline.resolve_hitscan()` created an `SKHitbox.new()` and called `queue_free()`, but the node was never added to the scene tree — `queue_free()` is a no-op on orphan nodes. Silent memory leak on every hitscan shot. | Changed to `free()` for immediate deterministic cleanup. |
+| D | `CombatStateMachine.apply_stagger/apply_knockdown/die` did not clear `_current_action`, leaving stale state after interrupts. | All three methods now set `_current_action = null` before transitioning. |
+| E | `combat_action_module.gd` lacked a `class_name`, unlike every other combat class. | Added `class_name CombatActionModule`. |
+| F | `CombatActionModule._process()` ran even when the NPC entity was not in scene, wasting cycles on off-screen entities. | Added `_npc` null-check and `parent_entity.in_scene` guard. |
+| G | `CombatantComponent` poise regen uses `_physics_process` while the FSM ticks states in `_process`. | No change — `_physics_process` is appropriate for continuous simulation (poise regen), `_process` for discrete state transitions. Documented. |
+| H | `DefaultDamageModule` applies its own per-export modifiers independently of `CombatantComponent.resistances`. When both are present, resistances are applied twice (once in `HitPipeline`, once in `DefaultDamageModule`). | No code change — `DefaultDamageModule` is the legacy approach; projects should use one or the other, not both. Documented. |
+| I | `CombatAction.combo_links` and `is_combo_starter` fields existed but were never checked — no combo window implementation. | `CombatAttackState` now accepts `queue_combo(action)` during recovery phase. `CombatStateMachine` exposes `queue_combo()` and `is_in_combo_window()` public API. Queued combos chain automatically when recovery ends. |
 
 #### UI Framework (`scripts/ui/`)
 
