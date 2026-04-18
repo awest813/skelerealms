@@ -242,3 +242,25 @@ func test_list_saves_returns_empty_when_no_dir() -> void:
 	# list_saves should at minimum not crash.
 	var saves := ss.list_saves()
 	assert_true(saves is Array)
+
+
+# ── _saving guard ────────────────────────────────────────────────────────────
+
+
+func test_saving_flag_starts_false() -> void:
+	var ss := _make_save_system()
+	assert_false(ss._saving, "_saving flag should start as false.")
+
+
+func test_saving_flag_remains_true_when_concurrent_save_rejected() -> void:
+	# Manually set the flag and verify the guard logic path resets correctly
+	# when a concurrent save would be rejected.
+	var ss := _make_save_system()
+	ss._saving = true
+	# A second save() call while _saving is true should push_warning and return
+	# without crashing. We can't easily test the signal was not emitted here, but
+	# we can verify the flag is still true (not reset by the aborted call).
+	ss.save("test_slot")
+	assert_true(ss._saving,
+		"_saving flag should remain true when a concurrent save is rejected.")
+	ss._saving = false  # clean up

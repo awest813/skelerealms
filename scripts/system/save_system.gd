@@ -34,6 +34,10 @@ signal load_complete
 ## Each callable receives a Dictionary and returns the migrated Dictionary.
 var _migrations: Dictionary = {}
 
+## Guard flag — true while a save is in progress.
+## Prevents concurrent or re-entrant saves that could corrupt the file.
+var _saving: bool = false
+
 
 func _ready() -> void:
 	# Register built-in migrations
@@ -49,7 +53,13 @@ func register_migration(from_version: int, migration: Callable) -> void:
 ## Save the game and write it to user://saves directory.
 ## [param slot_name]: optional name for the save slot (e.g. "quicksave", "slot_1").
 ## If empty, falls back to a datetime string.
+## Returns without saving if a save is already in progress.
 func save(slot_name: String = ""):
+	if _saving:
+		push_warning("SaveSystem: save() called while a save is already in progress. Ignoring.")
+		return
+	_saving = true
+
 	var save_data = {
 		"schema_version": SAVE_SCHEMA_VERSION,
 		"game_info" : {}, # info about the game, like playtime, quests, etc
@@ -94,12 +104,33 @@ func save(slot_name: String = ""):
 		file_name = "%s.dat" % Time.get_datetime_string_from_system().replace(":", "")
 	else:
 		file_name = "%s.dat" % slot_name
-	# Create savegame file
-	var file = FileAccess.open("user://saves/%s" % file_name, FileAccess.WRITE)
+
+	# Write to a temporary file first, then rename to the final path.
+	# This ensures a crash or error during writing cannot corrupt an existing
+	# save file — the final .dat is only replaced once the write is complete.
+	var tmp_name: String = file_name.replace(".dat", ".tmp")
+	var file = FileAccess.open("user://saves/%s" % tmp_name, FileAccess.WRITE)
+	if not file:
+		push_error("SaveSystem: Failed to open tmp file for writing: 'user://saves/%s'." % tmp_name)
+		_saving = false
+		return
 	file.store_string(save_text)
-	# I think these two are redundant but I wanna be safe
 	file.flush()
 	file.close()
+
+	# Atomically rename .tmp -> .dat, replacing any existing save for this slot.
+	var dir := DirAccess.open("user://saves/")
+	if not dir:
+		push_error("SaveSystem: Failed to open saves directory for rename operation.")
+		_saving = false
+		return
+	var err := dir.rename(tmp_name, file_name)
+	if err != OK:
+		push_error("SaveSystem: Failed to rename '%s' to '%s' (error %d)." % [tmp_name, file_name, err])
+		_saving = false
+		return
+
+	_saving = false
 	save_complete.emit()
 
 

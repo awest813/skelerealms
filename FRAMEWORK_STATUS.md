@@ -250,13 +250,15 @@ Ordered by dependency depth and severity. Fix broken systems before building on 
 37. **~~NavMaster debug print cleanup~~** ✅ — Removed 6 remaining bare `print()` calls from `navigation_master.gd` (`add_point`, `_load_from_networks`, `_load_from_disk`, `load_all_networks`). One deferred-connection message converted to `push_warning()`.
 38. **~~Performance test suite~~** ✅ — Added `tests/test_perf_optimizations.gd` with GUT tests covering: binary heap ordering (ascending, single-element, duplicate scores, large input), GOAP dirty-flag tracking (add/remove/empty-remove), action cache rebuild, and entity fade-distance cache initialization.
 
-### Phase 9 — Architecture Hardening (initial pass) ✅
+### Phase 9 — Architecture Hardening ✅
 
 39. **~~Multiplayer-readiness audit~~** ✅ — `docs/architecture/multiplayer_audit.md` catalogues every session-scoped autoload, shared mutable resource, and player-singleton assumption. No code changes — documentation only — so a future co-op fork has a starting map.
 40. **~~Thread-safety review~~** ✅ — `docs/architecture/thread_safety.md` defines the main-thread rule and lists every concurrency hazard (`SaveSystem.save()` file-write race, `SKEntityManager` dictionary writes, `CrimeMaster.crime_queue` producer/consumer, `NavMaster` graph mutations during path queries). Safe-to-thread operations enumerated.
 41. **~~API stability tiers~~** ✅ — `docs/architecture/api_stability.md` classifies every autoload entry point, core class, save-schema key, project-setting, and group name into `Stable` / `Beta` / `Internal`. Post-1.0 deprecation policy locked.
 42. **~~Plugin version bump~~** ✅ — `plugin.cfg` and `skelerealms.gd` updated to `beta 0.8`; `PLUGIN_VERSION` constant added for migration registry and future tooling.
 43. **~~Plugin migration registry~~** ✅ — `scripts/system/plugin_migration_registry.gd` runs one-shot migrations on editor start, keyed by the `skelerealms/__installed_version` setting, so consumers upgrading the plugin in-place don't have to hand-patch their `project.godot`. Contract and example documented in `docs/architecture/migration_tooling.md`; GUT tests in `tests/test_plugin_migration_registry.gd`.
+44. **~~SaveSystem crash safety~~** ✅ — Added `_saving: bool` guard to prevent re-entrant/concurrent saves (pushes warning and returns on second call). Converted write path to tmp-file + rename: data is serialised to `<slot>.tmp` then atomically renamed to `<slot>.dat`, so a crash during writing cannot corrupt an existing save file. `tests/test_save_system.gd` extended with guard tests.
+45. **~~`@rpc` annotation pass~~** ✅ — Authority-only state transitions (`QuestSystem.activate_quest`, `activate_quest_with_params`, `apply_event`; `CrimeMaster.punish_crimes`) annotated `@rpc("authority", "reliable")`. Any-peer event reporters (`report_kill`, `report_pickup`, `report_talk`, `report_custom`; `CrimeMaster.add_crime`; `DialogueSystem.end_dialogue`) annotated `@rpc("any_peer", "call_local", "reliable")`. Annotations do not affect single-player behaviour. `multiplayer_audit.md` and `thread_safety.md` updated.
 
 ---
 

@@ -73,6 +73,8 @@ func get_current_node() -> DialogueEngine.DialogueNodeView:
 
 
 ## End the active session early.
+## [annotation @rpc] — any peer can end a dialogue session.
+@rpc("any_peer", "call_local", "reliable")
 func end_dialogue() -> void:
 	if active_session:
 		dialogue_ended.emit(active_session.get_dialogue_id())
