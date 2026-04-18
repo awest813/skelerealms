@@ -41,7 +41,25 @@ These major pieces are already in place:
 
 ## Current priorities
 
-Phase 9 — Architecture Hardening remaining items complete. `_saving` guard and tmp-file+rename landed in `SaveSystem`. Initial `@rpc` annotation pass complete for `QuestSystem`, `CrimeMaster`, and `DialogueSystem`. AssetLib minimal example project remains for 0.9.
+Phase 11 — Combat Subsystem & UI Framework. Both systems are now implemented. The combat layer provides `DamagePacket`, `CombatantComponent`, `CombatAction`, `CombatStateMachine`, hitbox/hurtbox detection, `HitPipeline`, and an AI combat action module. The UI framework provides `SKUIManager` autoload, `SKTheme` resource, HUD/menu shell abstractions, and widget contracts. See `FRAMEWORK_STATUS.md` for the full file listing.
+
+### Phase 11 — Combat Subsystem & UI Framework ✅
+
+1. ✅ **Combat subsystem** — Built-in combat layer in `scripts/combat/` covering:
+   - `DamagePacket` extending `DamageInfo` with crit, hit reactions, damage categories, tags
+   - `CombatantComponent` unifying poise, resistances, block/parry/i-frames
+   - `CombatAction` resource defining attacks/spells with timing, cost, and combos
+   - `CombatStateMachine` with Idle/Attack/Cast/Stagger/Knockdown/Death states
+   - `SKHitbox`/`SKHurtbox` Area3D wrappers with deduplication and locational damage
+   - `HitPipeline` stateless resolver for melee and hitscan hits
+   - AI combat action module for NPC action selection
+2. ✅ **UI framework** — Framework-owned UI structure in `scripts/ui/` with:
+   - `SKUIManager` autoload managing layer stack, menu stack, input mode routing
+   - `SKTheme` resource with RPG color palette, font slots, animation timing
+   - `SKHUDShell` with widget slots for vitals, compass, crosshair, prompts, status effects
+   - `SKMenuShell` with tab/page and popup management
+   - Menu contracts: inventory, dialogue, barter, journal, pause, character
+   - Widget contracts: list item, stat row, tab panel, tooltip, radial selector, prompt bar
 
 ### Phase 9 — Architecture Hardening (0.8 → 0.9 target) ✅
 

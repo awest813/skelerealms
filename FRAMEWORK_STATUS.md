@@ -20,6 +20,7 @@ These singletons are registered by the plugin and are available globally at runt
 | `DeviceNetwork`      | `scripts/misc/device_network.gd`                       | Broadcasts puzzle/device state changes (signals only) |
 | `SpawnTrackerManager`| `scripts/system/spawn_tracker_manager.gd`              | Persists spawn point state across save/load cycles    |
 | `ModLoader`          | `scripts/mods/mod_loader.gd`                           | Discovers and applies mod manifests at game-start     |
+| `SKUIManager`        | `scripts/ui/ui_manager.gd`                             | UI layer stack, menu management, input mode routing   |
 
 > `PluginMigrationRegistry` (`scripts/system/plugin_migration_registry.gd`) is **not** an autoload. It is a `RefCounted` helper instantiated once from `skelerealms.gd:_enter_tree()` to run project-level version migrations.
 
@@ -318,3 +319,71 @@ When a registered migration callable was invalid (`fn.is_valid()` returned false
 45. **~~SKBlackboard resource~~** ✅ — `scripts/ai/sk_blackboard.gd`: shared key-value store (`Resource`) for AI runtime state. Supports `set_value`, `get_value`, `has_value`, `erase_value`, `clear`, `serialize`/`deserialize`, and a `changed` signal. Usable by BT nodes, GOAP actions, and AI modules.
 46. **~~Quest template variables~~** ✅ — `QuestDefinition` gained a `parameters: Dictionary` export for default placeholder values. `QuestGraphEngine.activate_quest_with_params(quest_id, params)` merges caller overrides with defaults and replaces `{key}` placeholders in `quest_name`, `description`, and each node's `description` and `target_id` at activation time. `QuestSystem` exposes the same API.
 47. **~~Quest "any" join mode~~** ✅ — `QuestNodeDefinition` gained a `join_mode` enum (`ALL` / `ANY`). Default `ALL` preserves existing AND-join behaviour. `ANY` activates the node as soon as any single prerequisite completes (OR-join), enabling branching quests where alternate paths lead to the same objective.
+
+### Phase 11 — Combat Subsystem & UI Framework
+
+#### Combat Subsystem (`scripts/combat/`)
+
+Built-in combat layer providing the building blocks for Skyrim-ish melee, Fallout-ish ranged hitscan, and RPG abilities.
+
+| File | Class | Purpose |
+|---|---|---|
+| `damage_packet.gd` | `DamagePacket` | Extends `DamageInfo` with crit flags, hit reaction, damage category, source weapon, and gameplay tags. Backward-compatible with all existing damage code. |
+| `combatant_component.gd` | `CombatantComponent` | `SKEntityComponent` unifying combat stats: poise/stagger, per-type resistance dictionary, invincibility frames, block/parry state. Works for player and NPC entities. |
+| `combat_action.gd` | `CombatAction` | `Resource` defining a single attack/ability/spell: startup/active/recovery timing, stamina/mana cost, damage template, combo links, crit chance, hitscan range. |
+| `combat_state.gd` | `CombatState` | Base class for combat-specific FSM states extending `FSMState`. |
+| `combat_state_machine.gd` | `CombatStateMachine` | Extends `FSMMachine`. Manages Idle→Attack→Stagger→Knockdown→Death flow. Drives animation and hitbox signals. |
+| `states/idle_state.gd` | `CombatIdleState` | Ready-to-act state, waits for action input. |
+| `states/attack_state.gd` | `CombatAttackState` | Three-phase attack: startup → active (hitbox on) → recovery. Handles resource costs and combo windows. |
+| `states/cast_state.gd` | `CombatCastState` | Spell casting variant of attack with mana cost focus. |
+| `states/stagger_state.gd` | `CombatStaggerState` | Poise-broken stagger with configurable duration. Restores poise on exit. |
+| `states/knockdown_state.gd` | `CombatKnockdownState` | Extended vulnerability from heavy hits. |
+| `states/death_state.gd` | `CombatDeathState` | Terminal state — entity is dead. |
+| `hitbox.gd` | `SKHitbox` | `Area3D` wrapper for weapon/projectile hit detection. Deduplicates hits per swing. |
+| `hurtbox.gd` | `SKHurtbox` | `Area3D` wrapper for body-region damage reception. Supports locational damage multipliers. |
+| `hit_pipeline.gd` | `HitPipeline` | Stateless utility resolving melee (hitbox/hurtbox overlap) and hitscan (raycast) hits through invincibility/block/parry checks, resistance application, poise damage, and damage delivery via `DamageableComponent`. |
+| `combat_action_module.gd` | (extends `AIModule`) | AI module selecting which `CombatAction` to execute based on distance, resources, and target state. Integrates with `CombatStateMachine` and existing GOAP combat objectives. |
+
+**Integration points:**
+- `DamageableComponent.damage()` remains the entry point — `HitPipeline` calls it
+- `CombatantComponent` replaces per-module resistance exports with a unified data-driven dictionary
+- `NPCComponent` combat signals (`entered_combat`, `left_combat`) wire to `CombatStateMachine` transitions
+- Existing spell system (`SpellHand`, `SpellProjectile`) can drive `CombatAction` spell types
+- `PuppetSpawnerComponent` puppets gain `SKHitbox`/`SKHurtbox` `Area3D` children
+
+#### UI Framework (`scripts/ui/`)
+
+Framework-owned UI structure with widget contracts. Games plug in their own themed scenes; the framework handles layering, input routing, and system wiring.
+
+| File | Class | Purpose |
+|---|---|---|
+| `ui_manager.gd` | `SKUIManager` | Autoload singleton managing HUD/Menu/Overlay canvas layers, menu stack, input mode switching, and `GameInfo` pause integration. |
+| `sk_theme.gd` | `SKTheme` | `Resource` wrapping Godot `Theme` with RPG-specific tokens: color palette (health/stamina/magicka), font slots, animation timing, and panel/tooltip/list-item StyleBox overrides. |
+| `hud/hud_shell.gd` | `SKHUDShell` | Abstract HUD layout with exported widget slot paths. Duck-typed dispatch to vitals, compass, crosshair, interaction prompt, and status effect widgets. |
+| `hud/vitals_widget.gd` | `SKVitalsWidget` | Contract: `update_vitals(data)` — connects to `VitalsComponent.vitals_updated`. |
+| `hud/compass_widget.gd` | `SKCompassWidget` | Contract: `update_heading(degrees)`. |
+| `hud/crosshair_widget.gd` | `SKCrosshair` | Contract: `set_state(state_name)` — default/hostile/interactive. |
+| `hud/interaction_prompt.gd` | `SKInteractionPrompt` | Contract: `show_prompt(text, action)` / `hide_prompt()`. |
+| `hud/status_effect_bar.gd` | `SKStatusEffectBar` | Contract: `update_effects(effects)`. |
+| `menus/menu_shell.gd` | `SKMenuShell` | Abstract menu system with tab/page switching and popup management. |
+| `menus/inventory_menu.gd` | `SKInventoryMenu` | Contract: `populate(items, currencies)`. |
+| `menus/dialogue_menu.gd` | `SKDialogueMenu` | Contract: `show_line(speaker, text)`, `show_choices(choices)`. |
+| `menus/barter_menu.gd` | `SKBarterMenu` | Contract: `populate_vendor(items)`, `populate_customer(items)`. |
+| `menus/journal_menu.gd` | `SKJournalMenu` | Contract: `populate_quests(active, completed)`. |
+| `menus/pause_menu.gd` | `SKPauseMenu` | Contract: `on_resume()`, `on_save()`, `on_load()`, `on_settings()`, `on_quit()`. |
+| `menus/character_menu.gd` | `SKCharacterMenu` | Contract: `populate(attributes, skills)`, `update_equipment(equipment)`. |
+| `widgets/list_item.gd` | `SKListItem` | Contract for inventory rows, quest entries, dialogue choices. |
+| `widgets/stat_row.gd` | `SKStatRow` | Contract: label + value + optional progress bar. |
+| `widgets/tab_panel.gd` | `SKTabPanel` | Tab switching with `tab_changed` signal. |
+| `widgets/tooltip.gd` | `SKTooltip` | Hover popup with title, description, and stats. |
+| `widgets/radial_selector.gd` | `SKRadialSelector` | Radial quick-select for weapons/spells/items. |
+| `widgets/prompt_bar.gd` | `SKPromptBar` | Bottom-screen contextual action prompts. |
+
+**Integration points:**
+- `VitalsComponent.vitals_updated` → `SKVitalsWidget.update_vitals()`
+- `DialogueSystem.dialogue_started/ended` → `SKUIManager` opens/closes dialogue popup
+- `BarterSystem` signals → barter menu population
+- `QuestSystem.quest_updated` → journal refresh
+- `InventoryComponent` dirty flag → inventory menu refresh
+- `EffectsComponent` → status effect bar updates
+- `NPCComponent.interaction_response` → interaction prompt show/hide
