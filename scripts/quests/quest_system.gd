@@ -26,7 +26,14 @@ func register_quest(definition: QuestDefinition) -> void:
 
 ## Activate a quest by ID. Returns true on success.
 func activate_quest(quest_id: StringName) -> bool:
-	var result := engine.activate_quest(quest_id)
+	return activate_quest_with_params(quest_id, {})
+
+
+## Activate a quest with template parameter overrides.
+## [param params] is merged on top of the quest's default parameters.
+## See [method QuestGraphEngine.activate_quest_with_params].
+func activate_quest_with_params(quest_id: StringName, params: Dictionary = {}) -> bool:
+	var result := engine.activate_quest_with_params(quest_id, params)
 	if result:
 		quest_activated.emit(quest_id)
 	return result
