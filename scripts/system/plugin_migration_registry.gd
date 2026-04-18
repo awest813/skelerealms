@@ -68,6 +68,8 @@ func run() -> bool:
 		if fn.is_valid():
 			fn.call()
 			ran_any = true
+		else:
+			push_error("PluginMigrationRegistry: migration callable for '%s' is invalid — skipping step." % entry["from"])
 		# After a migration runs, the installed version advances one step.
 		# The NEXT migration's from_version must match, or the chain ends.
 		current_cursor = _next_version_after(current_cursor)

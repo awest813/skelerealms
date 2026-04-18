@@ -205,7 +205,6 @@ func drop():
 func interact(interacted_refID):
 	move_to_inventory(interacted_refID)
 	if _is_theft_for(interacted_refID):
-		printe("Stolen.")
 		stolen = true
 		CrimeMaster.crime_committed.emit(
 			Crime.new(&"theft",

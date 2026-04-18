@@ -28,7 +28,7 @@ func _jump_to_door_location(obj:Door):
 	var res = _find_world(path, obj.destination_instance.world)
 	if res == "":
 		return
-	print("Jumping to location...")
+	push_warning("DoorConnect: Jumping to location...")
 	# Workaround from https://github.com/godotengine/godot/issues/75669#issuecomment-1621230016
 	p.get_editor_interface().open_scene_from_path.call_deferred(res)
 	p.get_editor_interface().edit_resource.call_deferred(load(res)) # switch tab

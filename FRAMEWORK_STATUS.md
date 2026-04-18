@@ -258,6 +258,58 @@ Ordered by dependency depth and severity. Fix broken systems before building on 
 42. **~~Plugin version bump~~** ✅ — `plugin.cfg` and `skelerealms.gd` updated to `beta 0.8`; `PLUGIN_VERSION` constant added for migration registry and future tooling.
 43. **~~Plugin migration registry~~** ✅ — `scripts/system/plugin_migration_registry.gd` runs one-shot migrations on editor start, keyed by the `skelerealms/__installed_version` setting, so consumers upgrading the plugin in-place don't have to hand-patch their `project.godot`. Contract and example documented in `docs/architecture/migration_tooling.md`; GUT tests in `tests/test_plugin_migration_registry.gd`.
 
+---
+
+## Phases 5-9 Audit — Debug, Polish & Null Safety ✅
+
+A targeted audit pass over every system introduced in Phases 5–9.
+
+### ~~A  SaveSystem FileAccess null-safety~~ ✅
+`SaveSystem.save()` and `entity_in_save()` called `.get_as_text()` directly on the return value of `FileAccess.open()` without a null guard. If the file system rejects the open (permissions, missing directory), this would crash with "Attempt to call function on a null instance".
+
+**Fix:**
+- `save()`: wrapped `FileAccess.open(old_file.unwrap(), ...)` in a local variable; added `push_warning()` on null and skipped the merge step rather than crashing.
+- `entity_in_save()`: same pattern — null check with early `return Option.none()` and `push_warning()`.
+
+### ~~B  NPCComponent noisy debug printe() calls~~ ✅
+Two `printe()` calls added during Phase 5 added noise to every routine event:
+
+- `_busy` property setter: `printe("Set busy to %s" % val)` fires on every dialogue enter/exit and combat state change.
+- `_interact_with_nearest_door()`: `printe("interacting with door %s" % best_door.name)` fires on every NPC door interaction.
+
+**Fix:** Both removed. Door interaction errors are already surfaced via the `door_interacted` signal; busy-state transitions need no console trace.
+
+### ~~C  ItemComponent theft debug print~~ ✅
+`ItemComponent.interact()` called `printe("Stolen.")` every time a theft occurred (Phase 6).
+
+**Fix:** Removed. The `CrimeMaster.crime_committed` signal already carries the full crime record, so the print added no diagnostic value.
+
+### ~~D  DoorConnect bare print()~~ ✅
+`tools/door_connect.gd` contained a bare `print("Jumping to location...")` call (editor tool).
+
+**Fix:** Replaced with `push_warning("DoorConnect: Jumping to location...")` so it appears in the Godot editor output panel with a source location, consistent with the rest of the plugin's logging style.
+
+### ~~E  PluginMigrationRegistry silent invalid-callable skip~~ ✅
+When a registered migration callable was invalid (`fn.is_valid()` returned false), the migration was silently skipped but the installed-version cursor was still advanced and persisted. This could leave the project in a partially-migrated state with no indication of what went wrong.
+
+**Fix:** Added `push_error(...)` when a callable is invalid so the failure is visible in the editor log.
+
+### ~~F  Test coverage — SpawnTrackerManager~~ ✅
+`SpawnTrackerManager` had no unit tests despite being the persistence layer for one-shot spawner state.
+
+**New file:** `tests/test_spawn_tracker_manager.gd` — 8 GUT tests covering:
+
+| Test | Coverage |
+|---|---|
+| `test_save_returns_empty_spawn_tracker_when_no_spawns` | Empty-tracker serialisation |
+| `test_save_converts_int_keys_to_strings` | int→string JSON conversion |
+| `test_save_preserves_values` | Value fidelity |
+| `test_load_data_restores_entries_as_int_keys` | string→int restoration |
+| `test_load_data_clears_existing_entries_first` | Pre-existing state cleared on load |
+| `test_load_data_handles_missing_spawn_tracker_key` | Missing save key gracefully handled |
+| `test_reset_data_clears_all_entries` | Full reset |
+| `test_save_then_load_round_trip` | End-to-end round-trip |
+
 ### Phase 10 — External Inspiration Integration
 
 44. **~~Behaviour Tree system~~** ✅ — Ported a standalone BT framework (inspired by BehaviourToolkit by ThePat02, MIT) into `scripts/ai/behaviour_tree/`. Includes `SKBTNode` base class, `SKBTLeaf`, `SKBTComposite`, `SKBTDecorator`, `SKBTRoot`, plus composites (Sequence, Selector, Parallel, Random) and decorators (Inverter, AlwaysSucceed, AlwaysFail, Repeat, Limiter). Self-contained with no external dependency. Designed to complement GOAP: GOAP selects the high-level goal, BTs execute the detailed action logic.
