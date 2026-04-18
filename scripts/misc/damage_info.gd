@@ -7,12 +7,12 @@ extends RefCounted
 
 ## Who caused the damage?
 var offender:String
-## The different kinds of damage.
-var damage_effects:Dictionary
+## The different kinds of damage. Maps damage-type name → amount.
+var damage_effects:Dictionary[StringName, float]
 ## Optional spell effects.
 var spell_effects:Array[StringName] = []
 ## Optional extra info.
-var info:Dictionary = {}
+var info:Dictionary[StringName, Variant] = {}
 
 
 func _init(offender:String, damage_effects:Dictionary, spell_effects:Array[StringName] = [], info:Dictionary = {}) -> void:

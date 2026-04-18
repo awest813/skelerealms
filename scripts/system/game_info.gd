@@ -18,7 +18,7 @@ var game_running:bool = true :
 			$Timer.paused = true
 			game_running = val
 
-var world_time:Dictionary = {
+var world_time:Dictionary[StringName, int] = {
 	&"world_time" : 0,
 	&"minute" : 0,
 	&"hour" : 0,

@@ -5,7 +5,7 @@ extends Node
 
 
 ## World states for the GOAP system.
-var world_states:Dictionary[String, Variant]
+var world_states:Dictionary[String, Variant] = {}
 ## Status effects registered in the game.
 var status_effects:Dictionary[String, StatusEffect] = {}
 ## The SKConfig resource. 

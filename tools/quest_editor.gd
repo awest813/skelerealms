@@ -12,7 +12,7 @@ const _COLOR_OUT := Color(0.85, 0.45, 0.35)
 var _graph: GraphEdit
 var _editing: QuestDefinition
 ## Maps safe node name (String) → QuestNodeDefinition id (StringName).
-var _name_to_id: Dictionary = {}
+var _name_to_id: Dictionary[String, StringName] = {}
 
 
 func _ready() -> void:

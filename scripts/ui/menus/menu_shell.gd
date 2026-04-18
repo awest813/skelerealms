@@ -17,11 +17,11 @@ signal popup_closed(popup_name:StringName)
 
 
 ## Registered pages by name.
-var _pages:Dictionary = {}
+var _pages:Dictionary[StringName, Control] = {}
 ## Currently visible page name.
 var _current_page:StringName = &""
 ## Registered popups by name.
-var _popups:Dictionary = {}
+var _popups:Dictionary[StringName, Control] = {}
 
 
 func _ready() -> void:

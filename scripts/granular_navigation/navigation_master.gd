@@ -16,7 +16,7 @@ static var instance:NavMaster
 var worlds:Dictionary[String, NavWorld] = {}
 ## Portal edges that failed to connect because the destination world was not yet loaded.
 ## Each entry is a PortalEdge resource.
-var _pending_portal_edges:Array = []
+var _pending_portal_edges:Array[PortalEdge] = []
 ## Lookup table mapping formatted point name -> NavNode for connection persistence.
 var _node_lookup:Dictionary[Variant, NavNode] = {}
 

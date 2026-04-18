@@ -12,7 +12,7 @@ signal tab_changed(tab_name:StringName)
 ## Currently active tab name.
 var _active_tab:StringName = &""
 ## Registered tabs: name → Control.
-var _tabs:Dictionary = {}
+var _tabs:Dictionary[StringName, Control] = {}
 
 
 ## Register a tab with a name and its content panel.

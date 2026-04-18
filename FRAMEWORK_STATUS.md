@@ -415,3 +415,37 @@ Framework-owned UI structure with widget contracts. Games plug in their own them
 - `InventoryComponent` dirty flag → inventory menu refresh
 - `EffectsComponent` → status effect bar updates
 - `NPCComponent.interaction_response` → interaction prompt show/hide
+
+---
+
+### Phase 12 — Godot 4.4 Modernization Sweep ✅
+
+A targeted pass applying Godot 4.4-specific language features throughout the remaining scripts that had not yet been updated.
+
+#### Typed Dictionaries (`Dictionary[K, V]`)
+
+| File | Variable | Old type | New type |
+|---|---|---|---|
+| `scripts/misc/damage_info.gd` | `damage_effects` | `Dictionary` | `Dictionary[StringName, float]` |
+| `scripts/misc/damage_info.gd` | `info` | `Dictionary` | `Dictionary[StringName, Variant]` |
+| `scripts/components/inventory_component.gd` | `currencies` | untyped | `Dictionary[StringName, int]` |
+| `scripts/ai/behaviour_tree/composites/sk_bt_parallel.gd` | `_responses` | `Dictionary` | `Dictionary[int, int]` |
+| `scripts/system/game_info.gd` | `world_time` | `Dictionary` | `Dictionary[StringName, int]` |
+| `scripts/ui/widgets/tab_panel.gd` | `_tabs` | `Dictionary` | `Dictionary[StringName, Control]` |
+| `scripts/ui/menus/menu_shell.gd` | `_pages` | `Dictionary` | `Dictionary[StringName, Control]` |
+| `scripts/ui/menus/menu_shell.gd` | `_popups` | `Dictionary` | `Dictionary[StringName, Control]` |
+| `tools/quest_editor.gd` | `_name_to_id` | `Dictionary` | `Dictionary[String, StringName]` |
+| `tools/dialogue_editor.gd` | `_name_to_id` | `Dictionary` | `Dictionary[String, StringName]` |
+| `tools/schedule_editor.gd` | `track_index` | `Dictionary` | `Dictionary[Control, int]` |
+
+#### Typed Arrays
+
+| File | Variable | Old type | New type |
+|---|---|---|---|
+| `tools/door_connect.gd` | `_viewports` | `Array` | `Array[Node]` |
+| `scripts/granular_navigation/navigation_master.gd` | `_pending_portal_edges` | `Array` | `Array[PortalEdge]` |
+
+#### Other Modernization
+
+- **`scripts/sk_global.gd`** — `world_states:Dictionary[String, Variant]` was declared without an initializer, leaving it `null` on first access. Added `= {}`.
+- **`tools/template_selector.gd`** — Added null guard on `FileAccess.open()` result. Failing to open a file no longer crashes with a null-dereference; a descriptive `push_error()` is emitted instead.
