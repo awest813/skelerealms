@@ -37,12 +37,13 @@ These major pieces are already in place:
 - Performance profiling and optimization: GOAP objective/action caching (eliminates per-frame sort and child filter), entity fade-distance caching, NPC perception entity-reference caching, A* binary heap (replaces per-iteration array sort), CrimeMaster empty-queue early exit, NavMaster debug print cleanup
 - Audit and polish pass across Phases 0-4: fixed `DefaultDamageModule` direct vitals dict mutations (bypassed `VitalsComponent` clamping and signals) — now uses `change_health/moxie/will()`; fixed `CrimeMaster.bounty_for_coven` dict key crash on unknown severity (`.get()` guard); fixed `BarterSystem.accept_barter` dict key crash when currency not yet initialised (`.get()` guard); removed 4 remaining bare debug `print()` calls (`mod_loader.gd`, `door.gd`, `player_component.gd`) and converted 3 loot-table prints to `push_error/push_warning`; removed two stale `# TODO` markers in `skelesave.gd`; added `test_crime_master.gd` (6 tests) and extended `test_barter.gd` with `accept_barter` null-currency tests
 - Audit and polish pass across Phases 5-9: fixed `SaveSystem.save()` and `entity_in_save()` null-safety on `FileAccess.open()` (guarded with warning on failure); removed noisy debug `printe()` calls from `NPCComponent._busy` setter and door-interaction, and `ItemComponent.interact` theft path; replaced bare `print()` in `tools/door_connect.gd` with `push_warning()`; added `push_error` to `PluginMigrationRegistry` when a migration callable is invalid; added `test_spawn_tracker_manager.gd` (8 tests covering save, load, reset, and round-trip)
+- **Phase 9 remaining (0.9)**: `_saving` guard + tmp-file + rename for crash-safe `SaveSystem.save()`; initial `@rpc` annotation pass on authority-only and any-peer state-transition methods in `QuestSystem`, `CrimeMaster`, and `DialogueSystem`; `thread_safety.md` and `multiplayer_audit.md` updated to reflect these changes.
 
 ## Current priorities
 
-Phase 9 — Architecture Hardening initial pass complete. Documentation deliverables landed; multiplayer and thread-safety remain documentation-only surveys for now.
+Phase 9 — Architecture Hardening remaining items complete. `_saving` guard and tmp-file+rename landed in `SaveSystem`. Initial `@rpc` annotation pass complete for `QuestSystem`, `CrimeMaster`, and `DialogueSystem`. AssetLib minimal example project remains for 0.9.
 
-### Phase 9 — Architecture Hardening (0.8 → 0.9 target) — partial ✅
+### Phase 9 — Architecture Hardening (0.8 → 0.9 target) ✅
 
 Prepare the framework for long-lived production use and broader adoption.
 
@@ -51,6 +52,8 @@ Prepare the framework for long-lived production use and broader adoption.
 3. ✅ **API stability pass** — Stable / Beta / Internal tiers defined in `docs/architecture/api_stability.md`. Post-1.0 deprecation policy spelled out.
 4. ✅ **Plugin packaging** — plugin version bumped to `beta 0.8`. Plugin.cfg metadata retained; AssetLib polish (minimal example project, versioned release artifacts) remains for 0.9.
 5. ✅ **Migration tooling** — `PluginMigrationRegistry` (`scripts/system/plugin_migration_registry.gd`) runs one-shot project-level migrations on editor start. Save-file migrations continue to live in `SaveSystem`. Contract documented in `docs/architecture/migration_tooling.md`. Unit tests in `tests/test_plugin_migration_registry.gd`.
+6. ✅ **SaveSystem crash safety** — `_saving: bool` guard prevents re-entrant or concurrent calls. Write path converted to tmp-file + rename: data is serialised to `<slot>.tmp` then atomically renamed to `<slot>.dat`, so a crash during the write cannot corrupt an existing save. GUT tests extended to cover the guard.
+7. ✅ **`@rpc` annotation pass** — authority-only state transitions (`QuestSystem.activate_quest`, `activate_quest_with_params`, `apply_event`; `CrimeMaster.punish_crimes`) annotated with `@rpc("authority", "reliable")`. Any-peer event reporters (`report_kill`, `report_pickup`, `report_talk`, `report_custom`; `CrimeMaster.add_crime`; `DialogueSystem.end_dialogue`) annotated with `@rpc("any_peer", "call_local", "reliable")`. Annotations do not affect single-player behaviour; `multiplayer_audit.md` updated with the full table.
 
 | File | Purpose |
 |---|---|
@@ -60,12 +63,15 @@ Prepare the framework for long-lived production use and broader adoption.
 | `docs/architecture/migration_tooling.md` | Save-file vs plugin-level migration split and contract |
 | `scripts/system/plugin_migration_registry.gd` | Plugin-version migration runner (project-level state) |
 | `tests/test_plugin_migration_registry.gd` | GUT tests for the registry's run loop |
+| `scripts/system/save_system.gd` | `_saving` guard + tmp-file + rename write path |
+| `tests/test_save_system.gd` | Extended with `_saving` guard tests |
+| `scripts/quests/quest_system.gd` | `@rpc` annotations on state-transition methods |
+| `scripts/crime/crime_master.gd` | `@rpc` annotations on state-transition methods |
+| `scripts/dialogue/dialogue_system.gd` | `@rpc` annotation on `end_dialogue` |
 
 Remaining Phase 9 work (pushed into 0.9):
 
 - AssetLib-ready minimal example project.
-- `@rpc` annotation pass for the subset of APIs that could serve a server-authoritative build.
-- Introduce a `_saving` guard on `SaveSystem.save()` and convert to tmp-file + rename for crash safety.
 
 ## Next phases
 

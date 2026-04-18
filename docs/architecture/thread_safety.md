@@ -24,19 +24,27 @@ guards against other code using them.
 
 ## Known sharp edges
 
-### `SaveSystem.save()` — file I/O is not serialised
+### ~~`SaveSystem.save()` — file I/O is not serialised~~ ✅ Fixed
 
 `scripts/system/save_system.gd`
 
 `save()` reads the most recent savegame, merges it, and writes a new file.
-If two threads (or, today, two `call_deferred` chains racing a user click)
-both enter `save()` at the same time, the second writer's merge is based on
-a stale view and overwrites the first. There is no lock, no "in progress"
-flag, and no journal/tmpfile-and-rename pattern.
+A re-entrant or concurrent call (e.g., two `call_deferred` chains racing a user
+click) would race on the merge step and on the output file.
 
-**Mitigation for now:** never call `save()` from anywhere but the main
-thread, and don't call it twice in the same frame. The pragmatic fix is a
-single `_saving: bool` guard; a robust fix is write-to-tmp and rename.
+**Fix (Phase 9 remaining):**
+- Added `_saving: bool` guard — a second call to `save()` while one is already in
+  progress pushes a warning and returns immediately, preventing the merge race.
+- Converted the write path to a **tmp-file + rename** pattern: the serialised data
+  is first written to `<slot>.tmp`, then renamed to `<slot>.dat`. On any
+  POSIX-like filesystem the rename is atomic, so a crash or error during writing
+  cannot produce a partial `.dat` file. On Windows the rename replaces any
+  existing file atomically as long as both files are on the same volume.
+
+**Remaining limitation:** the guard is a reentrancy fence, not a mutex. Calling
+`save()` from a worker thread while the main thread is also inside `save()` is
+still a race — the flag itself is not read/written atomically outside the main
+thread. The main-thread-only rule from the ground rule above still applies.
 
 ### `SKEntityManager` — static singleton, no locking
 
@@ -119,8 +127,8 @@ If you need background work, do it on an immutable snapshot.
 
 Short term (inside 1.0):
 
-1. Add a `_saving: bool` guard on `SaveSystem.save()` and return early on
-   re-entry.
+1. ~~Add a `_saving: bool` guard on `SaveSystem.save()` and return early on
+   re-entry.~~ ✅ Done — guard added; write path converted to tmp-file + rename.
 2. Document the main-thread rule in the public API doc
    (`docs/architecture/api_stability.md`).
 3. Use `call_deferred` for cross-frame state mutations in the few places

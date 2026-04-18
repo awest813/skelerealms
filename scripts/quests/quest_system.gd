@@ -25,6 +25,8 @@ func register_quest(definition: QuestDefinition) -> void:
 
 
 ## Activate a quest by ID. Returns true on success.
+## [annotation @rpc] — authority-only: only the server should activate quests.
+@rpc("authority", "reliable")
 func activate_quest(quest_id: StringName) -> bool:
 	return activate_quest_with_params(quest_id, {})
 
@@ -32,6 +34,8 @@ func activate_quest(quest_id: StringName) -> bool:
 ## Activate a quest with template parameter overrides.
 ## [param params] is merged on top of the quest's default parameters.
 ## See [method QuestGraphEngine.activate_quest_with_params].
+## [annotation @rpc] — authority-only: only the server should activate quests.
+@rpc("authority", "reliable")
 func activate_quest_with_params(quest_id: StringName, params: Dictionary = {}) -> bool:
 	var result := engine.activate_quest_with_params(quest_id, params)
 	if result:
@@ -50,6 +54,8 @@ func get_quest_state(quest_id: StringName) -> QuestGraphEngine.QuestRuntimeState
 
 
 ## Fire a game event and let the engine advance any matching quest nodes.
+## [annotation @rpc] — authority-only: the server drives quest progress.
+@rpc("authority", "reliable")
 func apply_event(event: QuestEvent) -> void:
 	var results := engine.apply_event(event)
 	for result: QuestGraphEngine.QuestEventResult in results:
@@ -59,21 +65,29 @@ func apply_event(event: QuestEvent) -> void:
 
 
 ## Convenience: fire a kill event.
+## [annotation @rpc] — any peer can report a kill; server processes it.
+@rpc("any_peer", "call_local", "reliable")
 func report_kill(target_id: StringName, amount: int = 1) -> void:
 	apply_event(QuestEvent.new("kill", target_id, amount))
 
 
 ## Convenience: fire a pickup event.
+## [annotation @rpc] — any peer can report a pickup; server processes it.
+@rpc("any_peer", "call_local", "reliable")
 func report_pickup(target_id: StringName, amount: int = 1) -> void:
 	apply_event(QuestEvent.new("pickup", target_id, amount))
 
 
 ## Convenience: fire a talk event.
+## [annotation @rpc] — any peer can report a talk; server processes it.
+@rpc("any_peer", "call_local", "reliable")
 func report_talk(target_id: StringName) -> void:
 	apply_event(QuestEvent.new("talk", target_id, 1))
 
 
 ## Convenience: fire a custom event.
+## [annotation @rpc] — any peer can report a custom event; server processes it.
+@rpc("any_peer", "call_local", "reliable")
 func report_custom(target_id: StringName, amount: int = 1) -> void:
 	apply_event(QuestEvent.new("custom", target_id, amount))
 

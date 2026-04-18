@@ -95,20 +95,48 @@ be running `save()` at all; the server should. See also
 
 ---
 
-## Networking primitives — currently absent
+## Networking primitives — initial `@rpc` pass ✅ (partial)
 
-None of the framework's signals, components, or methods are annotated with
-`@rpc(...)`. Nothing is marked `multiplayer_authority` aware. A first pass
-would be:
+An initial `@rpc` annotation pass landed as part of Phase 9 remaining work.
 
-1. Tag player-input-driven signals with `@rpc("any_peer", "call_local")`.
-2. Tag authority-only state transitions (e.g., `QuestSystem.activate_quest`)
-   with `@rpc("authority", "reliable")`.
+**Authority-only state transitions** (server drives these; clients must not call
+them without going through the authority):
+
+| Method | Annotation | Rationale |
+|---|---|---|
+| `QuestSystem.activate_quest` | `@rpc("authority", "reliable")` | Server activates quests for all players |
+| `QuestSystem.activate_quest_with_params` | `@rpc("authority", "reliable")` | Same |
+| `QuestSystem.apply_event` | `@rpc("authority", "reliable")` | Server drives quest progress |
+| `CrimeMaster.punish_crimes` | `@rpc("authority", "reliable")` | Server settles crime state |
+
+**Any-peer event reporting** (clients report what happened; server processes it):
+
+| Method | Annotation | Rationale |
+|---|---|---|
+| `QuestSystem.report_kill` | `@rpc("any_peer", "call_local", "reliable")` | Client reports a kill event |
+| `QuestSystem.report_pickup` | `@rpc("any_peer", "call_local", "reliable")` | Client reports picking up an item |
+| `QuestSystem.report_talk` | `@rpc("any_peer", "call_local", "reliable")` | Client reports a talk interaction |
+| `QuestSystem.report_custom` | `@rpc("any_peer", "call_local", "reliable")` | Client reports a custom event |
+| `CrimeMaster.add_crime` | `@rpc("any_peer", "call_local", "reliable")` | Witness reports a crime |
+| `DialogueSystem.end_dialogue` | `@rpc("any_peer", "call_local", "reliable")` | Either side can end a dialogue |
+
+**Not annotated** — methods with non-trivial return values that callers depend on
+(e.g., `DialogueSystem.start_dialogue`, `DialogueSystem.choose`) are omitted
+because RPC return values are not forwarded to the caller. A server-authoritative
+dialogue flow would need a separate signal-based or callback contract.
+
+`@rpc` annotations do not affect single-player behaviour. The annotations mark
+intent; actual RPC wiring requires a multiplayer peer to be configured.
+
+**Remaining:**
+
 3. Decide whether AI simulation is server-only or client-predicted. GOAP is
    expensive enough that server-only is the sensible default, but perception
    ticks at 0.25 s per NPC so bandwidth is not free.
 
-None of this is wired up. Do not assume the framework is "RPC-ready".
+The framework is **not** RPC-ready end-to-end. These annotations are the
+first step; full multiplayer support requires the session-refactor and
+`@rpc` wiring described in the Recommendations section below.
 
 ---
 
