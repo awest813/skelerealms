@@ -66,6 +66,9 @@ func _make_manually(path:String) -> void:
 	var p:String = option_button.get_item_text(option_button.selected)
 	var contents:String = _format_scene(p, "test_entity")
 	var fh := FileAccess.open(path, FileAccess.WRITE)
+	if fh == null:
+		push_error("TemplateSelector: Failed to open '%s' for writing: %s" % [path, error_string(FileAccess.get_open_error())])
+		return
 	fh.store_string(contents)
 	fh.close()
 	EditorInterface.get_resource_filesystem().scan()

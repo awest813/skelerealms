@@ -4,7 +4,7 @@ extends EditorInspectorPlugin
 const NODE_3D_VIEWPORT_CLASS_NAME = "Node3DEditorViewport"
 
 var p:EditorPlugin
-var _viewports:Array = []
+var _viewports:Array[Node] = []
 var _cams:Array[Camera3D] = []
 
 

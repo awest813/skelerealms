@@ -24,7 +24,7 @@ var _props: VBoxContainer
 var _editing: DialogueDefinition
 var _selected_id: StringName = &""
 ## Maps safe node name (String) → DialogueNode id (StringName).
-var _name_to_id: Dictionary = {}
+var _name_to_id: Dictionary[String, StringName] = {}
 
 
 func _ready() -> void:

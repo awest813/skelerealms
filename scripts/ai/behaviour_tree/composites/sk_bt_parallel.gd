@@ -17,7 +17,7 @@ enum ParallelPolicy {
 @export var policy: ParallelPolicy = ParallelPolicy.SUCCESS_ON_ALL
 
 
-var _responses: Dictionary = {}
+var _responses: Dictionary[int, int] = {}
 
 
 func tick(delta: float, actor: Node, blackboard: SKBlackboard) -> Status:

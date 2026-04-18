@@ -10,7 +10,7 @@ const SNAP_DIST = 12
 @onready var timeline:Control = $ScrollContainer/HBoxContainer
 var scroll_value:int
 var tracks:Array[Dictionary] = [] # Dictionaries are Control:Span
-var track_index:Dictionary = {}
+var track_index:Dictionary[Control, int] = {}
 var timeline_width:int
 var editing:Array[ScheduleEvent]
 

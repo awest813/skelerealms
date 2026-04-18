@@ -9,7 +9,7 @@ extends SKEntityComponent
 ## The RefIDs of the items in the inventory. Put any unique items in here.
 @export var inventory: PackedStringArray
 ## The amount of cash moneys.
-var currencies = {}
+var currencies:Dictionary[StringName, int] = {}
 
 signal added_to_inventory(id:String)
 signal removed_from_inventory(id:String)
