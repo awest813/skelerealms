@@ -35,6 +35,7 @@ These major pieces are already in place:
 - Audio emitter refactor to non-physics distance checks
 - Debug, audit, and polish pass across Phases 1-6: fixed NPC damage accumulation bug, added barter null safety, cleaned up 20+ raw debug prints, added test suites for coven disposition, network edge costs, and save system internals
 - Performance profiling and optimization: GOAP objective/action caching (eliminates per-frame sort and child filter), entity fade-distance caching, NPC perception entity-reference caching, A* binary heap (replaces per-iteration array sort), CrimeMaster empty-queue early exit, NavMaster debug print cleanup
+- Audit and polish pass across Phases 0-4: fixed `DefaultDamageModule` direct vitals dict mutations (bypassed `VitalsComponent` clamping and signals) — now uses `change_health/moxie/will()`; fixed `CrimeMaster.bounty_for_coven` dict key crash on unknown severity (`.get()` guard); fixed `BarterSystem.accept_barter` dict key crash when currency not yet initialised (`.get()` guard); removed 4 remaining bare debug `print()` calls (`mod_loader.gd`, `door.gd`, `player_component.gd`) and converted 3 loot-table prints to `push_error/push_warning`; removed two stale `# TODO` markers in `skelesave.gd`; added `test_crime_master.gd` (6 tests) and extended `test_barter.gd` with `accept_barter` null-currency tests
 
 ## Current priorities
 
@@ -510,6 +511,56 @@ values, which are `SKEntityComponent | null` (not `Option` objects).
 - `e_sc = e.get_component("SkillsComponent")` guard → `if not e_sc:`.
 - Added null guard for `_npc.parent_entity.get_component("SkillsComponent")` to prevent crash when
   the NPC itself has no `SkillsComponent`.
+
+---
+
+## Phase 0-4 Audit — Debug, Polish & Test Coverage ✅
+
+A targeted audit pass over every system introduced in Phases 1–4 (Critical Fixes, Core Gameplay
+Gaps, World & Persistence, Polish & Depth).
+
+### ~~A  DefaultDamageModule vitals bypass~~ ✅
+Direct dictionary mutations in `process_damage()` silently bypassed `VitalsComponent` clamping,
+dirty-flag tracking, and all vital-change signals (`dies`, `exhausted`, `drained`, `vitals_updated`).
+
+**Fix:**
+- `vitals_component.vitals["moxie"] -= ...` → `vitals_component.change_moxie(-...)`
+- `vitals_component.vitals["will"] -= ...` → `vitals_component.change_will(-...)`
+- `vitals_component.vitals["health"] -= ...` → `vitals_component.change_health(-...)`
+- Added `float` type annotation to the local `accumulated_damage` variable.
+
+### ~~B  CrimeMaster bounty dict key crash~~ ✅
+`bounty_for_coven()` used `bounty_amount[x.severity]` which would throw an unhandled key error
+for any crime with a severity not present in the `bounty_amount` constant (e.g., if a new crime
+type with severity 3 or 4 is added).
+
+**Fix:** `bounty_amount[x.severity]` → `bounty_amount.get(x.severity, 0)`.
+
+### ~~C  BarterSystem accept_barter currency key crash~~ ✅
+`accept_barter()` used `vendor.currencies[currency]` and `customer.currencies[currency]` which
+throw key errors when the currency has never been initialised for a participant.
+
+**Fix:** Both direct accesses replaced with `.get(currency, 0)`.
+
+### ~~D  Remaining bare print() cleanup~~ ✅
+Four bare `print()` calls not covered by the Phase 7F pass:
+
+- `scripts/mods/mod_loader.gd` — informational mod-load message removed (the `mod_loaded` signal already carries this information).
+- `scripts/world_objects/door.gd` — debug teleport trace removed.
+- `scripts/components/player_component.gd` — debug teleport trace removed.
+- `scripts/loottable/items/lt_on_condition.gd` — three `print()` calls converted: parse error and execution failure → `push_error()`; non-boolean return type → `push_warning()`.
+
+### ~~E  Skelesave stale TODO comments~~ ✅
+Removed two `# TODO` markers from `scripts/misc/skelesave.gd` — both marked sections were already
+fully implemented (array branch of `_decode_value`).
+
+### ~~F  Test coverage~~ ✅
+New and extended test suites covering the bugs fixed above.
+
+| File | New coverage |
+|---|---|
+| `tests/test_crime_master.gd` | `bounty_for_coven` accumulation, `max_crime_severity`, `punish_crimes` |
+| `tests/test_barter.gd` | `accept_barter` with uninitialised currency key |
 
 ---
 

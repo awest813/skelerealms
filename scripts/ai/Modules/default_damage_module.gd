@@ -33,7 +33,7 @@ func _initialize() -> void:
 
 func process_damage(info:DamageInfo) -> void:
 	# Damage effects
-	var accumulated_damage = 0
+	var accumulated_damage: float = 0.0
 	for effect in info.damage_effects:
 		var effect_amount = info.damage_effects[effect]
 		# if you have many more than these, some sort of dictionary may be in order.
@@ -58,17 +58,17 @@ func process_damage(info:DamageInfo) -> void:
 				accumulated_damage += effect_amount * plant_modifier * magic_modifier
 			# Attribute
 			&"moxie":
-				vitals_component.vitals["moxie"] -= effect_amount * stamina_modifier
+				vitals_component.change_moxie(-effect_amount * stamina_modifier)
 			&"will":
-				vitals_component.vitals["will"] -= effect_amount * will_modifier
+				vitals_component.change_will(-effect_amount * will_modifier)
 		
 		_npc.damaged_with_effect.emit(effect)
 	
 	# Track whether this entity was alive before applying health damage
 	var was_alive := not vitals_component.is_dead
 
-	# Apply damage
-	vitals_component.vitals["health"] -= accumulated_damage
+	# Apply damage through the proper API so signals, clamping, and dirty-tracking fire.
+	vitals_component.change_health(-accumulated_damage)
 	
 	# Broadcast assault or murder crime when another entity deals health damage
 	if accumulated_damage > 0 and not info.offender.is_empty() and was_alive:
