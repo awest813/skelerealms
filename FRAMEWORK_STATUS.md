@@ -145,6 +145,18 @@ These features have been explicitly flagged as broken, or contain code that prov
 - **File:** `scripts/components/item_component.gd:136`
 - **Fix:** Replaced incorrect `drop_dir.get_euler().normalized()` with proper `-Basis(quaternion).z` forward vector. Items now drop in front of the entity correctly.
 
+### ~~8. DefaultDamageModule — vitals direct dict mutation~~ ✅ FIXED
+- **File:** `scripts/ai/Modules/default_damage_module.gd`
+- **Fix:** `process_damage()` wrote directly to `vitals_component.vitals["moxie"]`, `["will"]`, and `["health"]`, bypassing all `VitalsComponent` API (clamping, dirty-flag, `vitals_updated` / `dies` / `exhausted` / `drained` signals). Replaced with `change_moxie()`, `change_will()`, and `change_health()`. Also added `float` type annotation to the local `accumulated_damage` variable. (Phase 0-4 audit)
+
+### ~~9. CrimeMaster — bounty_for_coven key crash~~ ✅ FIXED
+- **File:** `scripts/crime/crime_master.gd`
+- **Fix:** `bounty_for_coven()` used direct `bounty_amount[x.severity]` access which would throw an unhandled key error for any crime severity not present in the constant dict (e.g., future crime types with severity 3 or 4). Changed to `bounty_amount.get(x.severity, 0)`. (Phase 0-4 audit)
+
+### ~~10. BarterSystem — accept_barter currency key crash~~ ✅ FIXED
+- **File:** `scripts/barter/barter.gd`
+- **Fix:** The vendor and customer balance pre-checks used `currencies[currency]` which throws a key error when the currency has never been added to the inventory. Changed to `currencies.get(currency, 0)`. (Phase 0-4 audit)
+
 ---
 
 ## Known Incomplete Systems

@@ -136,10 +136,10 @@ func accept_barter(selling_modifier:float, buying_modifier:float, currency: Stri
 	var total: int = current_transaction.total_transaction(selling_modifier, effective_buying_modifier)
 	# Adding and subtracting is done here because the total is how much money is leaving the customer
 	# If vendor cash is less than 0 when the balance is applied, return failure
-	if current_transaction.vendor.currencies[currency] - total < 0: # subtracting because if selling the total will be positive flow to customer
+	if current_transaction.vendor.currencies.get(currency, 0) - total < 0: # subtracting because if selling the total will be positive flow to customer
 		return false
 	# If customer cash is less than 0 when the balance is applied, return failure
-	if current_transaction.customer.currencies[currency] + total < 0: # plus because if buying the total will be negative flow to customer
+	if current_transaction.customer.currencies.get(currency, 0) + total < 0: # plus because if buying the total will be negative flow to customer
 		return false
 
 	# Add total

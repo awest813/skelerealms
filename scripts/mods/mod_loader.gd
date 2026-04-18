@@ -83,4 +83,3 @@ func load_mod(manifest: ModManifest) -> void:
 
 	loaded_mods.append(manifest.mod_id)
 	mod_loaded.emit(manifest.mod_id, manifest.mod_name)
-	print("ModLoader: loaded mod '%s' (%s)" % [manifest.mod_name, manifest.mod_id])

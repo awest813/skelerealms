@@ -107,7 +107,6 @@ static func _decode_value(data:PackedByteArray) -> Variant:
 	if data.has(ARR_DELIM):
 		var output = []
 		var current_member:PackedByteArray = PackedByteArray()
-		# TODO: array
 		for i:int in range(data.size()):
 			match data[i]:
 				ARR_DELIM:
@@ -115,7 +114,7 @@ static func _decode_value(data:PackedByteArray) -> Variant:
 					current_member.clear()
 				_:
 					current_member.append(data[i])
-		return output # TODO
+		return output
 	var stringified:String = data.get_string_from_utf8()
 	if stringified == "true":
 		return true

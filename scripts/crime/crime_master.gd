@@ -95,7 +95,7 @@ func bounty_for_coven(id:StringName, coven:StringName) -> int:
 		return 0
 	return crimes[coven]["unpunished"]\
 		.filter(func(x:Crime): return x.perpetrator == id)\
-		.reduce(func(sum:int, x:Crime): return sum + bounty_amount[x.severity], 0)
+		.reduce(func(sum:int, x:Crime): return sum + bounty_amount.get(x.severity, 0), 0)
 
 
 func save() -> Dictionary:

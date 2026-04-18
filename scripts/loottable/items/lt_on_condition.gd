@@ -28,18 +28,18 @@ func _check_condition() -> bool:
 	
 	var err:int = e.parse(condition)
 	if not err == 0:
-		print("Loot table script error: %s" % e.get_error_text())
+		push_error("Loot table script error: %s" % e.get_error_text())
 		return false
 	
 	var res = e.execute()
 	
 	if e.has_execute_failed():
-		print("Loot table script execution failed.")
+		push_error("Loot table script execution failed.")
 		return false
 	if res == null:
 		return false
 	if res is bool:
 		return res
 	else:
-		print("Loot table script warning: Expression should return boolean value.")
+		push_warning("Loot table script warning: Expression should return boolean value.")
 		return true
