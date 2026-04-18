@@ -97,12 +97,11 @@ var _busy:bool:
 		get:
 			return _busy or in_combat # is also busy if in combat
 		set(val):
-			printe("Set busy to %s" % val)
-			if val and _puppet:
-				_puppet.pause_nav()
-			elif not val and _puppet:
-				_puppet.continue_nav()
-			_busy = val
+		if val and _puppet:
+			_puppet.pause_nav()
+		elif not val and _puppet:
+			_puppet.continue_nav()
+		_busy = val
 
 
 ## Signal emitted when this NPC enters combat.
@@ -427,7 +426,6 @@ func _interact_with_nearest_door(near_position: Vector3) -> void:
 			best_door = door
 
 	if best_door and best_door.interactible:
-		printe("interacting with door %s" % best_door.name)
 		best_door.interact(parent_entity.name)
 		door_interacted.emit(best_door)
 

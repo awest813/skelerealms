@@ -70,9 +70,13 @@ func save(slot_name: String = ""):
 	# attempt merge with old data, so we still keep the info about entities that aren't being tracked right now.
 	var old_file = _get_most_recent_savegame() # my getting the most recent, which was also merged like this, we accumulate info
 	if old_file.some(): # we will only merge if there is something to merge with
-		var old_data:Dictionary = _deserialize(FileAccess.open(old_file.unwrap(), FileAccess.READ).get_as_text()) # deserialize old data
-		old_data.merge(save_data, true) # merge, taking care to overwrite to keep info up to date
-		save_data = old_data # bit funky but I'm lazy
+		var _old_file := FileAccess.open(old_file.unwrap(), FileAccess.READ)
+		if not _old_file:
+			push_warning("SaveSystem: Could not open previous save for merge: '%s'." % old_file.unwrap())
+		else:
+			var old_data:Dictionary = _deserialize(_old_file.get_as_text()) # deserialize old data
+			old_data.merge(save_data, true) # merge, taking care to overwrite to keep info up to date
+			save_data = old_data # bit funky but I'm lazy
 
 	# Always stamp with current schema version after merge
 	save_data["schema_version"] = SAVE_SCHEMA_VERSION
@@ -191,7 +195,11 @@ func entity_in_save(ref_id:String) -> Option:
 	if not most_recent.some():
 		return Option.none()
 	# deserialize
-	var deserialized_data:Dictionary = _deserialize(FileAccess.open(most_recent.unwrap(), FileAccess.READ).get_as_text())
+	var _save_file := FileAccess.open(most_recent.unwrap(), FileAccess.READ)
+	if not _save_file:
+		push_warning("SaveSystem: Could not open save file for entity lookup: '%s'." % most_recent.unwrap())
+		return Option.none()
+	var deserialized_data:Dictionary = _deserialize(_save_file.get_as_text())
 	if not deserialized_data:
 		return Option.none()
 	var entity_data:Dictionary = deserialized_data.get("entity_data", {})
