@@ -9,7 +9,6 @@ var items:Array[SKLootTableItem] = []
 
 
 func _ready() -> void:
-	items.resize(get_child_count())
 	for c:Node in get_children():
 		items.append(c)
 
