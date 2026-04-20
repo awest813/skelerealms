@@ -741,3 +741,12 @@ GLoot's inventory model (item stacking, weight/grid constraints, prototype inher
 - **Weight/capacity constraints** — could be added as optional exports on `InventoryComponent`.
 - **Grid inventory** — Diablo/Resident Evil style 2D layout, useful reference if ever needed.
 - **Prototype inheritance** — JSON prototree model is elegant for data-driven item definitions.
+
+### Lootie — Reference & Integration
+**Source:** [Lootie](https://github.com/ninetailsrabbit/lootie) by ninetailsrabbit
+
+Lootie is a Godot 4 loot-table plugin offering weight-based, roll-tier, percentage-chance, and combined probability modes. Its core weight-selection algorithm inspired the `SKLTWeightedPool` / `SKLTWeightedItem` nodes added to `scripts/loottable/items/`:
+
+- **`SKLTWeightedPool`** — picks N items from `SKLTWeightedItem` children using accumulated-weight selection; higher weight = proportionally higher chance.
+- **`SKLTWeightedItem`** — a weighted entry node holding a `PackedScene` and a `weight` float.
+- Lootie's `RollTier` rarity system (COMMON → DIVINE tiers with `min_roll`/`max_roll` ranges) is a candidate for a future `SKLTRarityPool` node if tiered rarity is needed.

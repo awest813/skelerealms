@@ -9,9 +9,12 @@ var items:Array[SKLootTableItem] = []
 
 
 func _ready() -> void:
-	items.resize(get_child_count())
 	for c:Node in get_children():
 		items.append(c)
+
+
+func size() -> int:
+	return items.size()
 
 
 ## Generate all members of the loot table. Returns a dictionary shaped like {&"items":Array[ItemData], &"currencies":{name:amount,...}}
@@ -55,3 +58,7 @@ class LootTableResult:
 			&"currencies": currencies,
 			&"entities": entities,
 		}
+	
+	
+	func size() -> int:
+		return items.size() + entities.size()

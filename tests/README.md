@@ -25,6 +25,7 @@ godot --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -gexit
 | `test_save_system.gd` | Save system internals: checksum computation, serialization round-trip, migration pipeline, v1→v2 migration specifics. |
 | `test_perf_optimizations.gd` | Phase 7 performance optimizations: binary heap ordering, GOAP objectives dirty-flag tracking, action cache rebuild, entity fade-distance caching. |
 | `test_plugin_migration_registry.gd` | Phase 9 migration tooling: fresh-install stamping, no-op when up to date, single-step and chained multi-version upgrades, skipping pre-cursor migrations. |
+| `test_loot_table.gd` | `SKLTItemChance` probability fix, `SKLTWeightedItem` scene resolution, `SKLTWeightedPool` selection logic (single pick, no-duplicate clamping, duplicates, zero-weight exclusion, statistical weight bias), and `LootTableResult.size()`. |
 
 ## Notes
 
