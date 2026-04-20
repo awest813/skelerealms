@@ -61,6 +61,36 @@ Phase 11 — Combat Subsystem & UI Framework. Both systems are now implemented. 
    - Menu contracts: inventory, dialogue, barter, journal, pause, character
    - Widget contracts: list item, stat row, tab panel, tooltip, radial selector, prompt bar
 
+### Phase 12 — Chunk Loading System ✅
+
+Generic, engine-agnostic chunk manager that fills the "No terrain/LOD/chunk pipeline" gap.
+
+1. ✅ **Core types** — `SKChunk` RefCounted data class holding grid coordinates, loaded data, and lifecycle flags (`is_loaded`, `is_loading`, `is_mounted`, `last_touched`, `error`).
+2. ✅ **Chunk utilities** — `SKChunkUtils` with static helpers: `to_chunk_key`/`from_chunk_key` (string↔Vector2i), `world_to_chunk_coords` (Vector3→grid using X/Z), `square_coords_around`, and `sort_coords_by_distance` (Manhattan).
+3. ✅ **Cancellation token** — `SKCancelToken` lightweight RefCounted flag for cooperative cancellation of in-flight loads.
+4. ✅ **Abstract interfaces** — `SKChunkSource` (load/unload data) and `SKChunkAdapter` (mount/unmount visuals) base classes for game-specific implementations.
+5. ✅ **Chunk manager** — `SKChunkManager` Node with:
+   - Configurable `chunk_size`, `active_radius`, `preload_radius`, `max_cached_chunks`, `load_concurrency`
+   - Async loading with worker-pool concurrency limiting
+   - Active radius mount/unmount and preload radius pre-fetching
+   - LRU cache eviction (oldest-touched, non-active, non-preload chunks evicted first)
+   - `chunk_event` signal for full lifecycle observability (created, load-start, loaded, load-error, activated, deactivated, mount-start, mounted, unmount-start, unmounted, unloaded)
+   - `dispose()` for clean teardown
+6. ✅ **Example implementations** — `ExampleChunkSource` (deterministic procedural tiles + entities) and `ExampleChunkAdapter` (log-only mount/unmount) for testing.
+7. ✅ **Test suite** — `tests/test_chunk_manager.gd` with GUT tests covering utilities, chunk init, cancel token, manager lifecycle, mount/unmount on move, dispose, event signals, and cache eviction.
+
+| File | Purpose |
+|---|---|
+| `scripts/chunks/sk_chunk.gd` | Chunk data class |
+| `scripts/chunks/sk_chunk_utils.gd` | Coordinate math utilities |
+| `scripts/chunks/sk_cancel_token.gd` | Cooperative cancellation token |
+| `scripts/chunks/sk_chunk_source.gd` | Abstract chunk data loader |
+| `scripts/chunks/sk_chunk_adapter.gd` | Abstract chunk mount/unmount adapter |
+| `scripts/chunks/sk_chunk_manager.gd` | Main chunk manager Node |
+| `scripts/chunks/example_chunk_source.gd` | Example procedural source |
+| `scripts/chunks/example_chunk_adapter.gd` | Example logging adapter |
+| `tests/test_chunk_manager.gd` | GUT test suite |
+
 ### Phase 9 — Architecture Hardening (0.8 → 0.9 target) ✅
 
 Prepare the framework for long-lived production use and broader adoption.
@@ -115,6 +145,7 @@ In-game overlays and tools to accelerate iteration and troubleshooting.
 
 These pieces landed in the latest milestone:
 
+- **Phase 12 — Chunk Loading System**: Generic, engine-agnostic chunk manager in `scripts/chunks/` with async loading, active/preload radii, mount/unmount lifecycle, LRU cache eviction, concurrency limits, and cancellation token support. Includes abstract `SKChunkSource`/`SKChunkAdapter` interfaces and example implementations. GUT test suite in `tests/test_chunk_manager.gd`.
 - **Phase 9 — Architecture Hardening (initial pass)**: four architecture docs (`multiplayer_audit.md`, `thread_safety.md`, `api_stability.md`, `migration_tooling.md`), plus the `PluginMigrationRegistry` class and tests for it. Plugin version bumped to `beta 0.8`.
 - **Phase 10 — External Inspiration Integration**: Ported behaviour tree system from BehaviourToolkit (MIT); added `SKBlackboard` shared AI state store; added quest template variables with `{placeholder}` substitution; added `ANY` join mode for quest node prerequisites.
 - **Phase 8 — Runtime Debugging & Diagnostics**: AI state overlay, navigation debug draw, perception debug draw, quest state inspector, and save file inspector all implemented. Runtime nodes add no overhead when hidden. Editor save inspector wired as a bottom panel in the plugin.

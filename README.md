@@ -52,7 +52,7 @@ Skelerealms is a framework layer, not a complete game template.
 
 - No built-in combat design
 - No UI framework
-- No terrain/LOD/chunk pipeline
+- No terrain/LOD pipeline (a generic chunk-loading system is provided — see `scripts/chunks/`)
 - No ready-made story, quests, encounters, or game-specific gameplay loop
 
 ## Requirements

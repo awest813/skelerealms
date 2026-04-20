@@ -197,6 +197,7 @@ These systems exist and partially work, but have documented gaps.
 | **~~Audio emitter~~** ✅ | `scripts/misc/audio_emitter.gd` | Replaced physics-based `PhysicsShapeQueryParameters3D` sphere query with direct distance checks against `audio_listener` group members using `global_position`; no physics bodies required |
 | **~~NPC path — door interaction~~** ✅ | `scripts/components/npc_component.gd` | NPCs find nearest `Door` node and call `interact()` to teleport when path crosses a world boundary; `door_interacted` signal emitted for animation/sound hooks |
 | **~~Mod-friendly data architecture~~** ✅ | `scripts/mods/mod_manifest.gd`, `scripts/mods/mod_loader.gd`, `scripts/mods/coven_opinion_override.gd` | `ModManifest` resource declares covens, quests, dialogues, and coven opinion overrides. `ModLoader` autoload scans `skelerealms/mods_path` (default `res://mods`) at game-start and registers all declared content; `load_mod()` is also callable programmatically. |
+| **~~Chunk loading system~~** ✅ | `scripts/chunks/sk_chunk_manager.gd`, `sk_chunk.gd`, `sk_chunk_utils.gd`, `sk_chunk_source.gd`, `sk_chunk_adapter.gd`, `sk_cancel_token.gd` | Generic engine-agnostic chunk manager with async loading, active/preload radii, mount/unmount lifecycle, LRU cache eviction, concurrency limits, and cancellation. Abstract `SKChunkSource`/`SKChunkAdapter` interfaces for game-specific implementations. GUT tests in `tests/test_chunk_manager.gd`. |
 
 ---
 
