@@ -6,11 +6,11 @@ For the detailed status of specific systems, assumptions, and incomplete areas, 
 
 ## Current state
 
-- **Version target:** `beta 0.8`
+- **Version target:** `beta 0.9`
 - **Development status:** active
 - **Stability target:** feature and API stability at `1.0`
 
-The framework has moved beyond the earliest missing-core-systems phase. The current focus is on closing the remaining simulation and authoring gaps that block a polished open-world RPG foundation.
+The framework has moved beyond the earliest missing-core-systems phase. All major systems (quests, dialogue, saves, combat, UI, chunk loading, behaviour trees) are implemented. The current focus is on the AssetLib-ready minimal example project and any remaining polish before 1.0.
 
 ## Recently completed foundation work
 
@@ -41,7 +41,9 @@ These major pieces are already in place:
 
 ## Current priorities
 
-Phase 11 — Combat Subsystem & UI Framework. Both systems are now implemented. The combat layer provides `DamagePacket`, `CombatantComponent`, `CombatAction`, `CombatStateMachine`, hitbox/hurtbox detection, `HitPipeline`, and an AI combat action module. The UI framework provides `SKUIManager` autoload, `SKTheme` resource, HUD/menu shell abstractions, and widget contracts. See `FRAMEWORK_STATUS.md` for the full file listing.
+All major phases are complete. The remaining priority is:
+
+- AssetLib-ready minimal example project
 
 ### Phase 11 — Combat Subsystem & UI Framework ✅
 
@@ -91,14 +93,14 @@ Generic, engine-agnostic chunk manager that fills the "No terrain/LOD/chunk pipe
 | `scripts/chunks/example_chunk_adapter.gd` | Example logging adapter |
 | `tests/test_chunk_manager.gd` | GUT test suite |
 
-### Phase 9 — Architecture Hardening (0.8 → 0.9 target) ✅
+### Phase 9 — Architecture Hardening (0.9) ✅
 
 Prepare the framework for long-lived production use and broader adoption.
 
 1. ✅ **Multiplayer-readiness audit** — session-unsafe state, singleton assumptions, and player-identity coupling catalogued in `docs/architecture/multiplayer_audit.md`. No code changes yet; documented as a survey so any future co-op fork has a starting map.
 2. ✅ **Thread-safety review** — autoload and shared-state hazards documented in `docs/architecture/thread_safety.md`. Ground rule codified: Skelerealms remains a single-threaded main-thread framework; worker-thread work requires immutable snapshots.
 3. ✅ **API stability pass** — Stable / Beta / Internal tiers defined in `docs/architecture/api_stability.md`. Post-1.0 deprecation policy spelled out.
-4. ✅ **Plugin packaging** — plugin version bumped to `beta 0.8`. Plugin.cfg metadata retained; AssetLib polish (minimal example project, versioned release artifacts) remains for 0.9.
+4. ✅ **Plugin packaging** — plugin version bumped to `beta 0.9`. Plugin.cfg metadata retained; AssetLib polish (minimal example project, versioned release artifacts) remains for 1.0.
 5. ✅ **Migration tooling** — `PluginMigrationRegistry` (`scripts/system/plugin_migration_registry.gd`) runs one-shot project-level migrations on editor start. Save-file migrations continue to live in `SaveSystem`. Contract documented in `docs/architecture/migration_tooling.md`. Unit tests in `tests/test_plugin_migration_registry.gd`.
 6. ✅ **SaveSystem crash safety** — `_saving: bool` guard prevents re-entrant or concurrent calls. Write path converted to tmp-file + rename: data is serialised to `<slot>.tmp` then atomically renamed to `<slot>.dat`, so a crash during the write cannot corrupt an existing save. GUT tests extended to cover the guard.
 7. ✅ **`@rpc` annotation pass** — authority-only state transitions (`QuestSystem.activate_quest`, `activate_quest_with_params`, `apply_event`; `CrimeMaster.punish_crimes`) annotated with `@rpc("authority", "reliable")`. Any-peer event reporters (`report_kill`, `report_pickup`, `report_talk`, `report_custom`; `CrimeMaster.add_crime`; `DialogueSystem.end_dialogue`) annotated with `@rpc("any_peer", "call_local", "reliable")`. Annotations do not affect single-player behaviour; `multiplayer_audit.md` updated with the full table.
@@ -117,7 +119,7 @@ Prepare the framework for long-lived production use and broader adoption.
 | `scripts/crime/crime_master.gd` | `@rpc` annotations on state-transition methods |
 | `scripts/dialogue/dialogue_system.gd` | `@rpc` annotation on `end_dialogue` |
 
-Remaining Phase 9 work (pushed into 0.9):
+Remaining work (post-0.9):
 
 - AssetLib-ready minimal example project.
 
@@ -145,16 +147,17 @@ In-game overlays and tools to accelerate iteration and troubleshooting.
 
 These pieces landed in the latest milestone:
 
+- **Phase 13 — Godot 4.4 Return-Type & Typed-Variable Pass**: Complete sweep adding `-> void` return-type annotations, typed dictionaries (`Dictionary[K, V]`), typed array parameters, and typed variable declarations across all remaining scripts.
+- **Phase 12 — Godot 4.4 Modernization Sweep**: Typed dictionaries across core data structures, typed arrays, null guards on `FileAccess.open()`, and `world_states` initializer fix.
 - **Phase 12 — Chunk Loading System**: Generic, engine-agnostic chunk manager in `scripts/chunks/` with async loading, active/preload radii, mount/unmount lifecycle, LRU cache eviction, concurrency limits, and cancellation token support. Includes abstract `SKChunkSource`/`SKChunkAdapter` interfaces and example implementations. GUT test suite in `tests/test_chunk_manager.gd`.
-- **Phase 9 — Architecture Hardening (initial pass)**: four architecture docs (`multiplayer_audit.md`, `thread_safety.md`, `api_stability.md`, `migration_tooling.md`), plus the `PluginMigrationRegistry` class and tests for it. Plugin version bumped to `beta 0.8`.
+- **Phase 11 — Combat Subsystem & UI Framework**: Full combat layer (`scripts/combat/`) with `DamagePacket`, `CombatantComponent`, `CombatAction`, `CombatStateMachine`, hitbox/hurtbox, `HitPipeline`, and AI combat module. UI framework (`scripts/ui/`) with `SKUIManager`, `SKTheme`, HUD/menu shells, menus, and widgets.
 - **Phase 10 — External Inspiration Integration**: Ported behaviour tree system from BehaviourToolkit (MIT); added `SKBlackboard` shared AI state store; added quest template variables with `{placeholder}` substitution; added `ANY` join mode for quest node prerequisites.
+- **Phase 9 — Architecture Hardening**: four architecture docs (`multiplayer_audit.md`, `thread_safety.md`, `api_stability.md`, `migration_tooling.md`), plus the `PluginMigrationRegistry` class and tests. Crash-safe saves, `@rpc` annotation pass. Plugin version bumped to `beta 0.9`.
 - **Phase 8 — Runtime Debugging & Diagnostics**: AI state overlay, navigation debug draw, perception debug draw, quest state inspector, and save file inspector all implemented. Runtime nodes add no overhead when hidden. Editor save inspector wired as a bottom panel in the plugin.
-- **Phase 7 — Editor Tooling**: Visual quest graph editor, dialogue tree editor, and coven relationship matrix all landed as `@tool` editor plugins. Each opens a dedicated popup window from the Godot inspector. The schedule editor (shipped in beta 0.6) completes the set of four authoring tools.
+- **Phase 7 — Editor Tooling**: Visual quest graph editor, dialogue tree editor, and coven relationship matrix all landed as `@tool` editor plugins.
 - Mod-friendly data architecture: `ModManifest` resource and `ModLoader` autoload with manifest-driven override support for covens, quests, and dialogues.
-- Crime — non-player tracking completeness: assault and murder crimes are now broadcast by `DefaultDamageModule`; fixed `crime_committed` signal type and null safety in `CrimeMaster`.
 - **Documentation**: Added user-guide pages for the Quest system, Dialogue system, Save system, and Mods system. Updated the documentation table of contents in `docs/intro.md`.
-- **Integration tests**: Added GUT-compatible test suites for `QuestGraphEngine` (`tests/test_quest_graph_engine.gd`), `DialogueEngine` (`tests/test_dialogue_engine.gd`), and `BarterSystem` (`tests/test_barter.gd`).
-- **Performance**: `QuestGraphEngine` now builds precomputed node-lookup and successor-edge maps at registration time, eliminating O(n) list scans during `apply_event` and graph traversal.
+- **Integration tests**: Added GUT-compatible test suites for `QuestGraphEngine`, `DialogueEngine`, `BarterSystem`, coven disposition, network edge costs, save system, performance optimizations, plugin migration registry, spawn tracker manager, chunk manager, loot table, and behaviour tree.
 
 ## Path to 1.0
 
@@ -652,9 +655,9 @@ This phase inherits Camelot's framework-layer maturity (tests, docs, validators)
 **Source:** Camelot's versioned release artifacts
 
 **Implementation:**
-- `plugin.cfg` version bumped to `beta 0.8`.
+- `plugin.cfg` version bumped to `beta 0.9`.
 - `PLUGIN_VERSION` constant in `skelerealms.gd` so the migration registry and future tooling have a single source of truth.
-- AssetLib-ready minimal example project deferred to 0.9.
+- AssetLib-ready minimal example project deferred to post-0.9.
 
 ### ~~9E  Plugin Migration Registry~~ ✅
 **Source:** `src/framework/save/save-migration-registry.ts` generalised beyond save files

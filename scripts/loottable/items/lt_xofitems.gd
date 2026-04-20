@@ -8,12 +8,15 @@ var items: SKLootTable
 
 
 func _ready() -> void:
+	if get_child_count() == 0:
+		push_error("SKLTXOfItem: requires at least one child node.")
+		return
 	items = get_child(0)
 
 
 func resolve() -> SKLootTable.LootTableResult:
 	var x = randi_range(x_min, x_min if x_max <= x_min else x_max)
-	if items.size() == 0 or x == 0:
+	if items == null or items.size() == 0 or x == 0:
 		return SKLootTable.LootTableResult.new()
 	
 	var output:SKLootTable.LootTableResult = SKLootTable.LootTableResult.new()

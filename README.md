@@ -4,7 +4,7 @@
 
 Skelerealms is an extensible open-world RPG framework for Godot 4.4+, built for projects that need Creation Engine-style world simulation without inheriting Creation Engine-style limitations.
 
-It focuses on the hard framework problems behind Bethesda-inspired games: persistent worlds, cross-scene navigation, NPC simulation, inventories, factions, saves, quests, dialogue, and reusable entity systems. It does **not** ship your game's combat, UI, story, or content.
+It focuses on the hard framework problems behind Bethesda-inspired games: persistent worlds, cross-scene navigation, NPC simulation, inventories, factions, saves, quests, dialogue, combat, UI, and reusable entity systems. It does **not** ship your game's story, content, or gameplay loop.
 
 ## Why Skelerealms?
 
@@ -28,10 +28,31 @@ It focuses on the hard framework problems behind Bethesda-inspired games: persis
 ### Characters, AI, and progression
 
 - NPC AI with GOAP, schedules, patrols, perception, and investigation behavior
+- Behaviour tree system complementing GOAP for detailed action execution
+- Shared AI blackboard (`SKBlackboard`) for runtime state
 - Factions/covens with configurable disposition thresholds
 - Crime tracking and guard challenge response
 - Skills, attributes, vitals, inventory, equipment, loot tables, and status effects
 - Bartering and shop item filtering
+
+### Combat
+
+- `DamagePacket` extending `DamageInfo` with crits, hit reactions, damage categories, and tags
+- `CombatantComponent` unifying poise, resistances, block/parry/i-frames for player and NPC entities
+- `CombatAction` resource defining attacks, abilities, and spells with timing, cost, and combos
+- `CombatStateMachine` with Idle → Attack → Cast → Stagger → Knockdown → Death flow
+- `SKHitbox`/`SKHurtbox` Area3D wrappers with deduplication and locational damage
+- `HitPipeline` stateless resolver for melee and hitscan hits
+- AI combat action module for NPC action selection
+
+### UI framework
+
+- `SKUIManager` autoload managing layer stack, menu stack, and input mode routing
+- `SKTheme` resource with RPG color palette, font slots, and animation timing
+- HUD shell with widget slots for vitals, compass, crosshair, prompts, and status effects
+- Menu shell with tab/page and popup management
+- Menu contracts: inventory, dialogue, barter, journal, pause, character
+- Widget contracts: list item, stat row, tab panel, tooltip, radial selector, prompt bar
 
 ### Narrative and interaction
 
@@ -46,12 +67,18 @@ It focuses on the hard framework problems behind Bethesda-inspired games: persis
 - World-entity and door authoring workflows
 - Schedule and NPC tooling
 
+### Chunk loading
+
+- Generic, engine-agnostic chunk manager (`SKChunkManager`) with configurable active/preload radii
+- Async loading with worker-pool concurrency limiting and cooperative cancellation
+- LRU cache eviction for memory management
+- Abstract `SKChunkSource`/`SKChunkAdapter` interfaces for game-specific implementations
+- Full lifecycle observability via `chunk_event` signal
+
 ## What Skelerealms does not include
 
 Skelerealms is a framework layer, not a complete game template.
 
-- No built-in combat design
-- No UI framework
 - No terrain/LOD pipeline (a generic chunk-loading system is provided — see `scripts/chunks/`)
 - No ready-made story, quests, encounters, or game-specific gameplay loop
 
@@ -108,6 +135,10 @@ Recommended reading order:
 - [`docs/user guide/schedules.md`](docs/user%20guide/schedules.md)
 - [`docs/user guide/loot_tables.md`](docs/user%20guide/loot_tables.md)
 - [`docs/user guide/covens.md`](docs/user%20guide/covens.md)
+- [`docs/user guide/quests.md`](docs/user%20guide/quests.md)
+- [`docs/user guide/dialogue.md`](docs/user%20guide/dialogue.md)
+- [`docs/user guide/save_system.md`](docs/user%20guide/save_system.md)
+- [`docs/user guide/mods.md`](docs/user%20guide/mods.md)
 - [`docs/user guide/stealth_provider.md`](docs/user%20guide/stealth_provider.md)
 - [`docs/user guide/tools.md`](docs/user%20guide/tools.md)
 - [`docs/user guide/migrating.md`](docs/user%20guide/migrating.md)
@@ -151,8 +182,10 @@ All prior framework gaps (quests, dialogue, saves, barter haggling, item ownersh
 - **Phase 7 editor tooling (done):** Visual quest editor, dialogue editor, coven relationship matrix
 - **Phase 8 (done):** Runtime debugging overlays — AI state, navigation, perception, quest state, save inspector
 - **Phase 9 (done):** Architecture hardening — multiplayer audit, thread-safety review, API stability tiers, plugin migration tooling, crash-safe saves, `@rpc` annotation pass
+- **Phase 10 (done):** External inspiration integration — behaviour tree system, SKBlackboard, quest template variables, `ANY` join mode
 - **Phase 11 (done):** Combat subsystem (DamagePacket, CombatantComponent, CombatAction, CombatStateMachine, hitbox/hurtbox, HitPipeline) and UI framework (SKUIManager, SKTheme, HUD/menu shells, widgets)
-- **Phase 12 (current):** Godot 4.4 modernization — typed dictionaries, FileAccess safety, type annotations, version bump to `beta 0.9`
+- **Phase 12 (done):** Chunk loading system — generic engine-agnostic chunk manager with async loading, LRU caching, concurrency limits, and abstract interfaces
+- **Phase 13 (done):** Godot 4.4 modernization — typed dictionaries, return-type annotations, typed variables, FileAccess safety, version bump to `beta 0.9`
 - **Next:** AssetLib-ready minimal example project
 
 See [`ROADMAP.md`](ROADMAP.md) for the fuller roadmap and [`docs/architecture/`](docs/architecture/) for architecture documentation.
