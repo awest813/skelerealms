@@ -1,0 +1,334 @@
+class_name SKChunkManager
+extends Node
+## Manages asynchronous loading, mounting, and eviction of world chunks.
+##
+## Attach this node to the scene tree and call [method update] each frame
+## (or on demand) with the current world position. The manager will:
+## [br]- Create chunk records for positions within the preload radius
+## [br]- Load chunk data via the configured [SKChunkSource]
+## [br]- Mount/unmount chunks as they enter/leave the active radius via [SKChunkAdapter]
+## [br]- Evict stale chunks that exceed [member max_cached_chunks]
+## [br]
+## The system is engine-agnostic — plug in any [SKChunkSource] and [SKChunkAdapter].
+
+
+## Emitted for every chunk lifecycle event. See [enum EventType].
+signal chunk_event(type: String, chunk: SKChunk)
+
+
+## Size of each chunk in world units.
+@export var chunk_size: float = 256.0
+## Radius (in chunks) around the origin that are considered active and mounted.
+@export var active_radius: int = 1
+## Radius (in chunks) around the origin that are preloaded (must be >= active_radius).
+@export var preload_radius: int = 2
+## Maximum number of loaded chunks kept in memory before eviction.
+@export var max_cached_chunks: int = 24
+## Maximum number of chunks loading concurrently.
+@export var load_concurrency: int = 4
+
+## The chunk data source. Must be set before calling [method update].
+var source: SKChunkSource
+## Optional adapter for mounting/unmounting chunks in the scene.
+var adapter: SKChunkAdapter
+
+## All known chunks keyed by their string key.
+var _chunks: Dictionary = {}
+## Keys of chunks currently in the active radius.
+var _active_keys: Dictionary = {}
+## Keys of chunks currently in the preload radius.
+var _preload_keys: Dictionary = {}
+## Keys of chunks currently being loaded.
+var _loading_keys: Dictionary = {}
+## Cancel tokens for in-flight loads, keyed by chunk key.
+var _cancel_tokens: Dictionary = {}
+
+
+func _ready() -> void:
+	if preload_radius < active_radius:
+		preload_radius = active_radius
+
+
+## Updates the chunk grid around [param world_position].
+## Call this each frame or whenever the origin moves significantly.
+func update(world_position: Vector3) -> void:
+	var center := SKChunkUtils.world_to_chunk_coords(world_position, chunk_size)
+
+	var active_coords := SKChunkUtils.sort_coords_by_distance(
+		SKChunkUtils.square_coords_around(center, active_radius), center
+	)
+	var preload_coords := SKChunkUtils.sort_coords_by_distance(
+		SKChunkUtils.square_coords_around(center, preload_radius), center
+	)
+
+	var next_active_keys: Dictionary = {}
+	for c in active_coords:
+		next_active_keys[SKChunkUtils.to_chunk_key(c)] = true
+
+	var next_preload_keys: Dictionary = {}
+	for c in preload_coords:
+		next_preload_keys[SKChunkUtils.to_chunk_key(c)] = true
+
+	# Ensure chunk records exist for everything in the preload radius.
+	for coords in preload_coords:
+		_ensure_chunk(coords)
+
+	# Touch chunks that are still in the preload zone.
+	for key: String in _chunks:
+		if next_preload_keys.has(key):
+			(_chunks[key] as SKChunk).last_touched = Time.get_ticks_msec()
+
+	# Load any chunks that need data.
+	await _load_needed_chunks(preload_coords)
+
+	# Activate newly active chunks.
+	for key: String in next_active_keys:
+		if not _active_keys.has(key):
+			var chunk: SKChunk = _chunks.get(key) as SKChunk
+			if not chunk:
+				continue
+			_active_keys[key] = true
+			_emit("activated", chunk)
+			if chunk.is_loaded and not chunk.is_mounted:
+				_mount_chunk(chunk)
+
+	# Deactivate chunks that left the active radius.
+	var to_deactivate: Array[String] = []
+	for key: String in _active_keys:
+		if not next_active_keys.has(key):
+			to_deactivate.push_back(key)
+	for key in to_deactivate:
+		var chunk: SKChunk = _chunks.get(key) as SKChunk
+		_active_keys.erase(key)
+		if not chunk:
+			continue
+		_emit("deactivated", chunk)
+		if chunk.is_mounted:
+			_unmount_chunk(chunk)
+
+	# Refresh preload key set.
+	_preload_keys = next_preload_keys.duplicate()
+
+	# Evict excess cached chunks.
+	_evict_cache()
+
+
+## Tears down all chunks — unmounts, unloads, and clears internal state.
+func dispose() -> void:
+	# Cancel all in-flight loads.
+	for key: String in _cancel_tokens:
+		(_cancel_tokens[key] as SKCancelToken).cancel()
+
+	# Unmount all mounted chunks.
+	for chunk: SKChunk in _get_mounted_chunks():
+		_unmount_chunk(chunk)
+
+	# Unload all loaded chunks.
+	for chunk: SKChunk in _get_loaded_chunks():
+		_unload_chunk(chunk)
+
+	_active_keys.clear()
+	_preload_keys.clear()
+	_loading_keys.clear()
+	_cancel_tokens.clear()
+	_chunks.clear()
+
+
+# ---------------------------------------------------------------------------
+#  Public queries
+# ---------------------------------------------------------------------------
+
+## Returns the chunk overlapping the given world position, or null.
+func get_chunk_at_world(world_pos: Vector3) -> SKChunk:
+	var coords := SKChunkUtils.world_to_chunk_coords(world_pos, chunk_size)
+	return _chunks.get(SKChunkUtils.to_chunk_key(coords)) as SKChunk
+
+
+## Returns a chunk by its string key, or null.
+func get_chunk_by_key(key: String) -> SKChunk:
+	return _chunks.get(key) as SKChunk
+
+
+## Returns all chunks whose data is loaded.
+func get_loaded_chunks() -> Array[SKChunk]:
+	return _get_loaded_chunks()
+
+
+## Returns all chunks in the active radius.
+func get_active_chunks() -> Array[SKChunk]:
+	var result: Array[SKChunk] = []
+	for key: String in _active_keys:
+		var c: SKChunk = _chunks.get(key) as SKChunk
+		if c:
+			result.push_back(c)
+	return result
+
+
+## Returns all currently mounted chunks.
+func get_mounted_chunks() -> Array[SKChunk]:
+	return _get_mounted_chunks()
+
+
+# ---------------------------------------------------------------------------
+#  Internals
+# ---------------------------------------------------------------------------
+
+func _ensure_chunk(coords: Vector2i) -> SKChunk:
+	var key := SKChunkUtils.to_chunk_key(coords)
+	if _chunks.has(key):
+		return _chunks[key] as SKChunk
+	var chunk := SKChunk.new(coords)
+	_chunks[key] = chunk
+	_emit("created", chunk)
+	return chunk
+
+
+func _load_needed_chunks(coords_list: Array[Vector2i]) -> void:
+	var queue: Array[SKChunk] = []
+	for coords in coords_list:
+		var chunk: SKChunk = _chunks.get(SKChunkUtils.to_chunk_key(coords)) as SKChunk
+		if chunk and not chunk.is_loaded and not chunk.is_loading:
+			queue.push_back(chunk)
+
+	# Spawn up to load_concurrency workers pulling from the shared queue.
+	var worker_count := mini(load_concurrency, queue.size())
+	var idx := 0  # shared index — safe because workers yield between iterations
+
+	var workers: Array = []
+	for i in worker_count:
+		workers.push_back(_load_worker(queue))
+	# Wait for all workers to finish (each is a coroutine).
+	for w in workers:
+		await w
+
+
+func _load_worker(queue: Array[SKChunk]) -> void:
+	while queue.size() > 0:
+		var chunk: SKChunk = queue.pop_front()
+		if not chunk:
+			return
+		await _load_chunk(chunk)
+
+
+func _load_chunk(chunk: SKChunk) -> void:
+	if chunk.is_loaded or chunk.is_loading or _loading_keys.has(chunk.key):
+		return
+
+	chunk.is_loading = true
+	chunk.error = null
+	_loading_keys[chunk.key] = true
+	_emit("load-start", chunk)
+
+	var token := SKCancelToken.new()
+	_cancel_tokens[chunk.key] = token
+
+	var result: Variant = null
+	var load_error: Variant = null
+
+	if source:
+		result = await source.load_chunk(chunk.coords, token)
+		if token.is_cancelled:
+			chunk.is_loading = false
+			_loading_keys.erase(chunk.key)
+			_cancel_tokens.erase(chunk.key)
+			return
+
+	if load_error != null:
+		chunk.error = load_error
+		_emit("load-error", chunk)
+	else:
+		chunk.data = result
+		chunk.is_loaded = true
+		chunk.last_touched = Time.get_ticks_msec()
+		_emit("loaded", chunk)
+
+		if _active_keys.has(chunk.key) and not chunk.is_mounted:
+			_mount_chunk(chunk)
+
+	chunk.is_loading = false
+	_loading_keys.erase(chunk.key)
+	_cancel_tokens.erase(chunk.key)
+
+
+func _mount_chunk(chunk: SKChunk) -> void:
+	if not adapter or chunk.is_mounted or not chunk.is_loaded:
+		return
+	_emit("mount-start", chunk)
+	adapter.mount(chunk)
+	chunk.is_mounted = true
+	_emit("mounted", chunk)
+
+
+func _unmount_chunk(chunk: SKChunk) -> void:
+	if not adapter or not chunk.is_mounted:
+		return
+	_emit("unmount-start", chunk)
+	adapter.unmount(chunk)
+	chunk.is_mounted = false
+	_emit("unmounted", chunk)
+
+
+func _unload_chunk(chunk: SKChunk) -> void:
+	if not chunk.is_loaded:
+		return
+
+	if chunk.is_mounted:
+		_unmount_chunk(chunk)
+
+	if _cancel_tokens.has(chunk.key):
+		(_cancel_tokens[chunk.key] as SKCancelToken).cancel()
+		_cancel_tokens.erase(chunk.key)
+
+	if source:
+		source.unload_chunk(chunk)
+
+	chunk.data = null
+	chunk.is_loaded = false
+	chunk.error = null
+	_emit("unloaded", chunk)
+
+
+func _evict_cache() -> void:
+	var loaded := _get_loaded_chunks()
+	if loaded.size() <= max_cached_chunks:
+		return
+
+	# Build list of eviction candidates: loaded but not active, not preloading, not loading.
+	var victims: Array[SKChunk] = []
+	for chunk in loaded:
+		if not _active_keys.has(chunk.key) \
+			and not _preload_keys.has(chunk.key) \
+			and not chunk.is_loading:
+			victims.push_back(chunk)
+
+	# Evict oldest-touched first.
+	victims.sort_custom(func(a: SKChunk, b: SKChunk) -> bool:
+		return a.last_touched < b.last_touched
+	)
+
+	while _get_loaded_chunks().size() > max_cached_chunks and victims.size() > 0:
+		var victim: SKChunk = victims.pop_front()
+		if victim:
+			_unload_chunk(victim)
+
+
+func _get_loaded_chunks() -> Array[SKChunk]:
+	var result: Array[SKChunk] = []
+	for key: String in _chunks:
+		var c: SKChunk = _chunks[key] as SKChunk
+		if c.is_loaded:
+			result.push_back(c)
+	return result
+
+
+func _get_mounted_chunks() -> Array[SKChunk]:
+	var result: Array[SKChunk] = []
+	for key: String in _chunks:
+		var c: SKChunk = _chunks[key] as SKChunk
+		if c.is_mounted:
+			result.push_back(c)
+	return result
+
+
+func _emit(type: String, chunk: SKChunk) -> void:
+	chunk_event.emit(type, chunk)
