@@ -192,7 +192,6 @@ func _load_needed_chunks(coords_list: Array[Vector2i]) -> void:
 
 	# Spawn up to load_concurrency workers pulling from the shared queue.
 	var worker_count := mini(load_concurrency, queue.size())
-	var idx := 0  # shared index — safe because workers yield between iterations
 
 	var workers: Array = []
 	for i in worker_count:
@@ -226,12 +225,16 @@ func _load_chunk(chunk: SKChunk) -> void:
 	var load_error: Variant = null
 
 	if source:
+		# GDScript coroutines cannot catch errors from await, so we treat a
+		# null result after a non-cancelled load as an error heuristic.
 		result = await source.load_chunk(chunk.coords, token)
 		if token.is_cancelled:
 			chunk.is_loading = false
 			_loading_keys.erase(chunk.key)
 			_cancel_tokens.erase(chunk.key)
 			return
+		if result == null:
+			load_error = "load_chunk returned null for %s" % chunk.key
 
 	if load_error != null:
 		chunk.error = load_error
