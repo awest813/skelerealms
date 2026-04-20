@@ -14,6 +14,10 @@ func _ready() -> void:
 		items.append(c)
 
 
+func size() -> int:
+	return items.size()
+
+
 ## Generate all members of the loot table. Returns a dictionary shaped like {&"items":Array[ItemData], &"currencies":{name:amount,...}}
 func resolve() -> Dictionary:
 	var output:LootTableResult = LootTableResult.new()
@@ -55,3 +59,7 @@ class LootTableResult:
 			&"currencies": currencies,
 			&"entities": entities,
 		}
+	
+	
+	func size() -> int:
+		return items.size() + entities.size()

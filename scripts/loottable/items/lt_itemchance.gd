@@ -7,7 +7,7 @@ extends SKLootTableItem
 
 
 func resolve() -> SKLootTable.LootTableResult:
-	if randf() > chance:
+	if randf() <= chance:
 		return SKLootTable.LootTableResult.new([item], {})
 	else:
 		return SKLootTable.LootTableResult.new()
