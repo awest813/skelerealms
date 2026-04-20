@@ -1,5 +1,5 @@
 # The Skelerealms Grimoire
-#### For Skelerealms Beta 0.8
+#### For Skelerealms Beta 0.9
 
 ## Introduction
 
@@ -7,9 +7,9 @@ Welcome! There are the high-level docs for Skelerealms, showing you how to use t
 
 ### What is Skelerealms?
 
-Skelerealms is an addon for Godot 4.2+ that aims to provide the foundation for creating a Bethesda-style Open World RPG (The Elder Scrolls, Fallout, Starfield). No gameplay is provided, but a lot of the challenging systems are in place to allow you to focus on telling your story.  
+Skelerealms is an addon for Godot 4.4+ that aims to provide the foundation for creating a Bethesda-style Open World RPG (The Elder Scrolls, Fallout, Starfield). No gameplay is provided, but a lot of the challenging systems are in place to allow you to focus on telling your story.  
 
-Skelerealms is inpsired by Creation Engine, but aims to tackle many of its shortcomings with the benefit of 20+ years of hindsight. It's also been designed not to lock you in to any specific way of designing your game - most components are purely optional. You don't even need to have a player to run the game (but I'm not sure what the point of that would be...) 
+Skelerealms is inspired by Creation Engine, but aims to tackle many of its shortcomings with the benefit of 20+ years of hindsight. It's also been designed not to lock you in to any specific way of designing your game - most components are purely optional. You don't even need to have a player to run the game (but I'm not sure what the point of that would be...) 
 
 ### What problems does it solve?
 
@@ -22,7 +22,12 @@ Skelerealms is inpsired by Creation Engine, but aims to tackle many of its short
 
 - Cross-scene persistence
 - Inter-scene navigation
-- GOAP
+- GOAP and behaviour trees
+- Quest system with DAG validation
+- Dialogue system with branching trees
+- Combat subsystem (hitbox/hurtbox, damage pipeline, combat state machine)
+- UI framework (HUD, menus, widgets)
+- Chunk loading system
 - Inventory
 - Status effects and spells
 - Loot tables
@@ -32,6 +37,8 @@ Skelerealms is inpsired by Creation Engine, but aims to tackle many of its short
 - Factions
 - Schedules
 - Sight/stealth mechanics
+- Save/load with named slots and schema versioning
+- Mod support
 
 ## Table of Contents
 
@@ -45,7 +52,7 @@ Skelerealms is inpsired by Creation Engine, but aims to tackle many of its short
 - [Quick Start](user%20guide/quick_start.md)
 - [Components](user%20guide/components.md)
 - [Entities](user%20guide/entities.md)
-- [Worlds](user%20guide/worlds.md) *(see Concepts section)*
+- [Worlds](concepts/worlds.md)
 - [NPCs](user%20guide/npcs.md)
 - [AI Modules](user%20guide/ai_modules.md)
 - [GOAP Actions](user%20guide/goap_actions.md)

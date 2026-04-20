@@ -94,7 +94,6 @@ func _create_using_instantiation(path:String) -> void:
 	var p:String = option_button.get_item_text(option_button.selected)
 	var new_scene:Node = (ResourceLoader.load(p) as PackedScene).instantiate(PackedScene.GEN_EDIT_STATE_MAIN_INHERITED)
 	new_scene.scene_file_path = p
-	print(new_scene.scene_file_path)
 	var new_ps := PackedScene.new()
 	new_ps.pack(new_scene)
 	ResourceSaver.save(new_ps, path)

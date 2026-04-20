@@ -7,11 +7,14 @@ var items:SKLootTable
 
 
 func _ready() -> void:
+	if get_child_count() == 0:
+		push_error("SKLTOnCondition: requires at least one child node.")
+		return
 	items = get_child(0)
 
 
 func resolve() -> SKLootTable.LootTableResult:
-	if not _check_condition():
+	if items == null or not _check_condition():
 		return SKLootTable.LootTableResult.new()
 	
 	var o:SKLootTable.LootTableResult = SKLootTable.LootTableResult.new()
