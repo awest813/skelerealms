@@ -18,6 +18,9 @@ extends Node
 ## Emitted for every chunk lifecycle event. See [enum EventType].
 signal chunk_event(type: String, chunk: SKChunk)
 
+## Sentinel value used when searching for a minimum integer distance.
+const _INT_MAX: int = 2147483647
+
 
 ## Size of each chunk in world units.
 @export var chunk_size: float = 256.0
@@ -95,8 +98,8 @@ func update_multi(origins: Array[Vector3]) -> void:
 
 	# Sort combined preload coords by minimum Manhattan distance to any origin (closest first).
 	all_preload_coords.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
-		var da_min: int = 2147483647
-		var db_min: int = 2147483647
+		var da_min: int = _INT_MAX
+		var db_min: int = _INT_MAX
 		for world_pos: Vector3 in origins:
 			var center := SKChunkUtils.world_to_chunk_coords(world_pos, chunk_size)
 			var da := absi(a.x - center.x) + absi(a.y - center.y)
