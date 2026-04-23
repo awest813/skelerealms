@@ -66,29 +66,36 @@ All major phases are complete. The remaining priority is:
 ### Phase 12 — Chunk Loading System ✅
 
 Generic, engine-agnostic chunk manager that fills the "No terrain/LOD/chunk pipeline" gap.
+Inspired by [Cellblock](https://github.com/liamhendricks/cellblock) (open-world scene management for Godot 4) and patterns from [godot_voxel](https://github.com/Zylann/godot_voxel).
 
-1. ✅ **Core types** — `SKChunk` RefCounted data class holding grid coordinates, loaded data, and lifecycle flags (`is_loaded`, `is_loading`, `is_mounted`, `last_touched`, `error`).
-2. ✅ **Chunk utilities** — `SKChunkUtils` with static helpers: `to_chunk_key`/`from_chunk_key` (string↔Vector2i), `world_to_chunk_coords` (Vector3→grid using X/Z), `square_coords_around`, and `sort_coords_by_distance` (Manhattan).
+1. ✅ **Core types** — `SKChunk` RefCounted data class holding grid coordinates, loaded data, and lifecycle flags (`is_loaded`, `is_loading`, `is_mounted`, `last_touched`, `error`, `retry_count`).
+2. ✅ **Chunk utilities** — `SKChunkUtils` with static helpers: `to_chunk_key`/`from_chunk_key` (string↔Vector2i), `world_to_chunk_coords` (Vector3→grid using X/Z), `square_coords_around`, `circle_coords_around` (Euclidean radius for natural circular loading, ~22 % fewer chunks than square at the same radius), and `sort_coords_by_distance` (Manhattan).
 3. ✅ **Cancellation token** — `SKCancelToken` lightweight RefCounted flag for cooperative cancellation of in-flight loads.
 4. ✅ **Abstract interfaces** — `SKChunkSource` (load/unload data) and `SKChunkAdapter` (mount/unmount visuals) base classes for game-specific implementations.
 5. ✅ **Chunk manager** — `SKChunkManager` Node with:
    - Configurable `chunk_size`, `active_radius`, `preload_radius`, `max_cached_chunks`, `load_concurrency`
-   - Async loading with worker-pool concurrency limiting
+   - `use_circular_radius` — toggle between square and circular (Euclidean) radius selection, inspired by Cellblock's distance-to-origin strategy
+   - Async loading with worker-pool concurrency limiting; closest chunks load first
+   - **Multi-origin support** — `update_multi(origins: Array[Vector3])` merges all player/camera neighbourhoods; `update(pos)` delegates to it; enables split-screen and co-op scenarios
+   - **Load retry with backoff** — `max_load_retries` and `retry_delay` exports; failed loads are retried up to N times before entering error state; `retry_count` tracked on each `SKChunk`; emits `load-retry` event
    - Active radius mount/unmount and preload radius pre-fetching
    - LRU cache eviction (oldest-touched, non-active, non-preload chunks evicted first)
-   - `chunk_event` signal for full lifecycle observability (created, load-start, loaded, load-error, activated, deactivated, mount-start, mounted, unmount-start, unmounted, unloaded)
+   - `chunk_event` signal for full lifecycle observability (created, load-start, load-retry, loaded, load-error, activated, deactivated, mount-start, mounted, unmount-start, unmounted, unloaded)
+   - `get_all_chunks()` public query for diagnostics and debug visualization
    - `dispose()` for clean teardown
 6. ✅ **Example implementations** — `ExampleChunkSource` (deterministic procedural tiles + entities) and `ExampleChunkAdapter` (log-only mount/unmount) for testing.
-7. ✅ **Test suite** — `tests/test_chunk_manager.gd` with GUT tests covering utilities, chunk init, cancel token, manager lifecycle, mount/unmount on move, dispose, event signals, and cache eviction.
+7. ✅ **Debug visualization** — `SKChunkDebugDraw` Node3D draws chunk boundaries as colour-coded rectangles on the XZ plane using `ImmediateMesh` (pattern matches `NavDebugDraw`). Toggle with configurable key (default F8). Colors: error=red, mounted=green, loaded=blue, loading=orange, pending=grey.
+8. ✅ **Test suite** — `tests/test_chunk_manager.gd` extended with GUT tests for circular radius, load retry (success and exhaustion), retry-disabled behavior, multi-origin merging, `update()`/`update_multi()` equivalence, and `get_all_chunks()`.
 
 | File | Purpose |
 |---|---|
 | `scripts/chunks/sk_chunk.gd` | Chunk data class |
-| `scripts/chunks/sk_chunk_utils.gd` | Coordinate math utilities |
+| `scripts/chunks/sk_chunk_utils.gd` | Coordinate math utilities (square + circular radius) |
 | `scripts/chunks/sk_cancel_token.gd` | Cooperative cancellation token |
 | `scripts/chunks/sk_chunk_source.gd` | Abstract chunk data loader |
 | `scripts/chunks/sk_chunk_adapter.gd` | Abstract chunk mount/unmount adapter |
 | `scripts/chunks/sk_chunk_manager.gd` | Main chunk manager Node |
+| `scripts/chunks/sk_chunk_debug_draw.gd` | Runtime ImmediateMesh chunk grid visualizer |
 | `scripts/chunks/example_chunk_source.gd` | Example procedural source |
 | `scripts/chunks/example_chunk_adapter.gd` | Example logging adapter |
 | `tests/test_chunk_manager.gd` | GUT test suite |
@@ -147,6 +154,7 @@ In-game overlays and tools to accelerate iteration and troubleshooting.
 
 These pieces landed in the latest milestone:
 
+- **Phase 12 — Chunk Loading System (continued)**: Extended chunk system inspired by [Cellblock](https://github.com/liamhendricks/cellblock) and [godot_voxel](https://github.com/Zylann/godot_voxel). Added circular (Euclidean) radius selection (`circle_coords_around`, `use_circular_radius` export, ~22 % fewer chunks than square at equal radius); multi-origin `update_multi(origins)` for split-screen/co-op; load retry with configurable `max_load_retries`/`retry_delay` and `retry_count` tracking; `get_all_chunks()` diagnostic query; `SKChunkDebugDraw` ImmediateMesh chunk grid visualizer (toggleable, colour-coded by state); extended GUT test suite.
 - **Phase 13 — Godot 4.4 Return-Type & Typed-Variable Pass**: Complete sweep adding `-> void` return-type annotations, typed dictionaries (`Dictionary[K, V]`), typed array parameters, and typed variable declarations across all remaining scripts.
 - **Phase 12 — Godot 4.4 Modernization Sweep**: Typed dictionaries across core data structures, typed arrays, null guards on `FileAccess.open()`, and `world_states` initializer fix.
 - **Phase 12 — Chunk Loading System**: Generic, engine-agnostic chunk manager in `scripts/chunks/` with async loading, active/preload radii, mount/unmount lifecycle, LRU cache eviction, concurrency limits, and cancellation token support. Includes abstract `SKChunkSource`/`SKChunkAdapter` interfaces and example implementations. GUT test suite in `tests/test_chunk_manager.gd`.
