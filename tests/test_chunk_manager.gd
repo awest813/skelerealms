@@ -215,3 +215,173 @@ func test_cache_eviction() -> void:
 	assert_true(mgr.get_loaded_chunks().size() <= mgr.max_cached_chunks + 9,
 		"Loaded chunks should respect max_cached_chunks after eviction.")
 	assert_true(src.unload_count > 0, "Some chunks should have been unloaded.")
+
+
+# ── Circular radius ───────────────────────────────────────────────────────────
+
+
+func test_circle_coords_around_radius_0() -> void:
+	var coords := SKChunkUtils.circle_coords_around(Vector2i(5, 5), 0)
+	assert_eq(coords.size(), 1)
+	assert_eq(coords[0], Vector2i(5, 5))
+
+
+func test_circle_coords_around_radius_1() -> void:
+	var coords := SKChunkUtils.circle_coords_around(Vector2i(0, 0), 1)
+	# Euclidean radius 1: only coords with x²+y² ≤ 1 qualify → diamond of 5.
+	assert_eq(coords.size(), 5, "Radius-1 circle should contain 5 coords (diamond).")
+	assert_true(coords.has(Vector2i(0, 0)))
+	assert_true(coords.has(Vector2i(1, 0)))
+	assert_true(coords.has(Vector2i(-1, 0)))
+	assert_true(coords.has(Vector2i(0, 1)))
+	assert_true(coords.has(Vector2i(0, -1)))
+	assert_false(coords.has(Vector2i(1, 1)), "Diagonal corners should be excluded from radius-1 circle.")
+
+
+func test_circle_coords_fewer_than_square() -> void:
+	var center := Vector2i(0, 0)
+	var radius := 3
+	var circle := SKChunkUtils.circle_coords_around(center, radius)
+	var square := SKChunkUtils.square_coords_around(center, radius)
+	assert_true(circle.size() < square.size(),
+		"Circle radius should produce fewer coords than square at the same radius.")
+
+
+func test_circular_radius_manager() -> void:
+	var mgr := _make_manager()
+	mgr.use_circular_radius = true
+	mgr.active_radius = 1
+	mgr.preload_radius = 1
+	await mgr.update(Vector3(0, 0, 0))
+	# Circular radius=1 yields 5 chunks (diamond), not 9 (3×3 square).
+	assert_eq(mgr.get_loaded_chunks().size(), 5,
+		"Circular radius=1 should load 5 chunks, not 9.")
+
+
+# ── Load retry ────────────────────────────────────────────────────────────────
+
+
+class _FailingSource extends SKChunkSource:
+	## Fails the first [member fail_count] load attempts, then succeeds.
+	var fail_count: int = 2
+	var _call_count: int = 0
+	func load_chunk(_coords: Vector2i, _cancelled: SKCancelToken = null) -> Variant:
+		_call_count += 1
+		if _call_count <= fail_count:
+			return null
+		return {"ok": true}
+
+
+class _AlwaysFailSource extends SKChunkSource:
+	func load_chunk(_coords: Vector2i, _cancelled: SKCancelToken = null) -> Variant:
+		return null
+
+
+func test_retry_succeeds_after_failures() -> void:
+	# Source fails the first 2 calls, succeeds on the 3rd.
+	var src := _FailingSource.new()
+	src.fail_count = 2
+	var mgr := _make_manager(src, null)
+	mgr.active_radius = 0
+	mgr.preload_radius = 0
+	mgr.max_load_retries = 3
+	mgr.retry_delay = 0.0
+	await mgr.update(Vector3(0, 0, 0))
+	var chunk := mgr.get_chunk_at_world(Vector3(0, 0, 0))
+	assert_not_null(chunk)
+	assert_true(chunk.is_loaded, "Chunk should be loaded after retries succeed.")
+	assert_null(chunk.error, "Chunk error should be null on successful retry.")
+	assert_eq(chunk.retry_count, 0, "retry_count should reset to 0 on success.")
+
+
+func test_retry_exhausted_sets_error() -> void:
+	var src := _AlwaysFailSource.new()
+	var mgr := _make_manager(src, null)
+	mgr.active_radius = 0
+	mgr.preload_radius = 0
+	mgr.max_load_retries = 2
+	mgr.retry_delay = 0.0
+	await mgr.update(Vector3(0, 0, 0))
+	var chunk := mgr.get_chunk_at_world(Vector3(0, 0, 0))
+	assert_not_null(chunk)
+	assert_false(chunk.is_loaded, "Chunk should not be loaded after exhausting retries.")
+	assert_not_null(chunk.error, "Chunk should have an error after exhausting retries.")
+	# 3 total attempts: 1 initial + 2 retries → retry_count = 3.
+	assert_eq(chunk.retry_count, 3,
+		"retry_count should equal total attempts (1 initial + max_load_retries).")
+
+
+func test_retry_disabled_on_zero() -> void:
+	var src := _AlwaysFailSource.new()
+	var mgr := _make_manager(src, null)
+	mgr.active_radius = 0
+	mgr.preload_radius = 0
+	mgr.max_load_retries = 0
+	mgr.retry_delay = 0.0
+	var events: Array[String] = []
+	mgr.chunk_event.connect(func(type: String, _chunk: SKChunk) -> void:
+		events.push_back(type)
+	)
+	await mgr.update(Vector3(0, 0, 0))
+	assert_false(events.has("load-retry"), "No retry events should fire when max_load_retries=0.")
+
+
+func test_retry_count_resets_on_unload() -> void:
+	var src := _AlwaysFailSource.new()
+	var mgr := _make_manager(src, null)
+	mgr.active_radius = 0
+	mgr.preload_radius = 0
+	mgr.max_load_retries = 1
+	mgr.retry_delay = 0.0
+	await mgr.update(Vector3(0, 0, 0))
+	var chunk := mgr.get_chunk_at_world(Vector3(0, 0, 0))
+	assert_true(chunk.retry_count > 0, "retry_count should be non-zero after failures.")
+	mgr.dispose()
+	# After dispose the chunk object still exists in our local reference.
+	assert_eq(chunk.retry_count, 0, "retry_count should reset to 0 on unload.")
+
+
+# ── Multi-origin ──────────────────────────────────────────────────────────────
+
+
+func test_update_multi_merges_origins() -> void:
+	var mgr := _make_manager()
+	mgr.active_radius = 0
+	mgr.preload_radius = 0
+	# Two origins far apart; with radius=0 each contributes exactly 1 chunk.
+	var origins: Array[Vector3] = [Vector3(0, 0, 0), Vector3(10240, 0, 10240)]
+	await mgr.update_multi(origins)
+	assert_not_null(mgr.get_chunk_at_world(Vector3(0, 0, 0)),
+		"Chunk around first origin should be loaded.")
+	assert_not_null(mgr.get_chunk_at_world(Vector3(10240, 0, 10240)),
+		"Chunk around second origin should be loaded.")
+	assert_eq(mgr.get_loaded_chunks().size(), 2,
+		"With radius=0 and two distinct origins, exactly 2 chunks should be loaded.")
+
+
+func test_update_delegates_to_update_multi() -> void:
+	# Calling update() and update_multi() with the same position should produce
+	# identical chunk sets.
+	var mgr1 := _make_manager()
+	var mgr2 := _make_manager()
+	await mgr1.update(Vector3(128, 0, 128))
+	var origins: Array[Vector3] = [Vector3(128, 0, 128)]
+	await mgr2.update_multi(origins)
+	assert_eq(
+		mgr1.get_loaded_chunks().size(),
+		mgr2.get_loaded_chunks().size(),
+		"update() and update_multi([pos]) should load the same number of chunks."
+	)
+
+
+# ── get_all_chunks ────────────────────────────────────────────────────────────
+
+
+func test_get_all_chunks() -> void:
+	var mgr := _make_manager()
+	await mgr.update(Vector3(0, 0, 0))
+	var all_chunks := mgr.get_all_chunks()
+	assert_true(all_chunks.size() > 0, "get_all_chunks should return at least one chunk.")
+	# Every chunk returned by get_loaded_chunks must appear in get_all_chunks.
+	for c: SKChunk in mgr.get_loaded_chunks():
+		assert_true(all_chunks.has(c), "get_all_chunks must contain every loaded chunk.")

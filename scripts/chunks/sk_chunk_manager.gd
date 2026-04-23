@@ -9,11 +9,17 @@ extends Node
 ## [br]- Mount/unmount chunks as they enter/leave the active radius via [SKChunkAdapter]
 ## [br]- Evict stale chunks that exceed [member max_cached_chunks]
 ## [br]
+## For split-screen or co-op, call [method update_multi] with all origin positions so
+## every player's neighbourhood is kept loaded simultaneously.
+## [br]
 ## The system is engine-agnostic — plug in any [SKChunkSource] and [SKChunkAdapter].
 
 
 ## Emitted for every chunk lifecycle event. See [enum EventType].
 signal chunk_event(type: String, chunk: SKChunk)
+
+## Sentinel value used when searching for a minimum integer distance.
+const _INT_MAX: int = 2147483647
 
 
 ## Size of each chunk in world units.
@@ -26,6 +32,14 @@ signal chunk_event(type: String, chunk: SKChunk)
 @export var max_cached_chunks: int = 24
 ## Maximum number of chunks loading concurrently.
 @export var load_concurrency: int = 4
+## When true, chunks are selected within a circular (Euclidean) radius instead of a square grid.
+## Inspired by Cellblock's distance-to-origin selection strategy; reduces chunk count by ~22 %.
+@export var use_circular_radius: bool = false
+## Maximum number of retry attempts after a failed load. Set to 0 to disable retries.
+## Each retry is preceded by a [member retry_delay]-second pause.
+@export var max_load_retries: int = 3
+## Seconds to wait between consecutive load retry attempts.
+@export var retry_delay: float = 1.0
 
 ## The chunk data source. Must be set before calling [method update].
 var source: SKChunkSource
@@ -51,26 +65,54 @@ func _ready() -> void:
 
 ## Updates the chunk grid around [param world_position].
 ## Call this each frame or whenever the origin moves significantly.
+## Delegates to [method update_multi] with a single origin.
 func update(world_position: Vector3) -> void:
-	var center := SKChunkUtils.world_to_chunk_coords(world_position, chunk_size)
+	var origins: Array[Vector3] = [world_position]
+	await update_multi(origins)
 
-	var active_coords := SKChunkUtils.sort_coords_by_distance(
-		SKChunkUtils.square_coords_around(center, active_radius), center
-	)
-	var preload_coords := SKChunkUtils.sort_coords_by_distance(
-		SKChunkUtils.square_coords_around(center, preload_radius), center
-	)
+
+## Updates the chunk grid for multiple origins simultaneously.
+## [br]All origin neighbourhoods are merged — useful for split-screen or co-op where
+## each player drives their own loading zone. Loading priority is determined by the
+## nearest distance from any origin, so chunks closest to any player load first.
+func update_multi(origins: Array[Vector3]) -> void:
+	if origins.is_empty():
+		return
 
 	var next_active_keys: Dictionary = {}
-	for c in active_coords:
-		next_active_keys[SKChunkUtils.to_chunk_key(c)] = true
-
 	var next_preload_keys: Dictionary = {}
-	for c in preload_coords:
-		next_preload_keys[SKChunkUtils.to_chunk_key(c)] = true
+	var all_preload_coords: Array[Vector2i] = []
+
+	for world_pos: Vector3 in origins:
+		var center := SKChunkUtils.world_to_chunk_coords(world_pos, chunk_size)
+		var active_coords := _get_radius_coords(center, active_radius)
+		var preload_coords := _get_radius_coords(center, preload_radius)
+
+		for c in active_coords:
+			next_active_keys[SKChunkUtils.to_chunk_key(c)] = true
+		for c in preload_coords:
+			var k := SKChunkUtils.to_chunk_key(c)
+			if not next_preload_keys.has(k):
+				next_preload_keys[k] = true
+				all_preload_coords.push_back(c)
+
+	# Sort combined preload coords by minimum Manhattan distance to any origin (closest first).
+	all_preload_coords.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		var da_min: int = _INT_MAX
+		var db_min: int = _INT_MAX
+		for world_pos: Vector3 in origins:
+			var center := SKChunkUtils.world_to_chunk_coords(world_pos, chunk_size)
+			var da := absi(a.x - center.x) + absi(a.y - center.y)
+			var db := absi(b.x - center.x) + absi(b.y - center.y)
+			if da < da_min:
+				da_min = da
+			if db < db_min:
+				db_min = db
+		return da_min < db_min
+	)
 
 	# Ensure chunk records exist for everything in the preload radius.
-	for coords in preload_coords:
+	for coords in all_preload_coords:
 		_ensure_chunk(coords)
 
 	# Touch chunks that are still in the preload zone.
@@ -79,7 +121,7 @@ func update(world_position: Vector3) -> void:
 			(_chunks[key] as SKChunk).last_touched = Time.get_ticks_msec()
 
 	# Load any chunks that need data.
-	await _load_needed_chunks(preload_coords)
+	await _load_needed_chunks(all_preload_coords)
 
 	# Activate newly active chunks.
 	for key: String in next_active_keys:
@@ -169,9 +211,30 @@ func get_mounted_chunks() -> Array[SKChunk]:
 	return _get_mounted_chunks()
 
 
+## Returns every chunk known to the manager, regardless of state.
+## Useful for debug visualization and diagnostics.
+func get_all_chunks() -> Array[SKChunk]:
+	var result: Array[SKChunk] = []
+	for key: String in _chunks:
+		result.push_back(_chunks[key] as SKChunk)
+	return result
+
+
 # ---------------------------------------------------------------------------
 #  Internals
 # ---------------------------------------------------------------------------
+
+## Returns coordinates within the configured radius shape around [param center].
+## Uses circular (Euclidean) selection when [member use_circular_radius] is true,
+## otherwise a square grid — matching Cellblock's configurable-shape approach.
+func _get_radius_coords(center: Vector2i, radius: int) -> Array[Vector2i]:
+	var raw: Array[Vector2i] = (
+		SKChunkUtils.circle_coords_around(center, radius)
+		if use_circular_radius
+		else SKChunkUtils.square_coords_around(center, radius)
+	)
+	return SKChunkUtils.sort_coords_by_distance(raw, center)
+
 
 func _ensure_chunk(coords: Vector2i) -> SKChunk:
 	var key := SKChunkUtils.to_chunk_key(coords)
@@ -223,23 +286,47 @@ func _load_chunk(chunk: SKChunk) -> void:
 
 	var result: Variant = null
 	var load_error: Variant = null
+	var attempts: int = 0
 
-	if source:
-		# GDScript coroutines cannot catch errors from await, so we treat a
-		# null result after a non-cancelled load as an error heuristic.
-		result = await source.load_chunk(chunk.coords, token)
-		if token.is_cancelled:
-			chunk.is_loading = false
-			_loading_keys.erase(chunk.key)
-			_cancel_tokens.erase(chunk.key)
-			return
-		if result == null:
-			load_error = "load_chunk returned null for %s" % chunk.key
+	# Retry loop: attempt the load, backing off between failures.
+	while true:
+		result = null
+		load_error = null
+
+		if source:
+			# GDScript coroutines cannot catch errors from await, so we treat a
+			# null result after a non-cancelled load as an error heuristic.
+			result = await source.load_chunk(chunk.coords, token)
+			if token.is_cancelled:
+				chunk.is_loading = false
+				_loading_keys.erase(chunk.key)
+				_cancel_tokens.erase(chunk.key)
+				return
+			if result == null:
+				load_error = "load_chunk returned null for %s" % chunk.key
+
+		if load_error == null:
+			break  # successful load
+
+		attempts += 1
+		if max_load_retries > 0 and attempts <= max_load_retries:
+			# Wait before retrying.
+			await Engine.get_main_loop().create_timer(retry_delay).timeout
+			if token.is_cancelled:
+				chunk.is_loading = false
+				_loading_keys.erase(chunk.key)
+				_cancel_tokens.erase(chunk.key)
+				return
+			_emit("load-retry", chunk)
+		else:
+			break  # retries disabled or exhausted
 
 	if load_error != null:
 		chunk.error = load_error
+		chunk.retry_count = attempts
 		_emit("load-error", chunk)
 	else:
+		chunk.retry_count = 0
 		chunk.data = result
 		chunk.is_loaded = true
 		chunk.last_touched = Time.get_ticks_msec()
@@ -288,6 +375,7 @@ func _unload_chunk(chunk: SKChunk) -> void:
 	chunk.data = null
 	chunk.is_loaded = false
 	chunk.error = null
+	chunk.retry_count = 0
 	_emit("unloaded", chunk)
 
 

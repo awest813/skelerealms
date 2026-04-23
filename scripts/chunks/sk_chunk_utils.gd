@@ -43,3 +43,19 @@ static func sort_coords_by_distance(coords: Array[Vector2i], center: Vector2i) -
 		return da < db
 	)
 	return result
+
+
+## Returns all grid coordinates within a circular radius around center.
+## Uses Euclidean distance so the result is an approximately circular region
+## (a diamond for radius 1, growing more circular at larger radii).
+## Produces ~22 % fewer coordinates than [method square_coords_around] at the same radius.
+static func circle_coords_around(center: Vector2i, radius: int) -> Array[Vector2i]:
+	var coords: Array[Vector2i] = []
+	var r2 := radius * radius
+	for y in range(center.y - radius, center.y + radius + 1):
+		for x in range(center.x - radius, center.x + radius + 1):
+			var dx := x - center.x
+			var dy := y - center.y
+			if dx * dx + dy * dy <= r2:
+				coords.push_back(Vector2i(x, y))
+	return coords

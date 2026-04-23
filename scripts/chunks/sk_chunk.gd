@@ -22,6 +22,8 @@ var is_mounted: bool = false
 var last_touched: int = 0
 ## Last load error, if any. Cleared on successful load.
 var error: Variant = null
+## Number of load attempts made for this chunk (resets to 0 on successful load or unload).
+var retry_count: int = 0
 
 
 func _init(p_coords: Vector2i) -> void:
