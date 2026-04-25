@@ -1,0 +1,31 @@
+[gd_scene load_steps=8 format=3 uid="uid://c3f9r2pk1mwxa"]
+
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/entities/entity.gd" id="1_player"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/player_component.gd" id="2_player"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/puppet_spawner_component.gd" id="3_player"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/teleport_component.gd" id="4_player"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/vitals_component.gd" id="5_player"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/damageable_component.gd" id="6_player"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/inventory_component.gd" id="7_player"]
+
+[node name="PlayerEntity" type="Node"]
+script = ExtResource("1_player")
+
+[node name="PlayerComponent" type="Node" parent="."]
+script = ExtResource("2_player")
+
+[node name="PuppetSpawnerComponent" type="Node" parent="."]
+script = ExtResource("3_player")
+
+[node name="TeleportComponent" type="Node" parent="."]
+script = ExtResource("4_player")
+
+[node name="VitalsComponent" type="Node" parent="."]
+script = ExtResource("5_player")
+is_player = true
+
+[node name="DamageableComponent" type="Node" parent="."]
+script = ExtResource("6_player")
+
+[node name="InventoryComponent" type="Node" parent="."]
+script = ExtResource("7_player")

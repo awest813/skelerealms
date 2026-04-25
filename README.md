@@ -67,6 +67,24 @@ It focuses on the hard framework problems behind Bethesda-inspired games: persis
 - World-entity and door authoring workflows
 - Schedule and NPC tooling
 
+### First-person player
+
+- `FPSPlayerPuppet` — first-person `CharacterBody3D` puppet with sprint, crouch, jump, headbob, and interaction raycasting
+- Wires automatically to `VitalsComponent` (stamina drain on sprint), `DamageableComponent`, and `InventoryComponent` via the player entity
+- Interaction raycast detects both `InteractiveObject` world objects and `InteractiveComponent` entities; shows prompts through `SKHUDShell`
+- `player_entity_template.tscn` — ready-made entity template with all required components
+
+### Interactive world objects
+
+- `SwingDoorObject` — tween-based rotating or sliding door with lock/key support and auto-close
+- `AnimatedInteractiveObject` — base class for `AnimationPlayer`-driven objects (drawers, hatches, etc.)
+- `ButtonObject` — pressable button with cooldown, single-use mode, and chaining to other objects
+- `KeypadObject` — code-entry logic with auto-submit, attempt limiting, and masked display
+
+### Surface-aware footstep audio
+
+- `SKFootstepPlayer` — fires a downward raycast, matches the floor's physics-body group to a named `AudioStreamPlayer3D` child, and plays the corresponding sound; falls back to a `"default"` child
+
 ### Chunk loading
 
 - Generic, engine-agnostic chunk manager (`SKChunkManager`) with configurable active/preload radii
@@ -139,6 +157,8 @@ Recommended reading order:
 - [`docs/user guide/dialogue.md`](docs/user%20guide/dialogue.md)
 - [`docs/user guide/save_system.md`](docs/user%20guide/save_system.md)
 - [`docs/user guide/mods.md`](docs/user%20guide/mods.md)
+- [`docs/user guide/fps_controller.md`](docs/user%20guide/fps_controller.md)
+- [`docs/user guide/interactive_objects.md`](docs/user%20guide/interactive_objects.md)
 - [`docs/user guide/stealth_provider.md`](docs/user%20guide/stealth_provider.md)
 - [`docs/user guide/tools.md`](docs/user%20guide/tools.md)
 - [`docs/user guide/migrating.md`](docs/user%20guide/migrating.md)
