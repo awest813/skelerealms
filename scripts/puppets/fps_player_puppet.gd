@@ -168,7 +168,6 @@ func _physics_process(delta: float) -> void:
 	var weight: float = clampf(lerp_factor * delta, 0.0, 1.0)
 	velocity.x = lerp(velocity.x, direction.x * current_speed, weight)
 	velocity.z = lerp(velocity.z, direction.z * current_speed, weight)
-
 	move_and_slide()
 
 	# ── Headbob ───────────────────────────────────────────────────────────────
@@ -198,8 +197,9 @@ func _update_headbob(delta: float, direction: Vector3) -> void:
 		return
 	if direction.is_zero_approx() or not is_on_floor():
 		# Smoothly return to base position when still or airborne.
-		_camera.position.y = lerp(_camera.position.y, _camera_base_y, clampf(lerp_speed * delta, 0.0, 1.0))
-		_camera.position.x = lerp(_camera.position.x, 0.0, clampf(lerp_speed * delta, 0.0, 1.0))
+		var return_weight: float = clampf(lerp_speed * delta, 0.0, 1.0)
+		_camera.position.y = lerp(_camera.position.y, _camera_base_y, return_weight)
+		_camera.position.x = lerp(_camera.position.x, 0.0, return_weight)
 		return
 
 	var intensity: float
@@ -216,6 +216,7 @@ func _update_headbob(delta: float, direction: Vector3) -> void:
 
 	_wiggle_index += delta * speed
 	_camera.position.y = _camera_base_y + sin(_wiggle_index) * intensity
+	# Horizontal sway uses half the vertical frequency for a natural figure-8 motion.
 	_camera.position.x = sin(_wiggle_index * 0.5) * intensity
 
 

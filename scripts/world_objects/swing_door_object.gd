@@ -84,7 +84,7 @@ func _ready() -> void:
 	if auto_close_delay > 0.0:
 		_auto_close_timer = Timer.new()
 		_auto_close_timer.one_shot = true
-		_auto_close_timer.timeout.connect(_on_auto_close.bind())
+		_auto_close_timer.timeout.connect(_on_auto_close)
 		add_child(_auto_close_timer)
 
 	# Snap to start state without tweening.

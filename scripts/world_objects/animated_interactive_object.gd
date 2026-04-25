@@ -64,8 +64,7 @@ func _ready() -> void:
 
 func interact(id: String) -> void:
 	if locked:
-		_play_sound(null)  # No audio — subclasses can override for a rattle.
-		return
+		return  # Subclasses can override to play a rattle sound or show a hint.
 	super.interact(id)
 	if is_open:
 		_do_close()
