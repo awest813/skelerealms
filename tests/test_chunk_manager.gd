@@ -146,10 +146,33 @@ func test_update_unmounts_on_move() -> void:
 	var adp := _TestAdapter.new()
 	var mgr := _make_manager(null, adp)
 	await mgr.update(Vector3(0, 0, 0))
-	var first_mounted := mgr.get_mounted_chunks().size()
 	# Move far enough that some chunks leave the active radius.
 	await mgr.update(Vector3(2560, 0, 2560))
 	assert_true(adp.unmount_count > 0, "Some chunks should have been unmounted.")
+
+
+func test_update_multi_empty_origins_unmounts_active_chunks() -> void:
+	var adp := _TestAdapter.new()
+	var mgr := _make_manager(null, adp)
+	await mgr.update(Vector3(0, 0, 0))
+	assert_true(mgr.get_mounted_chunks().size() > 0)
+
+	var origins: Array[Vector3] = []
+	await mgr.update_multi(origins)
+	assert_eq(mgr.get_active_chunks().size(), 0)
+	assert_eq(mgr.get_mounted_chunks().size(), 0)
+	assert_true(adp.unmount_count > 0, "Empty origins should deactivate mounted chunks.")
+
+
+func test_preload_radius_normalizes_to_active_radius() -> void:
+	var mgr := _make_manager()
+	mgr.active_radius = 1
+	mgr.preload_radius = 0
+
+	await mgr.update(Vector3(0, 0, 0))
+	assert_eq(mgr.preload_radius, 1)
+	assert_eq(mgr.get_loaded_chunks().size(), 9,
+		"Active chunks should still load when preload_radius is configured too small.")
 
 
 func test_dispose_clears_state() -> void:
@@ -277,6 +300,13 @@ class _AlwaysFailSource extends SKChunkSource:
 		return null
 
 
+class _CountingFailSource extends SKChunkSource:
+	var load_count: int = 0
+	func load_chunk(_coords: Vector2i, _cancelled: SKCancelToken = null) -> Variant:
+		load_count += 1
+		return null
+
+
 func test_retry_succeeds_after_failures() -> void:
 	# Source fails the first 2 calls, succeeds on the 3rd.
 	var src := _FailingSource.new()
@@ -326,7 +356,7 @@ func test_retry_disabled_on_zero() -> void:
 	assert_false(events.has("load-retry"), "No retry events should fire when max_load_retries=0.")
 
 
-func test_retry_count_resets_on_unload() -> void:
+func test_retry_count_resets_on_dispose() -> void:
 	var src := _AlwaysFailSource.new()
 	var mgr := _make_manager(src, null)
 	mgr.active_radius = 0
@@ -338,7 +368,57 @@ func test_retry_count_resets_on_unload() -> void:
 	assert_true(chunk.retry_count > 0, "retry_count should be non-zero after failures.")
 	mgr.dispose()
 	# After dispose the chunk object still exists in our local reference.
-	assert_eq(chunk.retry_count, 0, "retry_count should reset to 0 on unload.")
+	assert_eq(chunk.retry_count, 0, "retry_count should reset to 0 on dispose.")
+
+
+func test_failed_chunk_does_not_retry_every_update() -> void:
+	var src := _CountingFailSource.new()
+	var mgr := _make_manager(src, null)
+	mgr.active_radius = 0
+	mgr.preload_radius = 0
+	mgr.max_load_retries = 0
+	mgr.retry_delay = 0.0
+
+	await mgr.update(Vector3(0, 0, 0))
+	await mgr.update(Vector3(0, 0, 0))
+	assert_eq(src.load_count, 1,
+		"Chunks in error state should not reload every update without an explicit retry.")
+
+
+func test_retry_chunk_allows_failed_chunk_to_load_again() -> void:
+	var src := _FailingSource.new()
+	src.fail_count = 1
+	var mgr := _make_manager(src, null)
+	mgr.active_radius = 0
+	mgr.preload_radius = 0
+	mgr.max_load_retries = 0
+	mgr.retry_delay = 0.0
+
+	await mgr.update(Vector3(0, 0, 0))
+	var chunk := mgr.get_chunk_at_world(Vector3(0, 0, 0))
+	assert_not_null(chunk)
+	assert_false(chunk.is_loaded)
+	assert_not_null(chunk.error)
+	assert_true(mgr.retry_chunk_at_world(Vector3(0, 0, 0)))
+
+	await mgr.update(Vector3(0, 0, 0))
+	assert_true(chunk.is_loaded, "Explicit retry should allow a failed chunk to load again.")
+	assert_null(chunk.error)
+
+
+func test_missing_source_sets_load_error() -> void:
+	var mgr := SKChunkManager.new()
+	mgr.active_radius = 0
+	mgr.preload_radius = 0
+	mgr.max_load_retries = 0
+	mgr.retry_delay = 0.0
+	add_child(mgr)
+
+	await mgr.update(Vector3(0, 0, 0))
+	var chunk := mgr.get_chunk_at_world(Vector3(0, 0, 0))
+	assert_not_null(chunk)
+	assert_false(chunk.is_loaded, "Chunks should not be marked loaded without a source.")
+	assert_not_null(chunk.error, "Missing source should surface as a load error.")
 
 
 # ── Multi-origin ──────────────────────────────────────────────────────────────

@@ -59,8 +59,7 @@ var _cancel_tokens: Dictionary = {}
 
 
 func _ready() -> void:
-	if preload_radius < active_radius:
-		preload_radius = active_radius
+	_normalize_config()
 
 
 ## Updates the chunk grid around [param world_position].
@@ -76,7 +75,9 @@ func update(world_position: Vector3) -> void:
 ## each player drives their own loading zone. Loading priority is determined by the
 ## nearest distance from any origin, so chunks closest to any player load first.
 func update_multi(origins: Array[Vector3]) -> void:
+	_normalize_config()
 	if origins.is_empty():
+		_clear_origin_state()
 		return
 
 	var next_active_keys: Dictionary = {}
@@ -135,24 +136,14 @@ func update_multi(origins: Array[Vector3]) -> void:
 				_mount_chunk(chunk)
 
 	# Deactivate chunks that left the active radius.
-	var to_deactivate: Array[String] = []
-	for key: String in _active_keys:
-		if not next_active_keys.has(key):
-			to_deactivate.push_back(key)
-	for key in to_deactivate:
-		var chunk: SKChunk = _chunks.get(key) as SKChunk
-		_active_keys.erase(key)
-		if not chunk:
-			continue
-		_emit("deactivated", chunk)
-		if chunk.is_mounted:
-			_unmount_chunk(chunk)
+	_deactivate_chunks_not_in(next_active_keys)
 
 	# Refresh preload key set.
 	_preload_keys = next_preload_keys.duplicate()
 
 	# Evict excess cached chunks.
 	_evict_cache()
+	_prune_stale_unloaded_chunks()
 
 
 ## Tears down all chunks — unmounts, unloads, and clears internal state.
@@ -168,6 +159,9 @@ func dispose() -> void:
 	# Unload all loaded chunks.
 	for chunk: SKChunk in _get_loaded_chunks():
 		_unload_chunk(chunk)
+
+	for chunk: SKChunk in get_all_chunks():
+		_reset_chunk_state(chunk)
 
 	_active_keys.clear()
 	_preload_keys.clear()
@@ -220,6 +214,23 @@ func get_all_chunks() -> Array[SKChunk]:
 	return result
 
 
+## Clears a failed chunk's error state so the next update can try loading it again.
+func retry_chunk(key: String) -> bool:
+	var chunk: SKChunk = _chunks.get(key) as SKChunk
+	if not chunk or chunk.is_loaded or chunk.is_loading or chunk.error == null:
+		return false
+
+	chunk.error = null
+	chunk.retry_count = 0
+	return true
+
+
+## Clears a failed chunk's error state by world position.
+func retry_chunk_at_world(world_pos: Vector3) -> bool:
+	var coords := SKChunkUtils.world_to_chunk_coords(world_pos, chunk_size)
+	return retry_chunk(SKChunkUtils.to_chunk_key(coords))
+
+
 # ---------------------------------------------------------------------------
 #  Internals
 # ---------------------------------------------------------------------------
@@ -236,6 +247,40 @@ func _get_radius_coords(center: Vector2i, radius: int) -> Array[Vector2i]:
 	return SKChunkUtils.sort_coords_by_distance(raw, center)
 
 
+func _normalize_config() -> void:
+	if chunk_size <= 0.0:
+		push_warning("SKChunkManager.chunk_size must be greater than 0; clamping to 1.0.")
+		chunk_size = 1.0
+	active_radius = maxi(active_radius, 0)
+	preload_radius = maxi(preload_radius, active_radius)
+	max_cached_chunks = maxi(max_cached_chunks, 0)
+	load_concurrency = maxi(load_concurrency, 1)
+	max_load_retries = maxi(max_load_retries, 0)
+	retry_delay = maxf(retry_delay, 0.0)
+
+
+func _clear_origin_state() -> void:
+	_deactivate_chunks_not_in({})
+	_preload_keys.clear()
+	_evict_cache()
+	_prune_stale_unloaded_chunks()
+
+
+func _deactivate_chunks_not_in(next_active_keys: Dictionary) -> void:
+	var to_deactivate: Array[String] = []
+	for key: String in _active_keys:
+		if not next_active_keys.has(key):
+			to_deactivate.push_back(key)
+	for key in to_deactivate:
+		var chunk: SKChunk = _chunks.get(key) as SKChunk
+		_active_keys.erase(key)
+		if not chunk:
+			continue
+		_emit("deactivated", chunk)
+		if chunk.is_mounted:
+			_unmount_chunk(chunk)
+
+
 func _ensure_chunk(coords: Vector2i) -> SKChunk:
 	var key := SKChunkUtils.to_chunk_key(coords)
 	if _chunks.has(key):
@@ -250,7 +295,7 @@ func _load_needed_chunks(coords_list: Array[Vector2i]) -> void:
 	var queue: Array[SKChunk] = []
 	for coords in coords_list:
 		var chunk: SKChunk = _chunks.get(SKChunkUtils.to_chunk_key(coords)) as SKChunk
-		if chunk and not chunk.is_loaded and not chunk.is_loading:
+		if chunk and not chunk.is_loaded and not chunk.is_loading and chunk.error == null:
 			queue.push_back(chunk)
 
 	# Spawn up to load_concurrency workers pulling from the shared queue.
@@ -304,11 +349,14 @@ func _load_chunk(chunk: SKChunk) -> void:
 				return
 			if result == null:
 				load_error = "load_chunk returned null for %s" % chunk.key
+		else:
+			load_error = "No SKChunkSource configured for %s" % chunk.key
 
 		if load_error == null:
 			break  # successful load
 
 		attempts += 1
+		chunk.retry_count = attempts
 		if max_load_retries > 0 and attempts <= max_load_retries:
 			# Wait before retrying.
 			await Engine.get_main_loop().create_timer(retry_delay).timeout
@@ -379,6 +427,15 @@ func _unload_chunk(chunk: SKChunk) -> void:
 	_emit("unloaded", chunk)
 
 
+func _reset_chunk_state(chunk: SKChunk) -> void:
+	chunk.data = null
+	chunk.is_loaded = false
+	chunk.is_loading = false
+	chunk.is_mounted = false
+	chunk.error = null
+	chunk.retry_count = 0
+
+
 func _evict_cache() -> void:
 	var loaded := _get_loaded_chunks()
 	if loaded.size() <= max_cached_chunks:
@@ -401,6 +458,21 @@ func _evict_cache() -> void:
 		var victim: SKChunk = victims.pop_front()
 		if victim:
 			_unload_chunk(victim)
+
+
+func _prune_stale_unloaded_chunks() -> void:
+	var to_remove: Array[String] = []
+	for key: String in _chunks:
+		var chunk: SKChunk = _chunks[key] as SKChunk
+		if chunk \
+			and not chunk.is_loaded \
+			and not chunk.is_loading \
+			and not _active_keys.has(key) \
+			and not _preload_keys.has(key):
+			to_remove.push_back(key)
+
+	for key in to_remove:
+		_chunks.erase(key)
 
 
 func _get_loaded_chunks() -> Array[SKChunk]:
