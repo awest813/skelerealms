@@ -2,6 +2,6 @@
 
 [node name="world_template" type="Node3D"]
 
-[node name="NavigationRegion3D" type="NavigationRegion3D" parent="."]
+[node name="NavigationRegion3D" type="NavigationRegion3D" parent="." groups=["sk_primary_navigation_region"]]
 
 [node name="VoxelGI" type="VoxelGI" parent="."]

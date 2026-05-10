@@ -20,6 +20,7 @@ signal change_position(Vector3)
 var movement_paused:bool = false
 ## The navigation agent.
 @onready var navigation_agent: NavigationAgent3D = $NavigationAgent3D
+var _terrabrush_nav_node: Node = null
 
 
 # Called when the node enters the scene tree for the first time.
@@ -47,14 +48,55 @@ func get_puppeteer() -> PuppetSpawnerComponent:
 ## Finds the closest point to this puppet, and jumps to it. 
 ## This is to avoid getting stuck in things that it may have phased into while navigating out-of-scene.
 func snap_to_navmesh() -> void:
-	position = NavigationServer3D.map_get_closest_point(NavigationServer3D.get_maps()[0], position)
+	var map_rid := SKNavigationMaps.get_navigation_map_rid(self)
+	if not map_rid.is_valid():
+		return
+	position = NavigationServer3D.map_get_closest_point(map_rid, position)
+
+
+func _apply_world_navigation_map() -> void:
+	var map_rid := SKNavigationMaps.get_navigation_map_rid(self)
+	if map_rid.is_valid():
+		navigation_agent.navigation_map = map_rid
+
+
+func _connect_terrabrush_nav_reload() -> void:
+	if _terrabrush_nav_node != null:
+		return
+	var tb := SKNavigationMaps.find_terrabrush_node(get_tree())
+	if tb == null:
+		return
+	var cb := Callable(self, "_on_terrabrush_nav_reload")
+	for sig in [&"terrain_loaded", &"TerrainLoaded"]:
+		if tb.has_signal(sig):
+			tb.connect(sig, cb)
+			_terrabrush_nav_node = tb
+			break
+
+
+func _on_terrabrush_nav_reload() -> void:
+	_apply_world_navigation_map()
+	await get_tree().physics_frame
+	snap_to_navmesh()
+
+
+func _exit_tree() -> void:
+	if _terrabrush_nav_node == null:
+		return
+	var cb := Callable(self, "_on_terrabrush_nav_reload")
+	for sig in [&"terrain_loaded", &"TerrainLoaded"]:
+		if _terrabrush_nav_node.has_signal(sig) and _terrabrush_nav_node.is_connected(sig, cb):
+			_terrabrush_nav_node.disconnect(sig, cb)
+	_terrabrush_nav_node = null
 
 
 ## Set up navigation.
 func _actor_setup()  -> void:
 	# Wait for the first physics frame so the NavigationServer can sync.
 	await get_tree().physics_frame
+	_apply_world_navigation_map()
 	snap_to_navmesh() # snap to mesh
+	_connect_terrabrush_nav_reload()
 	# Now that the navigation map is no longer empty, set the movement target.
 	set_movement_target(movement_target_position)
 
