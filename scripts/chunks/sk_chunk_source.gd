@@ -9,7 +9,7 @@ extends RefCounted
 
 ## Loads data for the chunk at the given grid coordinates.
 ## [param coords] Grid position of the chunk to load.
-## [param cancelled] A [RefCounted] flag object — check [code]cancelled.flag[/code]
+## [param cancelled] A [SKCancelToken] — check [code]cancelled.is_cancelled[/code]
 ## to detect early cancellation during long loads.
 ## Returns the loaded data (any Variant).
 func load_chunk(_coords: Vector2i, _cancelled: SKCancelToken = null) -> Variant:
