@@ -1,0 +1,37 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/world_objects/door.gd" id="1"]
+[sub_resource type="DoorInstance" id="1"]
+world = &"demo_world_b"
+position = Vector3(0, 1.2, -4)
+
+[sub_resource type="DoorInstance" id="2"]
+world = &"demo_world"
+position = Vector3(0, 1.2, 5)
+
+[sub_resource type="BoxShape3D" id="3"]
+size = Vector3(16, 1, 16)
+
+[sub_resource type="BoxShape3D" id="4"]
+size = Vector3(1.2, 2.2, 0.4)
+
+[node name="demo_world_b" type="Node3D"]
+
+[node name="NavigationRegion3D" type="NavigationRegion3D" parent="." groups=["sk_primary_navigation_region"]]
+
+[node name="Floor" type="StaticBody3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Floor"]
+shape = SubResource("3")
+position = Vector3(0, -0.5, 0)
+
+[node name="DoorBackToRoomA" type="Node3D" parent="." groups=["doors"]]
+script = ExtResource("1")
+instance = SubResource("1")
+destination_instance = SubResource("2")
+position = Vector3(0, 1.1, -7)
+
+[node name="StaticBody3D" type="StaticBody3D" parent="DoorBackToRoomA"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DoorBackToRoomA/StaticBody3D"]
+shape = SubResource("4")

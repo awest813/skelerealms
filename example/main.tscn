@@ -1,0 +1,18 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/system/world_loader.gd" id="2"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/entities/entity_manager.gd" id="3"]
+
+[node name="Main" type="Node"]
+script = ExtResource("1")
+
+[node name="WorldOrigin" type="Marker3D" parent="."]
+position = Vector3(0, 1.6, 0)
+
+[node name="WorldLoader" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("2")
+
+[node name="SKEntityManager" type="Node" parent="."]
+script = ExtResource("3")

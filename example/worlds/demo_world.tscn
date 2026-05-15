@@ -1,0 +1,66 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/world_objects/door.gd" id="1"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/world_objects/world_entity.gd" id="2"]
+[ext_resource type="PackedScene" path="res://entities/player.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://entities/guard.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://entities/chest.tscn" id="5"]
+[sub_resource type="DoorInstance" id="1"]
+world = &"demo_world"
+position = Vector3(0, 1.2, 5)
+
+[sub_resource type="DoorInstance" id="2"]
+world = &"demo_world_b"
+position = Vector3(0, 1.2, -4)
+
+[sub_resource type="BoxShape3D" id="3"]
+size = Vector3(20, 1, 20)
+
+[sub_resource type="BoxMesh" id="4"]
+size = Vector3(20, 1, 20)
+
+[sub_resource type="BoxShape3D" id="5"]
+size = Vector3(1.2, 2.2, 0.4)
+
+[sub_resource type="BoxMesh" id="6"]
+size = Vector3(1.2, 2.2, 0.2)
+
+[node name="demo_world" type="Node3D"]
+
+[node name="NavigationRegion3D" type="NavigationRegion3D" parent="." groups=["sk_primary_navigation_region"]]
+
+[node name="Floor" type="StaticBody3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Floor"]
+shape = SubResource("3")
+position = Vector3(0, -0.5, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Floor"]
+mesh = SubResource("4")
+position = Vector3(0, -0.5, 0)
+
+[node name="DoorToRoomB" type="Node3D" parent="." groups=["doors"]]
+script = ExtResource("1")
+instance = SubResource("1")
+destination_instance = SubResource("2")
+position = Vector3(0, 1.1, 8)
+
+[node name="StaticBody3D" type="StaticBody3D" parent="DoorToRoomB"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DoorToRoomB/StaticBody3D"]
+shape = SubResource("5")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="DoorToRoomB"]
+mesh = SubResource("6")
+
+[node name="PlayerWorldEntity" type="Marker3D" parent="."]
+script = ExtResource("2")
+entity = ExtResource("3")
+
+[node name="GuardWorldEntity" type="Marker3D" parent="."]
+script = ExtResource("2")
+entity = ExtResource("4")
+
+[node name="ChestWorldEntity" type="Marker3D" parent="."]
+script = ExtResource("2")
+entity = ExtResource("5")

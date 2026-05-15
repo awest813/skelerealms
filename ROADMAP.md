@@ -5,10 +5,10 @@ This is the combined roadmap and framework-status document for Skelerealms.
 
 ## Current snapshot
 
-- **Version target:** `beta 0.9`
+- **Version target:** `1.0`
 - **Development status:** active
 - **Stability target:** feature and API stability at `1.0`
-- **Current focus:** AssetLib-ready minimal example project and packaging polish
+- **Current focus:** 1.0 release stabilization and post-1.0 planning
 
 ## Framework status
 
@@ -82,7 +82,7 @@ This is the combined roadmap and framework-status document for Skelerealms.
 
 ### Known incomplete systems
 
-- AssetLib-ready minimal example project
+- None
 
 ## Roadmap overview
 
@@ -111,13 +111,13 @@ The framework is past the "missing core systems" phase. The remaining work is mo
 
 ### Current priorities
 
-- AssetLib-ready minimal example project
+- 1.0 release stabilization and maintenance
 
 ### Next steps toward 1.0
 
 - Keep API and save-schema changes documented in the architecture docs
-- Finish the minimal example project and release packaging work
-- Preserve the current stability assumptions until the framework reaches 1.0
+- Preserve the current stability assumptions now that 1.0 is reached
+- Focus upcoming work on additive, backwards-compatible improvements
 
 
 ---
@@ -703,3 +703,38 @@ Lootie is a Godot 4 loot-table plugin offering weight-based, roll-tier, percenta
 - **`SKLTWeightedPool`** — picks N items from `SKLTWeightedItem` children using accumulated-weight selection; higher weight = proportionally higher chance.
 - **`SKLTWeightedItem`** — a weighted entry node holding a `PackedScene` and a `weight` float.
 - Lootie's `RollTier` rarity system (COMMON → DIVINE tiers with `min_roll`/`max_roll` ranges) is a candidate for a future `SKLTRarityPool` node if tiered rarity is needed.
+
+---
+
+## Phase 11 — AssetLib-Ready Minimal Example Project ✅
+
+The final 1.0 blocker was delivering a self-contained, runnable minimal project that demonstrates Skelerealms with minimal custom content.
+
+**Implementation:**
+- Added a standalone Godot 4.4 project under `example/`.
+- Added addon wiring at `example/addons/skelerealms` (symlink to the plugin root for local development).
+- Added `example/main.tscn` and `example/scripts/main.gd` to bootstrap the demo.
+- Added minimal content folders and assets:
+  - `example/worlds/demo_world.tscn` and `example/worlds/demo_world_b.tscn`
+  - `example/entities/player.tscn`, `example/entities/guard.tscn`, `example/entities/chest.tscn`
+  - `example/covens/guards.tres`
+  - `example/quests/demo_quest.tres`
+  - `example/dialogue/guard_greeting.tres`
+  - `example/sk_config.res`
+- Added quick-save/quick-load demo bindings in the example project (`F5` / `F9`).
+- Added release history file `CHANGELOG.md`.
+
+| File | Purpose |
+|---|---|
+| `example/project.godot` | Standalone minimal example project setup |
+| `example/main.tscn` | Demo root scene containing `WorldLoader` and `SKEntityManager` |
+| `example/scripts/main.gd` | Demo bootstrap: world load, content registration, quick save/load |
+| `example/worlds/demo_world.tscn` | Main demo world with door transition and world-entity placements |
+| `example/worlds/demo_world_b.tscn` | Second room world reachable through doors |
+| `example/entities/player.tscn` | Player entity with FPS puppet and core components |
+| `example/entities/guard.tscn` | NPC guard entity with coven membership and default AI modules |
+| `example/entities/chest.tscn` | Pickable quest item entity used by the fetch quest |
+| `example/quests/demo_quest.tres` | One-node pickup quest for minimal quest flow |
+| `example/dialogue/guard_greeting.tres` | Minimal guard greeting dialogue tree |
+| `example/covens/guards.tres` | Demo coven resource |
+| `example/sk_config.res` | Minimal SKConfig for the example project |

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/quests/quest_definition.gd" id="1"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/quests/quest_node_definition.gd" id="2"]
+
+[sub_resource type="Resource" id="1"]
+script = ExtResource("2")
+id = &"pickup_relic"
+description = "Take the relic from the chest."
+trigger_type = "pickup"
+target_id = &"chest"
+required_count = 1
+
+[resource]
+script = ExtResource("1")
+id = &"demo_fetch"
+quest_name = "First Steps"
+description = "Retrieve the relic and prove you can use Skelerealms quest hooks."
+nodes = [SubResource("1")]
+start_node_ids = [ &"pickup_relic" ]
+completion_node_ids = [ &"pickup_relic" ]
+xp_reward = 50
