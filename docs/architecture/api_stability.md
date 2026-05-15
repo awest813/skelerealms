@@ -97,7 +97,7 @@ If a method or class is not listed below, treat it as **Internal** for now.
 
 ### Project-setting keys
 
-All keys under `skelerealms/*` listed in `FRAMEWORK_STATUS.md` are Stable.
+All keys under `skelerealms/*` listed in `ROADMAP.md` are Stable.
 Renaming or removing one requires a migration (see
 `docs/architecture/migration_tooling.md`).
 
