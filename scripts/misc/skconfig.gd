@@ -21,6 +21,12 @@ extends Resource
 @export var attributes:Dictionary[StringName, int] = {}
 ## Status effects that will be registered when the game starts.
 @export var status_effects:Array[StatusEffect] = []
+## Per-severity bounty amounts used by [CrimeMaster]. Keys are crime severity integers;
+## values are gold amounts. If empty, [CrimeMaster] uses its built-in defaults.
+@export var bounty_amounts:Dictionary[int, int] = {}
+## The currency [StringName] used as the economy's default (e.g. &"gold").
+## If empty, [SKConstants.DE_FACTO_CURRENCY] is used.
+@export var default_currency:StringName = &""
 ## The formula for determining the amount of XP needed for a skill to level up, in GDScript. The given skill level is the current skill level, 
 ## and the formula's result (int) is the XP needed to raise to the next level.
 ## Inputs: skill_level (int)

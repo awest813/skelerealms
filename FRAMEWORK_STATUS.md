@@ -525,3 +525,119 @@ Every function that produces no return value now carries an explicit `-> void` d
 | `scripts/components/item_component.gd` | `interact` refID param | untyped | `StringName` |
 | `tools/door_connect.gd` | `_can_handle` object param | untyped | `Object` |
 
+---
+
+## Phase 14 — Configurability, New Systems & Test Coverage
+
+### ~~Hard-coded configurable values~~  ✅
+
+Four values that were previously baked into scripts can now be overridden without editing addon files:
+
+| File | Variable | Change |
+|---|---|---|
+| `scripts/components/npc_component.gd` | `_walk_speed` | `var` → `@export var` |
+| `scripts/components/npc_component.gd` | `_path_follow_end_distance` | `var` → `@export var` |
+| `scripts/ai/perception_eyes.gd` | `perception_interval` | `const` → `@export var` |
+| `scripts/system/game_info.gd` | mouse capture | Was unconditional; now reads `skelerealms/capture_mouse_on_start` (default `false`) |
+
+`SKConfig` gained two new exports:
+- `bounty_amounts:Dictionary[int, int]` — per-severity bounty values replacing the `CrimeMaster` hardcoded dict.  `CrimeMaster.bounty_for_coven` uses `SKConfig.bounty_amounts` when non-empty, falling back to the built-in defaults.
+- `default_currency:StringName` — project currency replacing the hardcoded `SKConstants.DE_FACTO_CURRENCY`.
+
+`SkeleRealmsGlobal` gained two helpers:
+- `get_default_currency() -> StringName` — returns `SKConfig.default_currency` if set, else `SKConstants.DE_FACTO_CURRENCY`.
+- `find_alternative_furniture(tag:StringName) -> Furniture` — returns the first `Furniture` in the scene tree with the given group tag that has room, or `null`.  Useful as a GOAP fallback when an NPC's preferred furniture is full.
+
+Project settings: `skelerealms/capture_mouse_on_start` (bool, default `false`) added in `_enable_plugin` / removed in `_disable_plugin`.
+
+### ~~DefaultStealthProvider~~  ✅
+
+`scripts/ai/default_stealth_provider.gd` — concrete `Node` that satisfies the stealth provider interface by wrapping `EyesPerception`:
+
+| Contract member | Implementation |
+|---|---|
+| `get_visible_objects() -> Dictionary` | Returns live dict from `EyesPerception` |
+| `signal object_entered_view(Object)` | Emitted on first sighting |
+| `signal object_exited_view(Object)` | Emitted after `linger_time` seconds without visibility |
+
+`linger_time` (default `2.0 s`) prevents rapid signal flicker.  Assign to `eyes` export in the Inspector, then wire the puppet's `eyes` slot to this node.
+
+### ~~Day/Night Environment Controller~~  ✅
+
+`scripts/system/sk_environment_controller.gd` — abstract base class for day/night controllers.
+
+- Connects to `GameInfo.minute_incremented` automatically.
+- Computes fractional day progress (`0.0` → `1.0`) from `GameInfo` time and configured project settings.
+- Override `_apply_time(progress:float)` to drive `DirectionalLight3D`, `WorldEnvironment`, sky, etc.
+- Emits `time_applied(progress)` signal after each update.
+
+### ~~NPC Needs Component~~  ✅
+
+`scripts/components/needs_component.gd` — `SKEntityComponent` tracking named NPC needs.
+
+- Needs decay per in-game minute at a configurable `decay_rates` rate.
+- When a need crosses its `threshold`, `need_critical(need_name, value)` fires.
+- When the need recovers, `need_satisfied(need_name, value)` fires.
+- `decay_off_screen` export controls whether needs decay for off-screen NPCs.
+- `save()`/`load_data()`/`reset_data()` integrate with `SaveSystem`.
+
+### ~~Map Marker Manager~~  ✅
+
+`scripts/system/sk_map_manager.gd` — autoload-compatible manager for named world-space map markers.
+
+- `add_marker(id, position, category, label, world, icon)` — register/update a marker.
+- `remove_marker(id)` / `remove_markers_by_category(category)` / `remove_markers_for_world(world)` — bulk removal.
+- `get_markers_for_current_world()` / `get_markers_for_world(world)` / `get_markers_by_category(category)` — retrieval helpers.
+- `update_position(id, position)` — move a live marker (e.g. a moving quest objective).
+- `register_door(door_id, position, label, world)` — convenience wrapper for `Door` nodes.
+- Signals: `marker_added(marker)`, `marker_removed(id)`, `markers_cleared`.
+- Designed to feed `SKCompassWidget` and map UI.
+
+### ~~Crafting Contract~~  ✅
+
+Two files under `scripts/crafting/`:
+
+**`sk_recipe.gd`** (`Resource`) — defines a single recipe:
+- `ingredients:Dictionary[StringName, int]` — form IDs and quantities.
+- `output_item:StringName` — form ID of the produced item.
+- `output_count:int` — how many copies are produced.
+- `required_skill` / `required_skill_level` — optional skill gate.
+- `tags:Array[StringName]` — filter tags for UI.
+- `can_craft(inventory)` / `meets_skill_requirement(skills)` / `describe_missing(inventory)` — helper methods.
+
+**`sk_crafting_station.gd`** (abstract `Node`) — station base class:
+- `craft(recipe_id, crafter)` — checks affordability, skill, consumes ingredients, spawns output via `SKEntityManager`, emits `craft_succeeded`/`craft_failed`.
+- `get_available_recipes(crafter)` — filter by current inventory and skills.
+- `_on_craft_success` / `_on_craft_fail` — virtual hooks for animation/sound.
+
+### ~~Missing Tests~~  ✅
+
+**`tests/test_combat.gd`** — 37 GUT tests covering:
+
+| Area | Tests |
+|---|---|
+| `CombatAction.build_damage_packet` | Effects, no-crit (chance=0), always-crit (chance=1), total duration, offender name, source weapon |
+| `CombatAction.can_afford / pay_cost` | No cost, moxie insufficient, will insufficient, deduct moxie, deduct will |
+| `CombatantComponent` poise | Start at max, damage reduces, break returns true, double-break prevention, signal, restore, restore signal |
+| `CombatantComponent` resistances | Default 1.0, custom value, apply to packet, original packet not mutated |
+| `CombatantComponent` state flags | Invincibility/blocking/parrying signals; no duplicate signal on same value |
+| `CombatStateMachine` | Starts Idle, can_act, apply_stagger, apply_knockdown, die, death blocks stagger/knockdown/act, stagger/knockdown/die clear `_current_action`, combo API from Idle |
+
+**`tests/test_ui_manager.gd`** — 27 GUT tests covering:
+
+| Area | Tests |
+|---|---|
+| Registration | Single and multi-menu registration, initially hidden |
+| Open/Close | Visibility, unknown menu no-crash, idempotent open |
+| Stack | `is_menu_open`, close_top, close_all |
+| Pause integration | First open pauses, last close unpauses, second open no double-pause, partial close stays paused |
+| HUD | `set_hud`, show/hide |
+| Signals | `menu_opened`, `menu_closed`, `hud_shown`, `hud_hidden` |
+
+### ~~Missing Documentation~~  ✅
+
+| File | Content |
+|---|---|
+| `docs/user guide/combat.md` | Architecture, entity setup (CombatantComponent, CombatStateMachine, hitbox/hurtbox), CombatAction properties, hitscan, combo system, NPC CombatActionModule, all signals |
+| `docs/user guide/behaviour_trees.md` | Class overview, SKBlackboard API, leaf implementation, code-based and scene-based tree construction, parallel policy, GOAP integration pattern |
+| `docs/user guide/chunk_loading.md` | Class overview, concepts (radii, LRU, multi-origin), implementing SKChunkSource and SKChunkAdapter, wiring SKChunkManager, debug visualiser, lifecycle signals |

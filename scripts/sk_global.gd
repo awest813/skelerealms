@@ -124,3 +124,22 @@ func _walk_for_component(n:Node, component_type:String, wo_check:Callable) -> No
 
 func register_effect(what:String, eff:StatusEffect) -> void:
 	status_effects[what] = eff
+
+
+## Returns the project's default currency StringName.
+## Uses [SKConfig.default_currency] if set; falls back to [SKConstants.DE_FACTO_CURRENCY].
+func get_default_currency() -> StringName:
+	if config and config.default_currency != &"":
+		return config.default_currency
+	return SKConstants.DE_FACTO_CURRENCY
+
+
+## Search the scene tree for a [Furniture] node with [param tag] in its groups
+## that has room for another occupant.  Returns [code]null[/code] if none found.
+## Useful as a GOAP action fallback when an NPC's preferred furniture is full.
+func find_alternative_furniture(tag:StringName) -> Furniture:
+	var candidates := get_tree().get_nodes_in_group(tag) if get_tree() else []
+	for node in candidates:
+		if node is Furniture and (node as Furniture).has_room():
+			return node as Furniture
+	return null

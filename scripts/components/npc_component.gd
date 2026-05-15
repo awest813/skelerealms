@@ -83,9 +83,9 @@ var _sim_level:SimulationLevel = SimulationLevel.FULL
 ## Indexes of the doors in the current path. THis is important to keeo track of due to the nature of doors going between worlds.
 var _doors_in_path:Array[int] = []
 ## How close to a path marker the NPC must be to have reached it.
-var _path_follow_end_distance:float = 1
-## Off-world navigation walk speed.
-var _walk_speed:float = 1
+@export var _path_follow_end_distance:float = 1
+## Off-world navigation walk speed (m/s).
+@export var _walk_speed:float = 1
 ## Puppet root node.
 var _puppet:NPCPuppet
 ## Target entity during combat.
