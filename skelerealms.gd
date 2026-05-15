@@ -244,6 +244,8 @@ func _enable_plugin() -> void:
 	
 	ProjectSettings.set_setting("skelerealms/mods_path", "res://mods")
 	
+	ProjectSettings.set_setting("skelerealms/capture_mouse_on_start", false)
+	
 	ProjectSettings.set_setting("skelerealms/entity_archetypes", PackedStringArray([
 		"res://addons/skelerealms/npc_entity_template.tscn",
 		"res://addons/skelerealms/item_entity_template.tscn"
@@ -273,6 +275,7 @@ func _disable_plugin() -> void:
 	ProjectSettings.set_setting("skelerealms/entity_archetypes", null)
 	ProjectSettings.set_setting("skelerealms/config_path", null)
 	ProjectSettings.set_setting("skelerealms/mods_path", null)
+	ProjectSettings.set_setting("skelerealms/capture_mouse_on_start", null)
 
 
 ## Run one-shot plugin-version migrations. Operates on ProjectSettings keys

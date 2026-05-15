@@ -82,7 +82,11 @@ signal game_loaded
 func _ready() -> void:
 	set_name.call_deferred("GameInfo")
 	add_to_group("savegame_gameinfo")
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	# Capture the mouse only when the project opts in. This avoids hijacking the
+	# cursor in headless servers, tool scripts, or games that manage mouse mode
+	# themselves. Set `skelerealms/capture_mouse_on_start` to true in Project Settings.
+	if ProjectSettings.get_setting("skelerealms/capture_mouse_on_start", false):
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	
 	var t = Timer.new()

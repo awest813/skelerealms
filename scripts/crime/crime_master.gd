@@ -97,9 +97,12 @@ func max_crime_severity(id:StringName, coven:StringName) -> int:
 func bounty_for_coven(id:StringName, coven:StringName) -> int:
 	if not crimes.has(coven):
 		return 0
+	var ba:Dictionary = bounty_amount
+	if SkeleRealmsGlobal.config and not SkeleRealmsGlobal.config.bounty_amounts.is_empty():
+		ba = SkeleRealmsGlobal.config.bounty_amounts
 	return crimes[coven]["unpunished"]\
 		.filter(func(x:Crime): return x.perpetrator == id)\
-		.reduce(func(sum:int, x:Crime): return sum + bounty_amount.get(x.severity, 0), 0)
+		.reduce(func(sum:int, x:Crime): return sum + ba.get(x.severity, 0), 0)
 
 
 func save() -> Dictionary:
