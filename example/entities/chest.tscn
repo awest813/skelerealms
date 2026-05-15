@@ -1,0 +1,27 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/entities/entity.gd" id="1"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/item_component.gd" id="2"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/interactive_component.gd" id="3"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/puppet_spawner_component.gd" id="4"]
+[ext_resource type="PackedScene" path="res://puppets/item_puppet.tscn" id="5"]
+
+[node name="chest" type="Node"]
+script = ExtResource("1")
+world = "demo_world"
+position = Vector3(2, 1.2, -3)
+form_id = &"demo_relic"
+
+[node name="ItemComponent" type="Node" parent="."]
+script = ExtResource("2")
+quest_item = true
+worth = 100
+
+[node name="InteractiveComponent" type="Node" parent="."]
+script = ExtResource("3")
+interact_verb = "TAKE"
+
+[node name="PuppetSpawnerComponent" type="Node" parent="."]
+script = ExtResource("4")
+
+[node name="ItemPuppet" parent="PuppetSpawnerComponent" instance=ExtResource("5")]

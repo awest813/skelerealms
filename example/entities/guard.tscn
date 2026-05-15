@@ -1,0 +1,100 @@
+[gd_scene load_steps=23 format=3]
+
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/entities/entity.gd" id="1"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/npc_component.gd" id="2"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/interactive_component.gd" id="3"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/puppet_spawner_component.gd" id="4"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/teleport_component.gd" id="5"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/goap_component.gd" id="6"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/skills_component.gd" id="7"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/attributes_component.gd" id="8"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/vitals_component.gd" id="9"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/spell_target_component.gd" id="10"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/covens_component.gd" id="11"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/damageable_component.gd" id="12"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/navigator_component.gd" id="13"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/view_direction_component.gd" id="14"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/equipment_component.gd" id="15"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/inventory_component.gd" id="16"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/components/effects_component.gd" id="17"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/ai/Modules/default_movement.gd" id="18"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/ai/Modules/default_threat_response.gd" id="19"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/ai/Modules/default_crime_report.gd" id="20"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/ai/Modules/default_interact_response.gd" id="21"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/ai/Modules/default_damage_module.gd" id="22"]
+[ext_resource type="PackedScene" path="res://puppets/npc_puppet.tscn" id="23"]
+
+[node name="guard" type="Node"]
+script = ExtResource("1")
+world = "demo_world"
+position = Vector3(4, 1.2, 0)
+form_id = &"guard"
+
+[node name="NPCComponent" type="Node" parent="."]
+script = ExtResource("2")
+
+[node name="DefaultMovement" type="Node" parent="NPCComponent"]
+script = ExtResource("18")
+
+[node name="DefaultThreatResponse" type="Node" parent="NPCComponent"]
+script = ExtResource("19")
+
+[node name="DefaultCrimeReport" type="Node" parent="NPCComponent"]
+script = ExtResource("20")
+
+[node name="DefaultInteractResponse" type="Node" parent="NPCComponent"]
+script = ExtResource("21")
+
+[node name="DefaultDamageModule" type="Node" parent="NPCComponent"]
+script = ExtResource("22")
+
+[node name="InteractiveComponent" type="Node" parent="."]
+script = ExtResource("3")
+interact_verb = "TALK"
+
+[node name="PuppetSpawnerComponent" type="Node" parent="."]
+script = ExtResource("4")
+
+[node name="NPCPuppet" parent="PuppetSpawnerComponent" instance=ExtResource("23")]
+
+[node name="TeleportComponent" type="Node" parent="."]
+script = ExtResource("5")
+
+[node name="GOAPComponent" type="Node" parent="."]
+script = ExtResource("6")
+
+[node name="SkillsComponent" type="Node" parent="."]
+script = ExtResource("7")
+
+[node name="AttributesComponent" type="Node" parent="."]
+script = ExtResource("8")
+
+[node name="VitalsComponent" type="Node" parent="."]
+script = ExtResource("9")
+
+[node name="SpellTargetComponent" type="Node" parent="."]
+script = ExtResource("10")
+
+[node name="CovensComponent" type="Node" parent="."]
+script = ExtResource("11")
+covens = {
+&"guards": 1
+}
+
+[node name="DamageableComponent" type="Node" parent="."]
+script = ExtResource("12")
+
+[node name="NavigatorComponent" type="Node" parent="."]
+script = ExtResource("13")
+
+[node name="ViewDirectionComponent" type="Node" parent="."]
+script = ExtResource("14")
+
+[node name="EquipmentComponent" type="Node" parent="."]
+script = ExtResource("15")
+
+[node name="InventoryComponent" type="Node" parent="."]
+script = ExtResource("16")
+
+[node name="EffectsComponent" type="Node" parent="."]
+script = ExtResource("17")

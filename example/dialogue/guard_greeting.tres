@@ -1,0 +1,31 @@
+[gd_resource type="Resource" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/dialogue/dialogue_definition.gd" id="1"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/dialogue/dialogue_node.gd" id="2"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/dialogue/dialogue_choice.gd" id="3"]
+
+[sub_resource type="Resource" id="1"]
+script = ExtResource("3")
+id = &"ack"
+text = "I am just looking around."
+next_node_id = &"guard_reply"
+
+[sub_resource type="Resource" id="2"]
+script = ExtResource("2")
+id = &"guard_open"
+speaker = "Guard"
+text = "Welcome to the demo district. Grab the relic and return."
+choices = [SubResource("1")]
+
+[sub_resource type="Resource" id="3"]
+script = ExtResource("2")
+id = &"guard_reply"
+speaker = "Guard"
+text = "Good. Press F5 to quick-save and F9 to quick-load."
+terminal = true
+
+[resource]
+script = ExtResource("1")
+id = &"guard_greeting"
+start_node_id = &"guard_open"
+nodes = [SubResource("2"), SubResource("3")]

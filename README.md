@@ -165,10 +165,10 @@ Recommended reading order:
 
 ## Project status
 
-- **Current plugin version:** `beta 0.9`
+- **Current plugin version:** `1.0`
 - **Minimum Godot version:** `4.4`
 - **Status:** active development
-- **Stability:** expect breaking changes before 1.0
+- **Stability:** API and save-schema are now in the 1.0 stability window
 
 For the API-stability commitments and the Stable / Beta / Internal tier split that will take effect at 1.0, see [`docs/architecture/api_stability.md`](docs/architecture/api_stability.md).
 
@@ -188,7 +188,7 @@ This release takes advantage of several Godot 4.4 improvements:
 If you are upgrading an existing project:
 
 1. Update Godot to **4.4** or later.
-2. Update the Skelerealms plugin to `beta 0.9`. The plugin migration system will handle any project-level changes automatically.
+2. Update the Skelerealms plugin to `1.0`. The plugin migration system will handle any project-level changes automatically.
 3. Review the [official Godot 4.4 migration guide](https://docs.godotengine.org/en/stable/tutorials/migrating/) for any breaking changes in your own project code.
 4. Note that `@export_file` annotations in Godot 4.4 now store `uid://` paths instead of `res://` paths. If you have custom resources using `@export_file`, re-save them after upgrading.
 
@@ -197,7 +197,7 @@ See [`docs/user guide/migrating.md`](docs/user%20guide/migrating.md) for full de
 ## Roadmap and status
 
 The combined roadmap and framework status now lives in [`ROADMAP.md`](ROADMAP.md).
-Current priority: AssetLib-ready minimal example project and release packaging.
+Current priority: post-1.0 stabilization and additive improvements.
 
 ## Attribution
 

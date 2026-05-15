@@ -18,7 +18,7 @@ const SaveInspector = preload("res://addons/skelerealms/tools/save_inspector.gd"
 const PluginMigrationRegistry = preload("res://addons/skelerealms/scripts/system/plugin_migration_registry.gd")
 
 ## Plugin version — keep in sync with plugin.cfg.
-const PLUGIN_VERSION := "beta 0.9"
+const PLUGIN_VERSION := "1.0"
 
 ## Container we add the toolbar to
 const container = CONTAINER_SPATIAL_EDITOR_MENU
