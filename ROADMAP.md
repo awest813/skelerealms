@@ -1,182 +1,124 @@
 # Roadmap
 
-This roadmap is the high-level view of where Skelerealms is headed.
+This is the combined roadmap and framework-status document for Skelerealms.
+`FRAMEWORK_STATUS.md` is kept only as a compatibility alias.
 
-For the detailed status of specific systems, assumptions, and incomplete areas, see [`FRAMEWORK_STATUS.md`](FRAMEWORK_STATUS.md).
-
-## Current state
+## Current snapshot
 
 - **Version target:** `beta 0.9`
 - **Development status:** active
 - **Stability target:** feature and API stability at `1.0`
+- **Current focus:** AssetLib-ready minimal example project and packaging polish
 
-The framework has moved beyond the earliest missing-core-systems phase. All major systems (quests, dialogue, saves, combat, UI, chunk loading, behaviour trees) are implemented. The current focus is on the AssetLib-ready minimal example project and any remaining polish before 1.0.
+## Framework status
 
-## Recently completed foundation work
+### Autoloads
 
-These major pieces are already in place:
+| Singleton Name       | Script Path                                            | Purpose                                               |
+|----------------------|--------------------------------------------------------|-------------------------------------------------------|
+| `SkeleRealmsGlobal`  | `scripts/sk_global.gd`                                 | Core utilities, entity tree helpers, status-effect registry, SKConfig holder |
+| `CovenSystem`        | `scripts/covens/coven_system.gd`                       | Loads and tracks all factions (Covens); manages inter-faction opinions |
+| `GameInfo`           | `scripts/system/game_info.gd`                          | World-time clock, current world, continuity flags, pause state |
+| `SaveSystem`         | `scripts/system/save_system.gd`                        | Serialize/deserialize game state to `user://saves/`   |
+| `CrimeMaster`        | `scripts/crime/crime_master.gd`                        | Tracks crimes committed against Covens; bounty calculation |
+| `DeviceNetwork`      | `scripts/misc/device_network.gd`                       | Broadcasts puzzle/device state changes (signals only) |
+| `SpawnTrackerManager`| `scripts/system/spawn_tracker_manager.gd`              | Persists spawn point state across save/load cycles    |
+| `ModLoader`          | `scripts/mods/mod_loader.gd`                           | Discovers and applies mod manifests at game-start     |
+| `SKUIManager`        | `scripts/ui/ui_manager.gd`                             | UI layer stack, menu management, input mode routing   |
 
-- Quest system with graph validation and save integration
-- Dialogue system with branching choices, conditions, and effects
-- Save-system overhaul with named slots, schema versioning, migration hooks, and integrity checks
-- Faction disposition thresholds
-- AI investigation behavior and expanded crime response
-- GOAP planning fixes and objective tracking fixes
-- Spawn tracker persistence
-- World-loader abort handling
-- NPC door interaction across world boundaries
-- Generalized vitals and improved perception coverage
-- Barter haggling with skill-factor negotiation
-- Item worth, ownership, and coven-aware theft detection
-- Furniture animation hooks and multi-user sub-point support
-- Player damage generalization across all damage types with buff/debuff modifiers
-- Network edge cost computation on dissolve, merge, and subdivide
-- Granular navigation memory optimization (RefCounted KD-tree nodes)
-- Audio emitter refactor to non-physics distance checks
-- Debug, audit, and polish pass across Phases 1-6: fixed NPC damage accumulation bug, added barter null safety, cleaned up 20+ raw debug prints, added test suites for coven disposition, network edge costs, and save system internals
-- Performance profiling and optimization: GOAP objective/action caching (eliminates per-frame sort and child filter), entity fade-distance caching, NPC perception entity-reference caching, A* binary heap (replaces per-iteration array sort), CrimeMaster empty-queue early exit, NavMaster debug print cleanup
-- Audit and polish pass across Phases 0-4: fixed `DefaultDamageModule` direct vitals dict mutations (bypassed `VitalsComponent` clamping and signals) — now uses `change_health/moxie/will()`; fixed `CrimeMaster.bounty_for_coven` dict key crash on unknown severity (`.get()` guard); fixed `BarterSystem.accept_barter` dict key crash when currency not yet initialised (`.get()` guard); removed 4 remaining bare debug `print()` calls (`mod_loader.gd`, `door.gd`, `player_component.gd`) and converted 3 loot-table prints to `push_error/push_warning`; removed two stale `# TODO` markers in `skelesave.gd`; added `test_crime_master.gd` (6 tests) and extended `test_barter.gd` with `accept_barter` null-currency tests
-- Audit and polish pass across Phases 5-9: fixed `SaveSystem.save()` and `entity_in_save()` null-safety on `FileAccess.open()` (guarded with warning on failure); removed noisy debug `printe()` calls from `NPCComponent._busy` setter and door-interaction, and `ItemComponent.interact` theft path; replaced bare `print()` in `tools/door_connect.gd` with `push_warning()`; added `push_error` to `PluginMigrationRegistry` when a migration callable is invalid; added `test_spawn_tracker_manager.gd` (8 tests covering save, load, reset, and round-trip)
-- **Phase 9 remaining (0.9)**: `_saving` guard + tmp-file + rename for crash-safe `SaveSystem.save()`; initial `@rpc` annotation pass on authority-only and any-peer state-transition methods in `QuestSystem`, `CrimeMaster`, and `DialogueSystem`; `thread_safety.md` and `multiplayer_audit.md` updated to reflect these changes.
+> `PluginMigrationRegistry` (`scripts/system/plugin_migration_registry.gd`) is **not** an autoload. It is a `RefCounted` helper instantiated once from `skelerealms.gd:_enter_tree()` to run project-level version migrations.
 
-## Current priorities
+### Project settings
 
-All major phases are complete. The remaining priority is:
+| Key                                         | Default   | Description                                                  |
+|---------------------------------------------|-----------|--------------------------------------------------------------|
+| `skelerealms/actor_fade_distance`           | `100.0`   | Distance (meters) at which entities enter/leave the scene    |
+| `skelerealms/entity_cleanup_timer`          | `300.0`   | Seconds before a stale, off-screen entity is freed after a save |
+| `skelerealms/granular_navigation_sim_distance` | `1000.0` | Distance at which off-screen NPC simulation stops entirely  |
+| `skelerealms/seconds_per_minute`            | `2.0`     | Real seconds per in-game minute |
+| `skelerealms/minutes_per_hour`               | `31.0`    | In-game minutes per hour        |
+| `skelerealms/hours_per_day`                 | `15.0`    | In-game hours per day           |
+| `skelerealms/days_per_week`                 | `8`       | Days per week                   |
+| `skelerealms/weeks_in_month`                | `4`       | Weeks per month                 |
+| `skelerealms/months_in_year`                | `8`       | Months per year                 |
+| `skelerealms/worlds_path`                   | `res://worlds`        | Directory scanned for world scenes (`.tscn`)                |
+| `skelerealms/entities_path`                 | `res://entities`      | Directory scanned for entity scenes (`.tscn`)               |
+| `skelerealms/covens_path`                   | `res://covens`        | Directory scanned for Coven resources (`.tres`/`.res`)      |
+| `skelerealms/doors_path`                    | `res://doors`         | Directory for door data (referenced in settings; usage TBD) |
+| `skelerealms/networks_path`                 | `res://networks`      | Directory scanned for granular-navigation Network resources |
+| `skelerealms/config_path`                  | `res://sk_config.res` | Path to the project's `SKConfig` resource                   |
+| `skelerealms/mods_path`                     | `res://mods`  | Directory scanned for `ModManifest` resources (`.tres`/`.res`)     |
+| `skelerealms/savegame_indents`              | `true`  | Whether JSON save files are pretty-printed with indentation   |
+| `skelerealms/entity_archetypes`             | (array) | Default NPC and item template scene paths shown in the editor |
+
+### Required folders
+
+| Path                | When Read              | Notes                                                  |
+|---------------------|------------------------|--------------------------------------------------------|
+| `res://worlds`      | `WorldLoader._ready`   | Must contain at least one `.tscn` world scene          |
+| `res://entities`    | `SKEntityManager._ready` | All entity `.tscn` files discovered recursively      |
+| `res://covens`      | `CovenSystem` on game-start | Coven `.tres`/`.res` resources                    |
+| `res://networks`    | `NavMaster.load_all_networks` on game-start | Granular-navigation Network `.tres` resources |
+| `res://doors`       | Referenced in settings | Scanning not yet implemented in code (see TODOs)       |
+| `user://saves/`     | `SaveSystem` on first save | Created automatically by `DirAccess.make_dir_recursive_absolute` |
+
+### Hard-coded assumptions
+
+| Location | Assumption | Impact |
+|---|---|---|
+| `scripts/constants.gd` | Default currency key is `&"snails"` (`SKConstants.DE_FACTO_CURRENCY`) | Any code that reads this const uses the literal string `snails` |
+| `scripts/crime/crime_master.gd` | Bounty amounts: `{0:0, 1:500, 2:10000, 5:100000}` | Crime severity → gold mapping is fixed |
+| `scripts/system/game_info.gd` | World-time timer fires every real second (`$Timer.start(1)`) | Timer granularity is 1 s regardless of `seconds_per_minute` |
+| `scripts/system/game_info.gd` | `Input.MOUSE_MODE_CAPTURED` on `_ready` | Overrides mouse mode unconditionally at startup |
+| `scripts/entities/entity.gd` | Component lookup uses child node name == class name string | Entity component naming is a strict contract |
+| `scripts/components/player_component.gd` | Hardcoded sibling paths `$"../TeleportComponent"` and `$"../DamageableComponent"` | Player entity must include both components as siblings |
+| `scripts/components/npc_component.gd` | Off-screen walk speed `_walk_speed = 1` (m/s) | All NPCs move at the same speed when not in scene |
+| `scripts/components/npc_component.gd` | Path follow end distance `_path_follow_end_distance = 1` (m) | Snap-to-point threshold is fixed |
+| `scripts/components/npc_component.gd` | `visibility_threshold = 0.3` | NPC ignores targets below this light/visibility level |
+| `scripts/ai/perception_eyes.gd` | Perception tick interval `perception_interval = 0.25` s | Fixed perception rate for all NPC eyes |
+| `scripts/skelerealms.gd` | Editor ray length `RAY_LENGTH = 500`, snap distance `SNAP_DISTANCE = 0.1` | Editor network-point placement constants |
+| `scripts/system/save_system.gd` | Named save slots now supported via `save(slot_name)` and `load_slot(slot_name)` | Save path is no longer hard-coded |
+| `scripts/entities/entity_manager.gd` | Entity ref-ID == scene filename (without extension) | File naming is a strict contract for entity identity |
+
+### Known incomplete systems
 
 - AssetLib-ready minimal example project
 
-### Phase 11 — Combat Subsystem & UI Framework ✅
+## Roadmap overview
 
-1. ✅ **Combat subsystem** — Built-in combat layer in `scripts/combat/` covering:
-   - `DamagePacket` extending `DamageInfo` with crit, hit reactions, damage categories, tags
-   - `CombatantComponent` unifying poise, resistances, block/parry/i-frames
-   - `CombatAction` resource defining attacks/spells with timing, cost, and combos
-   - `CombatStateMachine` with Idle/Attack/Cast/Stagger/Knockdown/Death states
-   - `SKHitbox`/`SKHurtbox` Area3D wrappers with deduplication and locational damage
-   - `HitPipeline` stateless resolver for melee and hitscan hits
-   - AI combat action module for NPC action selection
-2. ✅ **UI framework** — Framework-owned UI structure in `scripts/ui/` with:
-   - `SKUIManager` autoload managing layer stack, menu stack, input mode routing
-   - `SKTheme` resource with RPG color palette, font slots, animation timing
-   - `SKHUDShell` with widget slots for vitals, compass, crosshair, prompts, status effects
-   - `SKMenuShell` with tab/page and popup management
-   - Menu contracts: inventory, dialogue, barter, journal, pause, character
-   - Widget contracts: list item, stat row, tab panel, tooltip, radial selector, prompt bar
+The framework is past the "missing core systems" phase. The remaining work is mostly packaging and polish before 1.0.
 
-### Phase 12 — Chunk Loading System ✅
+### Recently completed foundation work
 
-Generic, engine-agnostic chunk manager that fills the "No terrain/LOD/chunk pipeline" gap.
-Inspired by [Cellblock](https://github.com/liamhendricks/cellblock) (open-world scene management for Godot 4) and patterns from [godot_voxel](https://github.com/Zylann/godot_voxel).
+- Quest system with graph validation, template variables, and save integration
+- Dialogue system with branching choices, effects, session state, and save integration
+- Save-system overhaul with named slots, schema versioning, migration hooks, and integrity checks
+- Faction disposition thresholds and coven-aware theft detection
+- AI investigation behavior, guard challenge, and expanded crime response
+- GOAP planning fixes, objective tracking fixes, and performance caching
+- Spawn tracker persistence and world-loader abort handling
+- NPC door interaction across world boundaries
+- Generalized vitals, perception coverage, player damage handling, and barter haggling
+- Furniture animation hooks, multi-user sub-points, and network edge costs
+- Audio emitter refactor to non-physics distance checks
+- Performance profiling and hot-path optimization for large worlds
+- Debug, audit, and polish passes across Phases 0-9
+- Runtime debugging overlays, editor inspectors, and save-file tooling
+- Behaviour tree system, `SKBlackboard`, and external inspiration integration
+- Combat subsystem and UI framework
+- Chunk loading system with async loading, LRU caching, and multi-origin support
+- Godot 4.4 modernization, typed dictionaries, and safer file I/O
 
-1. ✅ **Core types** — `SKChunk` RefCounted data class holding grid coordinates, loaded data, and lifecycle flags (`is_loaded`, `is_loading`, `is_mounted`, `last_touched`, `error`, `retry_count`).
-2. ✅ **Chunk utilities** — `SKChunkUtils` with static helpers: `to_chunk_key`/`from_chunk_key` (string↔Vector2i), `world_to_chunk_coords` (Vector3→grid using X/Z), `square_coords_around`, `circle_coords_around` (Euclidean radius for natural circular loading, ~22 % fewer chunks than square at the same radius), and `sort_coords_by_distance` (Manhattan).
-3. ✅ **Cancellation token** — `SKCancelToken` lightweight RefCounted flag for cooperative cancellation of in-flight loads.
-4. ✅ **Abstract interfaces** — `SKChunkSource` (load/unload data) and `SKChunkAdapter` (mount/unmount visuals) base classes for game-specific implementations.
-5. ✅ **Chunk manager** — `SKChunkManager` Node with:
-   - Configurable `chunk_size`, `active_radius`, `preload_radius`, `max_cached_chunks`, `load_concurrency`
-   - `use_circular_radius` — toggle between square and circular (Euclidean) radius selection, inspired by Cellblock's distance-to-origin strategy
-   - Async loading with worker-pool concurrency limiting; closest chunks load first
-   - **Multi-origin support** — `update_multi(origins: Array[Vector3])` merges all player/camera neighbourhoods; `update(pos)` delegates to it; enables split-screen and co-op scenarios
-   - **Load retry with backoff** — `max_load_retries` and `retry_delay` exports; failed loads are retried up to N times before entering error state; `retry_count` tracked on each `SKChunk`; emits `load-retry` event
-   - Active radius mount/unmount and preload radius pre-fetching
-   - LRU cache eviction (oldest-touched, non-active, non-preload chunks evicted first)
-   - `chunk_event` signal for full lifecycle observability (created, load-start, load-retry, loaded, load-error, activated, deactivated, mount-start, mounted, unmount-start, unmounted, unloaded)
-   - `get_all_chunks()` public query for diagnostics and debug visualization
-   - `dispose()` for clean teardown
-6. ✅ **Example implementations** — `ExampleChunkSource` (deterministic procedural tiles + entities) and `ExampleChunkAdapter` (log-only mount/unmount) for testing.
-7. ✅ **Debug visualization** — `SKChunkDebugDraw` Node3D draws chunk boundaries as colour-coded rectangles on the XZ plane using `ImmediateMesh` (pattern matches `NavDebugDraw`). Toggle with configurable key (default F8). Colors: error=red, mounted=green, loaded=blue, loading=orange, pending=grey.
-8. ✅ **Test suite** — `tests/test_chunk_manager.gd` extended with GUT tests for circular radius, load retry (success and exhaustion), retry-disabled behavior, multi-origin merging, `update()`/`update_multi()` equivalence, and `get_all_chunks()`.
+### Current priorities
 
-| File | Purpose |
-|---|---|
-| `scripts/chunks/sk_chunk.gd` | Chunk data class |
-| `scripts/chunks/sk_chunk_utils.gd` | Coordinate math utilities (square + circular radius) |
-| `scripts/chunks/sk_cancel_token.gd` | Cooperative cancellation token |
-| `scripts/chunks/sk_chunk_source.gd` | Abstract chunk data loader |
-| `scripts/chunks/sk_chunk_adapter.gd` | Abstract chunk mount/unmount adapter |
-| `scripts/chunks/sk_chunk_manager.gd` | Main chunk manager Node |
-| `scripts/chunks/sk_chunk_debug_draw.gd` | Runtime ImmediateMesh chunk grid visualizer |
-| `scripts/chunks/example_chunk_source.gd` | Example procedural source |
-| `scripts/chunks/example_chunk_adapter.gd` | Example logging adapter |
-| `tests/test_chunk_manager.gd` | GUT test suite |
+- AssetLib-ready minimal example project
 
-### Phase 9 — Architecture Hardening (0.9) ✅
+### Next steps toward 1.0
 
-Prepare the framework for long-lived production use and broader adoption.
+- Keep API and save-schema changes documented in the architecture docs
+- Finish the minimal example project and release packaging work
+- Preserve the current stability assumptions until the framework reaches 1.0
 
-1. ✅ **Multiplayer-readiness audit** — session-unsafe state, singleton assumptions, and player-identity coupling catalogued in `docs/architecture/multiplayer_audit.md`. No code changes yet; documented as a survey so any future co-op fork has a starting map.
-2. ✅ **Thread-safety review** — autoload and shared-state hazards documented in `docs/architecture/thread_safety.md`. Ground rule codified: Skelerealms remains a single-threaded main-thread framework; worker-thread work requires immutable snapshots.
-3. ✅ **API stability pass** — Stable / Beta / Internal tiers defined in `docs/architecture/api_stability.md`. Post-1.0 deprecation policy spelled out.
-4. ✅ **Plugin packaging** — plugin version bumped to `beta 0.9`. Plugin.cfg metadata retained; AssetLib polish (minimal example project, versioned release artifacts) remains for 1.0.
-5. ✅ **Migration tooling** — `PluginMigrationRegistry` (`scripts/system/plugin_migration_registry.gd`) runs one-shot project-level migrations on editor start. Save-file migrations continue to live in `SaveSystem`. Contract documented in `docs/architecture/migration_tooling.md`. Unit tests in `tests/test_plugin_migration_registry.gd`.
-6. ✅ **SaveSystem crash safety** — `_saving: bool` guard prevents re-entrant or concurrent calls. Write path converted to tmp-file + rename: data is serialised to `<slot>.tmp` then atomically renamed to `<slot>.dat`, so a crash during the write cannot corrupt an existing save. GUT tests extended to cover the guard.
-7. ✅ **`@rpc` annotation pass** — authority-only state transitions (`QuestSystem.activate_quest`, `activate_quest_with_params`, `apply_event`; `CrimeMaster.punish_crimes`) annotated with `@rpc("authority", "reliable")`. Any-peer event reporters (`report_kill`, `report_pickup`, `report_talk`, `report_custom`; `CrimeMaster.add_crime`; `DialogueSystem.end_dialogue`) annotated with `@rpc("any_peer", "call_local", "reliable")`. Annotations do not affect single-player behaviour; `multiplayer_audit.md` updated with the full table.
-
-| File | Purpose |
-|---|---|
-| `docs/architecture/multiplayer_audit.md` | Survey of session-scoped state, player-singleton assumptions, RPC gaps |
-| `docs/architecture/thread_safety.md` | Main-thread rule, per-autoload hazards, safe-to-thread operations |
-| `docs/architecture/api_stability.md` | Stable / Beta / Internal tier classification and deprecation policy |
-| `docs/architecture/migration_tooling.md` | Save-file vs plugin-level migration split and contract |
-| `scripts/system/plugin_migration_registry.gd` | Plugin-version migration runner (project-level state) |
-| `tests/test_plugin_migration_registry.gd` | GUT tests for the registry's run loop |
-| `scripts/system/save_system.gd` | `_saving` guard + tmp-file + rename write path |
-| `tests/test_save_system.gd` | Extended with `_saving` guard tests |
-| `scripts/quests/quest_system.gd` | `@rpc` annotations on state-transition methods |
-| `scripts/crime/crime_master.gd` | `@rpc` annotations on state-transition methods |
-| `scripts/dialogue/dialogue_system.gd` | `@rpc` annotation on `end_dialogue` |
-
-Remaining work (post-0.9):
-
-- AssetLib-ready minimal example project.
-
-## Next phases
-
-### Phase 8 — Runtime Debugging & Diagnostics (0.8 target) ✅
-
-In-game overlays and tools to accelerate iteration and troubleshooting.
-
-1. ✅ **AI state overlay** — `AIStateOverlay` CanvasLayer (`scripts/system/ai_state_overlay.gd`). Displays each active NPC's GOAP debug info (current objective, active action, action queue via `gather_debug_info()`) and perception-memory visibility per tracked entity. Toggle with F10.
-2. ✅ **Navigation debug draw** — `NavDebugDraw` Node3D (`scripts/system/nav_debug_draw.gd`). Renders all NavNode edges for loaded worlds using `ImmediateMesh`. Same-world edges in green; cross-world portal edges in orange. Toggle with F11, configurable `rebuild_interval`.
-3. ✅ **Perception debug draw** — `PerceptionDebugDraw` Node3D (`scripts/system/perception_debug_draw.gd`). Draws horizontal FOV arcs and boundary rays for every NPC with an `EyesPerception` node, plus cross markers at last-known entity positions colour-coded by visibility. Toggle with F12.
-4. ✅ **Quest state inspector** — `QuestStateInspector` CanvasLayer (`scripts/system/quest_state_inspector.gd`). Runtime scrollable panel listing all registered quests with status and per-node progress. Active-only filter toggle. Toggle with F9.
-5. ✅ **Save file inspector** — `SaveInspector` editor tool (`tools/save_inspector.gd`). Bottom panel in the Godot editor. Opens any `.dat` save file via browse dialog or typed path, displays the full JSON as a collapsible `Tree`, reports schema version, entity count, checksum validity.
-
-| File | Purpose |
-|---|---|
-| `scripts/system/ai_state_overlay.gd` | Runtime CanvasLayer — GOAP state and perception overlay |
-| `scripts/system/nav_debug_draw.gd` | Runtime Node3D — ImmediateMesh nav-graph visualizer |
-| `scripts/system/perception_debug_draw.gd` | Runtime Node3D — FOV cone and detection-marker visualizer |
-| `scripts/system/quest_state_inspector.gd` | Runtime CanvasLayer — quest state panel |
-| `tools/save_inspector.gd` | `@tool` editor bottom panel — save file browser and validator |
-
-## Recently completed work
-
-These pieces landed in the latest milestone:
-
-- **Phase 12 — Chunk Loading System (continued)**: Extended chunk system inspired by [Cellblock](https://github.com/liamhendricks/cellblock) and [godot_voxel](https://github.com/Zylann/godot_voxel). Added circular (Euclidean) radius selection (`circle_coords_around`, `use_circular_radius` export, ~22 % fewer chunks than square at equal radius); multi-origin `update_multi(origins)` for split-screen/co-op; load retry with configurable `max_load_retries`/`retry_delay` and `retry_count` tracking; `get_all_chunks()` diagnostic query; `SKChunkDebugDraw` ImmediateMesh chunk grid visualizer (toggleable, colour-coded by state); extended GUT test suite.
-- **Phase 13 — Godot 4.4 Return-Type & Typed-Variable Pass**: Complete sweep adding `-> void` return-type annotations, typed dictionaries (`Dictionary[K, V]`), typed array parameters, and typed variable declarations across all remaining scripts.
-- **Phase 12 — Godot 4.4 Modernization Sweep**: Typed dictionaries across core data structures, typed arrays, null guards on `FileAccess.open()`, and `world_states` initializer fix.
-- **Phase 12 — Chunk Loading System**: Generic, engine-agnostic chunk manager in `scripts/chunks/` with async loading, active/preload radii, mount/unmount lifecycle, LRU cache eviction, concurrency limits, and cancellation token support. Includes abstract `SKChunkSource`/`SKChunkAdapter` interfaces and example implementations. GUT test suite in `tests/test_chunk_manager.gd`.
-- **Phase 11 — Combat Subsystem & UI Framework**: Full combat layer (`scripts/combat/`) with `DamagePacket`, `CombatantComponent`, `CombatAction`, `CombatStateMachine`, hitbox/hurtbox, `HitPipeline`, and AI combat module. UI framework (`scripts/ui/`) with `SKUIManager`, `SKTheme`, HUD/menu shells, menus, and widgets.
-- **Phase 10 — External Inspiration Integration**: Ported behaviour tree system from BehaviourToolkit (MIT); added `SKBlackboard` shared AI state store; added quest template variables with `{placeholder}` substitution; added `ANY` join mode for quest node prerequisites.
-- **Phase 9 — Architecture Hardening**: four architecture docs (`multiplayer_audit.md`, `thread_safety.md`, `api_stability.md`, `migration_tooling.md`), plus the `PluginMigrationRegistry` class and tests. Crash-safe saves, `@rpc` annotation pass. Plugin version bumped to `beta 0.9`.
-- **Phase 8 — Runtime Debugging & Diagnostics**: AI state overlay, navigation debug draw, perception debug draw, quest state inspector, and save file inspector all implemented. Runtime nodes add no overhead when hidden. Editor save inspector wired as a bottom panel in the plugin.
-- **Phase 7 — Editor Tooling**: Visual quest graph editor, dialogue tree editor, and coven relationship matrix all landed as `@tool` editor plugins.
-- Mod-friendly data architecture: `ModManifest` resource and `ModLoader` autoload with manifest-driven override support for covens, quests, and dialogues.
-- **Documentation**: Added user-guide pages for the Quest system, Dialogue system, Save system, and Mods system. Updated the documentation table of contents in `docs/intro.md`.
-- **Integration tests**: Added GUT-compatible test suites for `QuestGraphEngine`, `DialogueEngine`, `BarterSystem`, coven disposition, network edge costs, save system, performance optimizations, plugin migration registry, spawn tracker manager, chunk manager, loot table, and behaviour tree.
-
-## Path to 1.0
-
-Skelerealms should reach 1.0 only after:
-
-- The major incomplete systems are finished
-- Core authoring workflows are reliable
-- Key framework APIs settle down
-- The addon is comfortable to integrate into a long-running production project
-
-Until then, expect iteration and breaking changes where the framework still needs structural improvement.
 
 ---
 
@@ -252,7 +194,7 @@ directly to GDScript even though the runtime is different.
 **Source:** Camelot's `validateGraph()` BFS pattern
 
 ~~SkeleRealms' `_build_graph` in `goap_component.gd` is documented as broken
-depth-first (FRAMEWORK_STATUS Phase 1 #2).~~ Rewritten to BFS (explicit queue,
+depth-first in the old roadmap/status split.~~ Rewritten to BFS (explicit queue,
 visited set) so action plans are cost-optimal.
 
 ### ~~2B  Save System Enhancements~~ ✅
@@ -273,8 +215,8 @@ deserialization, inventory/equipment/covens persistence.
 
 Added per-coven configurable `hostile_below`, `friendly_at`, `allied_at` threshold
 exports and a `get_disposition()` helper returning `HOSTILE / NEUTRAL / FRIENDLY / ALLIED`
-(via `Coven.Disposition` enum). Also fixed the coven NPC-opinion lookup
-(FRAMEWORK_STATUS Phase 1 #5).
+(via `Coven.Disposition` enum). Also fixed the coven NPC-opinion lookup from the
+old roadmap/status split.
 
 ---
 

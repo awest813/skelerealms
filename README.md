@@ -105,7 +105,7 @@ Skelerealms is a framework layer, not a complete game template.
 - **Godot 4.4+**
 - A project structure that follows the framework's expected folders and naming conventions
 
-For the current singleton list, required folders, project settings, and framework assumptions, see [`FRAMEWORK_STATUS.md`](FRAMEWORK_STATUS.md).
+For the current singleton list, required folders, project settings, assumptions, and roadmap status, see [`ROADMAP.md`](ROADMAP.md).
 
 ## Getting started
 
@@ -133,8 +133,8 @@ Recommended reading order:
 
 ### Core references
 
-- [`FRAMEWORK_STATUS.md`](FRAMEWORK_STATUS.md) — current framework capabilities, assumptions, incomplete systems, and dependency-ordered priorities
-- [`ROADMAP.md`](ROADMAP.md) — high-level roadmap and current focus areas
+- [`ROADMAP.md`](ROADMAP.md) — canonical combined roadmap and framework status
+- [`FRAMEWORK_STATUS.md`](FRAMEWORK_STATUS.md) — legacy compatibility alias
 
 ### Concepts
 
@@ -194,21 +194,10 @@ If you are upgrading an existing project:
 
 See [`docs/user guide/migrating.md`](docs/user%20guide/migrating.md) for full details.
 
-## Roadmap snapshot
+## Roadmap and status
 
-All prior framework gaps (quests, dialogue, saves, barter haggling, item ownership, furniture multi-use, player damage generalization, network edge costs, navigation memory optimization, mod support) have been completed. Recent and upcoming focus areas:
-
-- **Phase 7 (done):** Performance profiling and hot-path optimization for large worlds
-- **Phase 7 editor tooling (done):** Visual quest editor, dialogue editor, coven relationship matrix
-- **Phase 8 (done):** Runtime debugging overlays — AI state, navigation, perception, quest state, save inspector
-- **Phase 9 (done):** Architecture hardening — multiplayer audit, thread-safety review, API stability tiers, plugin migration tooling, crash-safe saves, `@rpc` annotation pass
-- **Phase 10 (done):** External inspiration integration — behaviour tree system, SKBlackboard, quest template variables, `ANY` join mode
-- **Phase 11 (done):** Combat subsystem (DamagePacket, CombatantComponent, CombatAction, CombatStateMachine, hitbox/hurtbox, HitPipeline) and UI framework (SKUIManager, SKTheme, HUD/menu shells, widgets)
-- **Phase 12 (done):** Chunk loading system — generic engine-agnostic chunk manager with async loading, LRU caching, concurrency limits, and abstract interfaces
-- **Phase 13 (done):** Godot 4.4 modernization — typed dictionaries, return-type annotations, typed variables, FileAccess safety, version bump to `beta 0.9`
-- **Next:** AssetLib-ready minimal example project
-
-See [`ROADMAP.md`](ROADMAP.md) for the fuller roadmap and [`docs/architecture/`](docs/architecture/) for architecture documentation.
+The combined roadmap and framework status now lives in [`ROADMAP.md`](ROADMAP.md).
+Current priority: AssetLib-ready minimal example project and release packaging.
 
 ## Attribution
 
