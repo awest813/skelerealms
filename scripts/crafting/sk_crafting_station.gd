@@ -120,6 +120,7 @@ func _consume_ingredients(recipe: SKRecipe, inventory: InventoryComponent) -> vo
 
 func _deliver_output(recipe: SKRecipe, crafter: SKEntity, inventory: InventoryComponent) -> void:
 	if not SKEntityManager.instance:
+		push_warning("SKCraftingStation: SKEntityManager not available; cannot deliver output for recipe '%s'." % recipe.id)
 		return
 	for i in recipe.output_count:
 		# Instantiate the output entity from its template (form_id == scene file name).

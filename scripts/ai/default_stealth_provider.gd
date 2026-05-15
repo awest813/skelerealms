@@ -64,7 +64,7 @@ func get_visible_objects() -> Dictionary:
 
 
 func _on_perceived(data:EyesPerception.PerceptionData) -> void:
-	if data.object == "":
+	if data.object == &"":
 		return
 	var entity:SKEntity = SKEntityManager.instance.get_entity(StringName(data.object)) if SKEntityManager.instance else null
 	if not entity:
@@ -83,7 +83,7 @@ func _on_perceived(data:EyesPerception.PerceptionData) -> void:
 
 
 func _on_not_perceived(data:EyesPerception.PerceptionData) -> void:
-	if data.object == "":
+	if data.object == &"":
 		return
 	var entity:SKEntity = SKEntityManager.instance.get_entity(StringName(data.object)) if SKEntityManager.instance else null
 	if not entity:
