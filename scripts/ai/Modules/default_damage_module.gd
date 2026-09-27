@@ -72,7 +72,7 @@ func process_damage(info:DamageInfo) -> void:
 	
 	# Broadcast assault or murder crime when another entity deals health damage
 	if accumulated_damage > 0 and not info.offender.is_empty() and was_alive:
-		var victim_name := _npc.parent_entity.name
+		var victim_name: String = _npc.parent_entity.name
 		var crime_type: StringName = &"murder" if vitals_component.is_dead else &"assault"
 		CrimeMaster.crime_committed.emit(
 			Crime.new(crime_type, info.offender, victim_name),

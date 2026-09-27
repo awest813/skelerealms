@@ -24,7 +24,7 @@ func _make_action(
 ) -> CombatAction:
 	var a := CombatAction.new()
 	a.action_type = action_type
-	a.base_damage = base_damage
+	a.base_damage.assign(base_damage)
 	a.startup_duration = startup
 	a.active_duration = active
 	a.recovery_duration = recovery
@@ -34,29 +34,18 @@ func _make_action(
 
 
 ## Build a VitalsComponent stub with set values.
-class _StubVitals extends Node:
-	var vitals: Dictionary = {
-		"health": 100.0,
-		"moxie": 50.0,
-		"will": 50.0,
-		"max_health": 100.0,
-		"max_moxie": 100.0,
-		"max_will": 100.0,
-		"return_to_will": 0.0,
-	}
-
-	func change_moxie(delta: float) -> void:
-		vitals["moxie"] = clampf(vitals["moxie"] + delta, 0.0, vitals["max_moxie"])
-
-	func change_will(delta: float) -> void:
-		vitals["will"] = clampf(vitals["will"] + delta, 0.0, vitals["max_will"])
+class _StubVitals extends VitalsComponent:
+	func _ready() -> void:
+		pass
+	func _process(_delta: float) -> void:
+		pass
 
 
 func _make_vitals(moxie: float = 50.0, will: float = 50.0) -> _StubVitals:
 	var v := _StubVitals.new()
 	v.vitals["moxie"] = moxie
 	v.vitals["will"] = will
-	add_child(v)
+	add_child_autofree(v)
 	return v
 
 
@@ -66,7 +55,9 @@ func _make_combatant(max_poise: float = 100.0) -> CombatantComponent:
 	c.max_poise = max_poise
 	c.poise_regen_rate = 10.0
 	c.poise_regen_delay = 3.0
-	add_child_autofree(c)
+	var entity := _StubEntity.new()
+	add_child_autofree(entity)
+	entity.add_child(c)
 	c.poise = max_poise  # manually set since _entity_ready won't fire
 	return c
 
@@ -275,8 +266,12 @@ func test_combatant_invincibility_no_duplicate_signal() -> void:
 
 
 ## Build a minimal CombatStateMachine with a dummy entity stub.
-class _StubEntity extends Node:
-	func get_component(_name: String) -> Node:
+class _StubEntity extends SKEntity:
+	func _enter_tree() -> void:
+		pass
+	func _process(_delta: float) -> void:
+		pass
+	func get_component(_name: String) -> SKEntityComponent:
 		return null
 
 

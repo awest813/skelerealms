@@ -10,6 +10,7 @@ const PICKUP_TARGET := &"chest"
 @onready var entity_manager: SKEntityManager = $SKEntityManager
 @onready var world_origin: Node3D = $WorldOrigin
 
+var _pending_save: Dictionary = {}
 var _quest_done := false
 var _dialogue_triggered := false
 var _quest_id: StringName = &""
@@ -18,6 +19,8 @@ var _dialogue_id: StringName = &""
 
 func _ready() -> void:
     GameInfo.world_origin = world_origin
+    world_loader.world_loading_ready.connect(_on_world_ready)
+    world_loader.world_loading_failed.connect(_on_world_failed)
     _register_content()
     _ensure_core_entities()
     GameInfo.start_game()
@@ -28,7 +31,7 @@ func _process(_delta: float) -> void:
     if Input.is_action_just_pressed(&"quick_save"):
         SaveSystem.save(QUICK_SLOT)
     if Input.is_action_just_pressed(&"quick_load"):
-        SaveSystem.load_slot(QUICK_SLOT)
+        request_load_slot(QUICK_SLOT)
 
     if not _quest_done:
         _try_complete_fetch_quest()
@@ -91,3 +94,47 @@ func _try_trigger_guard_greeting() -> void:
     if node and node.choices.size() > 0:
         DialogueSystem.choose(node.choices[0].id)
     _dialogue_triggered = true
+
+
+## Prepare the destination before changing live player, quest or economy state.
+func request_load_slot(slot: String) -> bool:
+    if GameInfo.is_loading or not _pending_save.is_empty():
+        return false
+    var file := FileAccess.open("user://saves/%s.dat" % slot, FileAccess.READ)
+    if not file:
+        return false
+    var snapshot := SaveSystem._deserialize(file.get_as_text())
+    if not SaveSystem._valid_snapshot(snapshot):
+        return false
+    var destination: Variant = snapshot["game_info"].get("GameInfo", {}).get("world", "")
+    if not destination is String or not world_loader.world_paths.has(destination):
+        return false
+    _pending_save = snapshot
+    if not world_loader.load_world(destination):
+        _pending_save = {}
+        return false
+    return true
+
+
+func _on_world_ready() -> void:
+    if not _pending_save.is_empty():
+        var prepared := _pending_save
+        _pending_save = {}
+        SaveSystem.restore_snapshot(prepared)
+    _restore_player_pose()
+
+
+func _on_world_failed(_message: String) -> void:
+    _pending_save = {}
+
+
+func _restore_player_pose() -> void:
+    var player := entity_manager.get_entity(&"player")
+    if not player:
+        return
+    var spawner := player.get_component("PuppetSpawnerComponent") as PuppetSpawnerComponent
+    if spawner and is_instance_valid(spawner.puppet):
+        var puppet := spawner.puppet as Node3D
+        puppet.position = player.position
+        puppet.quaternion = player.rotation
+        GameInfo.world_origin = puppet

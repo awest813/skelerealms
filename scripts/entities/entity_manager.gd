@@ -16,6 +16,11 @@ func _init() -> void:
 	instance = self
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE and instance == self:
+		instance = null
+
+
 func _ready() -> void:
 	regex = RegEx.new()
 	regex.compile("([^\\/\n\\r]+)\\.t?scn")

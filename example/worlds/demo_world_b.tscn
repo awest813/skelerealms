@@ -1,11 +1,15 @@
 [gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://addons/skelerealms/scripts/world_objects/door.gd" id="1"]
-[sub_resource type="DoorInstance" id="1"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/instance_data/door_instance.gd" id="door_data"]
+
+[sub_resource type="Resource" id="1"]
+script = ExtResource("door_data")
 world = &"demo_world_b"
 position = Vector3(0, 1.2, -4)
 
-[sub_resource type="DoorInstance" id="2"]
+[sub_resource type="Resource" id="2"]
+script = ExtResource("door_data")
 world = &"demo_world"
 position = Vector3(0, 1.2, 5)
 

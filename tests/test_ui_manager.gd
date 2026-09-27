@@ -12,7 +12,7 @@ extends GutTest
 
 ## Minimal UIManager with GameInfo.pause_game replaced by a flag so the test
 ## doesn't need the full autoload graph.
-class _TestUIManager extends SKUIManager:
+class _TestUIManager extends SKUIService:
 	var _game_paused: bool = false
 	var _game_mouse_visible: bool = false
 
@@ -35,6 +35,45 @@ func _make_control(control_name: String = "TestMenu") -> Control:
 	var c := Control.new()
 	c.name = control_name
 	return c
+
+func test_replacing_open_menu_preserves_stack_and_frees_old_control() -> void:
+	var mgr := _make_manager()
+	var original := _make_control()
+	var old: WeakRef = weakref(original)
+	mgr.register_menu(&"Station", original)
+	mgr.open_menu(&"Station")
+	var replacement := _make_control()
+	mgr.register_menu(&"Station", replacement)
+	assert_true(replacement.visible)
+	assert_eq(mgr._menu_stack.size(), 1)
+	mgr.close_all_menus()
+	assert_false(mgr.is_menu_open())
+	assert_false(mgr._game_paused)
+	await get_tree().process_frame
+	assert_null(old.get_ref())
+
+func test_replacing_hud_frees_old_hud_and_accepts_same_instance() -> void:
+	var mgr := _make_manager()
+	var original := SKHUDShell.new()
+	var old: WeakRef = weakref(original)
+	mgr.set_hud(original)
+	var replacement := SKHUDShell.new()
+	mgr.set_hud(replacement)
+	mgr.set_hud(replacement)
+	await get_tree().process_frame
+	assert_null(old.get_ref())
+	assert_eq(mgr._hud_layer.get_child_count(), 1)
+
+func test_menu_does_not_release_a_preexisting_pause() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	var mgr := SKUIService.new()
+	add_child_autofree(mgr)
+	mgr.register_menu(&"Station", _make_control())
+	GameInfo.pause_game(true)
+	mgr.open_menu(&"Station")
+	mgr.close_menu(&"Station")
+	assert_true(get_tree().paused)
+	GameInfo.unpause_game()
 
 
 # ── Registration ──────────────────────────────────────────────────────────

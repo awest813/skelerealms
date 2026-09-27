@@ -170,6 +170,7 @@ func apply_event(event: QuestEvent) -> Array[QuestEventResult]:
 
 		var activated_ids: Array[StringName] = []
 		var completed_ids: Array[StringName] = []
+		var progressed := false
 		var delta := max(1, event.amount)
 
 		for node: QuestNodeDefinition in definition.nodes:
@@ -180,6 +181,7 @@ func apply_event(event: QuestEvent) -> Array[QuestEventResult]:
 				continue
 
 			node_state.progress = min(node.required_count, node_state.progress + delta)
+			progressed = true
 			if node_state.progress >= node.required_count:
 				node_state.completed = true
 				node_state.active = false
@@ -196,7 +198,7 @@ func apply_event(event: QuestEvent) -> Array[QuestEventResult]:
 					next_state.active = true
 					activated_ids.append(next_id)
 
-		if completed_ids.is_empty() and activated_ids.is_empty():
+		if not progressed:
 			continue
 
 		var quest_completed := _is_quest_completed(definition, state.nodes)

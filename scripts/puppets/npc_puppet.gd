@@ -49,7 +49,7 @@ func get_puppeteer() -> PuppetSpawnerComponent:
 ## This is to avoid getting stuck in things that it may have phased into while navigating out-of-scene.
 func snap_to_navmesh() -> void:
 	var map_rid := SKNavigationMaps.get_navigation_map_rid(self)
-	if not map_rid.is_valid():
+	if not map_rid.is_valid() or NavigationServer3D.map_get_iteration_id(map_rid) == 0:
 		return
 	position = NavigationServer3D.map_get_closest_point(map_rid, position)
 
@@ -57,7 +57,7 @@ func snap_to_navmesh() -> void:
 func _apply_world_navigation_map() -> void:
 	var map_rid := SKNavigationMaps.get_navigation_map_rid(self)
 	if map_rid.is_valid():
-		navigation_agent.navigation_map = map_rid
+		navigation_agent.set_navigation_map(map_rid)
 
 
 func _connect_terrabrush_nav_reload() -> void:

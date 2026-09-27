@@ -207,6 +207,7 @@ func _exit_tree() -> void:
 	remove_autoload_singleton("SKUIManager")
 
 	remove_control_from_container(container, utility)
+	utility.queue_free()
 	remove_node_3d_gizmo_plugin(network_gizmo)
 	
 	se_w.queue_free()
@@ -217,6 +218,7 @@ func _exit_tree() -> void:
 	remove_control_from_bottom_panel(_save_inspector)
 	_save_inspector.queue_free()
 
+	remove_control_from_container(EditorPlugin.CONTAINER_TOOLBAR, edit_button)
 	edit_button.queue_free()
 
 

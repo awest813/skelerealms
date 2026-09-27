@@ -23,12 +23,12 @@ static func get_navigation_map_rid(from_node: Node) -> RID:
 
 	for n in tree.get_nodes_in_group(PRIMARY_NAV_REGION_GROUP):
 		if n is NavigationRegion3D:
-			return NavigationServer3D.region_get_navigation_map(n.get_rid())
+			return NavigationServer3D.region_get_map(n.get_rid())
 
 	var walk: Node = from_node
 	while walk:
 		if walk is NavigationRegion3D:
-			return NavigationServer3D.region_get_navigation_map(walk.get_rid())
+			return NavigationServer3D.region_get_map(walk.get_rid())
 		walk = walk.get_parent()
 
 	var wl: Node = tree.root.find_child("WorldLoader", true, false)
@@ -36,13 +36,13 @@ static func get_navigation_map_rid(from_node: Node) -> RID:
 		var world_root: Node = wl.get_child(0)
 		var region := world_root.find_child("NavigationRegion3D", true, false)
 		if region is NavigationRegion3D:
-			return NavigationServer3D.region_get_navigation_map(region.get_rid())
+			return NavigationServer3D.region_get_map(region.get_rid())
 
 	var scene_root: Node = tree.current_scene if tree.current_scene else tree.root
 	if scene_root:
 		var found := scene_root.find_child("NavigationRegion3D", true, false)
 		if found is NavigationRegion3D:
-			return NavigationServer3D.region_get_navigation_map(found.get_rid())
+			return NavigationServer3D.region_get_map(found.get_rid())
 
 	return _fallback_default_map()
 

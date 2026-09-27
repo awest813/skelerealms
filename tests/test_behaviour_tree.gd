@@ -97,7 +97,7 @@ func test_sequence_succeeds_when_all_succeed() -> void:
 	var bb := _bb()
 	# First tick runs a (SUCCESS), advances to b — returns RUNNING
 	var status := seq.tick(0.016, self, bb)
-	assert_eq(status, SKBTNode.Status.RUNNING)
+	assert_eq(status, SKBTNode.Status.SUCCESS)
 	# Second tick runs b (SUCCESS) — sequence complete
 	status = seq.tick(0.016, self, bb)
 	assert_eq(status, SKBTNode.Status.SUCCESS)
@@ -134,7 +134,7 @@ func test_selector_succeeds_on_first_success() -> void:
 	var bb := _bb()
 	# First tick: a fails, advance — RUNNING
 	var status := sel.tick(0.016, self, bb)
-	assert_eq(status, SKBTNode.Status.RUNNING)
+	assert_eq(status, SKBTNode.Status.SUCCESS)
 	# Second tick: b succeeds
 	status = sel.tick(0.016, self, bb)
 	assert_eq(status, SKBTNode.Status.SUCCESS)

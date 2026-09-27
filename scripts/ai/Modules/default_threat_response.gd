@@ -320,7 +320,7 @@ func _end_investigate() -> void:
 
 ## Returns true if the given entity is considered friendly based on opinion.
 func _is_friendly(e: SKEntity) -> bool:
-	var opinion := _npc.determine_opinion_of(e.name)
+	var opinion: float = _npc.determine_opinion_of(e.name)
 	return opinion > attack_threshold
 
 

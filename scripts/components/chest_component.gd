@@ -6,7 +6,7 @@ extends SKEntityComponent
 ## Optionally refreshing inventories.
 
 
-@onready var loot_table:SKLootTable = get_child(0)
+@onready var loot_table:SKLootTable = get_child(0) as SKLootTable if get_child_count() > 0 else null
 @export_range(0, 100, 1, "or_greater") var reset_time_minutes:int ## How long it takes to refresh this chest, in in-game minutes. 0 will not refresh.
 @export var owner_id:StringName
 var looted_time:Timestamp

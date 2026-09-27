@@ -179,12 +179,12 @@ func resolve_persuasion() -> bool:
 	if target.is_empty():
 		return false
 
-	var opinion := _npc.determine_opinion_of(StringName(target))
+	var opinion: float = _npc.determine_opinion_of(StringName(target))
 	var crime: Crime = _npc.goap_memory.get("confrontation_crime")
 
 	# Simple check: opinion must be positive and above the crime severity penalty
 	var threshold: float = crime.severity * 15.0 if crime else 30.0
-	var success := opinion > threshold
+	var success: bool = opinion > threshold
 
 	if success:
 		_npc.printe("Crime resolved: %s persuaded successfully" % target)

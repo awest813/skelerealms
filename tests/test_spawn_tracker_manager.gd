@@ -11,12 +11,12 @@ extends GutTest
 
 
 ## A fresh SpawnTrackerManager wired into the scene tree.
-var _manager: SpawnTrackerManager
+var _manager: SKSpawnTrackerManager
 
 
 func before_each() -> void:
 	NPCSpawnPoint.spawn_tracker.clear()
-	_manager = SpawnTrackerManager.new()
+	_manager = SKSpawnTrackerManager.new()
 	add_child_autofree(_manager)
 
 
@@ -106,3 +106,13 @@ func test_save_then_load_round_trip() -> void:
 	assert_true(NPCSpawnPoint.spawn_tracker.has(100))
 	assert_true(NPCSpawnPoint.spawn_tracker.has(200))
 	assert_eq(NPCSpawnPoint.spawn_tracker.size(), 2)
+
+func test_deleting_manager_clears_only_its_own_global_reference() -> void:
+	var first := SKSpawnTrackerManager.new()
+	var second := SKSpawnTrackerManager.new()
+	add_child(first)
+	add_child(second)
+	first.free()
+	assert_same(SKSpawnTrackerManager.instance, second)
+	second.free()
+	assert_null(SKSpawnTrackerManager.instance)

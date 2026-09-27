@@ -4,19 +4,23 @@ This directory contains integration test scripts for Skelerealms' critical syste
 
 ## Running the Tests
 
-1. Install the GUT plugin into your project (`addons/gut`).
-2. Add a GUT node to a test scene (or use the GUT panel in the Godot editor).
-3. Set the test directory to `res://tests/` (or the path where you've placed these scripts).
-4. Run from the editor or from the command line:
+Use Godot 4.4.1 and GUT 9.4.0. From the repository root:
 
-```sh
-godot --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -gexit
+```powershell
+./tools/prepare_example.ps1 -GutPath '<GUT checkout>/addons/gut'
+godot --headless --path .local/example --editor --import
+godot --headless --path .local/example -s addons/gut/gut_cmdln.gd -gdir=res://tests -gexit
+godot --headless --path .local/example res://smoke_test.tscn
+godot --headless --path flight_sandbox -s res://test_flight.gd
 ```
+
+The generated host resolves plugin paths, test preload paths, and a GUT CLI name collision without modifying the installed dependency. Re-run preparation after source changes. See [baseline repairs](../docs/architecture/baseline_repairs.md) for setup details and validation limitations.
 
 ## Test Files
 
 | File | What it tests |
 |---|---|
+| `test_space_baseline.gd` | World ownership/rollback, hitscan filtering, save round trips and checksums, puppet orientation. |
 | `test_quest_graph_engine.gd` | Quest activation, event advancement, graph completion, save/restore snapshots, validation. |
 | `test_dialogue_engine.gd` | Dialogue session creation, choice evaluation, condition blocking, effect application, terminal nodes. |
 | `test_barter.gd` | `BarterSystem` sell/buy toggling, haggle discount accumulation, `accept_barter` modifier application. |

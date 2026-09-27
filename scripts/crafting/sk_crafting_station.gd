@@ -124,6 +124,6 @@ func _deliver_output(recipe: SKRecipe, crafter: SKEntity, inventory: InventoryCo
 		return
 	for i in recipe.output_count:
 		# Instantiate the output entity from its template (form_id == scene file name).
-		var new_id := SKEntityManager.instance.create_entity(recipe.output_item)
+		var new_id: StringName = SKEntityManager.instance.create_entity(recipe.output_item)
 		if new_id != &"":
 			inventory.add_to_inventory(new_id)

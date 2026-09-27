@@ -5,8 +5,8 @@
 You have two options:
 
 1. **Use the local minimal example project** in this repository:
-   - Open `res://example/project.godot` in Godot 4.4+.
-   - Run the project (`example/main.tscn`).
+   - From the repository root, run `./tools/prepare_example.ps1` to prepare a local host without relying on symlink support.
+   - Open `.local/example/project.godot` in Godot 4.4.1+ and run the project.
    - Controls include:
      - `WASD` move, `E` interact
      - `F5` quick-save

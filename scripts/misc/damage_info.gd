@@ -17,6 +17,6 @@ var info:Dictionary[StringName, Variant] = {}
 
 func _init(offender:String, damage_effects:Dictionary, spell_effects:Array[StringName] = [], info:Dictionary = {}) -> void:
 	self.offender = offender
-	self.damage_effects = damage_effects
+	self.damage_effects.assign(damage_effects)
 	self.spell_effects = spell_effects
-	self.info = info
+	self.info.assign(info)

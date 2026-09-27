@@ -1,0 +1,23 @@
+config_version=5
+
+[application]
+config/name="Skelerealms — Flight Lab"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.4", "GL Compatibility")
+
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=800
+window/stretch/mode="canvas_items"
+window/size/min_width=960
+window/size/min_height=600
+window/stretch/aspect="expand"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+anti_aliasing/quality/msaa_3d=2
+environment/defaults/default_clear_color=Color(0.009, 0.017, 0.035, 1)
+
+[physics]
+common/physics_ticks_per_second=60
+3d/default_gravity=0.0

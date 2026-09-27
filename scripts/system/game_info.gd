@@ -212,8 +212,8 @@ func load_data(data:Dictionary) -> void:
 		# Merge loaded time into defaults so missing keys get sane values
 		var defaults := _default_world_time()
 		defaults.merge(wt, true)
-		world_time = defaults
-	continuity_flags = data.get("continuity_flags", continuity_flags)
+		world_time.assign(defaults)
+	continuity_flags.assign(data.get("continuity_flags", continuity_flags))
 
 
 func reset_data() -> void: # this should never happen but just in case

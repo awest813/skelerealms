@@ -1,10 +1,10 @@
 # Save System
 
-Skelerealms includes a save system that persists all entity and game state to `user://saves/`. It uses a hybrid snapshot-with-delta strategy so off-screen entities are never lost.
+Skelerealms includes a save system that persists all entity and game state to `user://saves/`. It snapshots loaded entities and retains unloaded entities from the current session snapshot.
 
 ## Overview
 
-Every save file is a **complete snapshot**. When saving, the new data is merged on top of the most recent save so that entities not currently loaded still retain their last-known state. Each file is a JSON document with the following top-level keys:
+Every save file is a **complete snapshot**. All components of loaded entities are serialized, including unchanged components. Unloaded entities are retained from the last successful save or explicit load in this session, rather than an unrelated newer disk slot. Each file is a JSON document with the following top-level keys:
 
 | Key | Description |
 |---|---|

@@ -122,7 +122,7 @@ func _make_manager(src: SKChunkSource = null, adp: SKChunkAdapter = null) -> SKC
 	mgr.load_concurrency = 4
 	mgr.source = src if src else _TestSource.new()
 	mgr.adapter = adp if adp else _TestAdapter.new()
-	add_child(mgr)
+	add_child_autofree(mgr)
 	return mgr
 
 
@@ -412,7 +412,7 @@ func test_missing_source_sets_load_error() -> void:
 	mgr.preload_radius = 0
 	mgr.max_load_retries = 0
 	mgr.retry_delay = 0.0
-	add_child(mgr)
+	add_child_autofree(mgr)
 
 	await mgr.update(Vector3(0, 0, 0))
 	var chunk := mgr.get_chunk_at_world(Vector3(0, 0, 0))

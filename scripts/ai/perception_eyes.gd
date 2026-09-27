@@ -156,7 +156,7 @@ func _calculate_aabb_coverage(target: PhysicsBody3D, state: PhysicsDirectSpaceSt
 	var found_aabb := false
 	for child in target.get_children():
 		if child is CollisionShape3D and child.shape:
-			var shape_aabb := child.shape.get_debug_mesh().get_aabb()
+			var shape_aabb: AABB = child.shape.get_debug_mesh().get_aabb()
 			shape_aabb.position += child.position
 			if found_aabb:
 				aabb = aabb.merge(shape_aabb)
@@ -164,7 +164,7 @@ func _calculate_aabb_coverage(target: PhysicsBody3D, state: PhysicsDirectSpaceSt
 				aabb = shape_aabb
 				found_aabb = true
 		elif child is VisualInstance3D:
-			var vis_aabb := child.get_aabb()
+			var vis_aabb: AABB = child.get_aabb()
 			vis_aabb.position += child.position
 			if found_aabb:
 				aabb = aabb.merge(vis_aabb)

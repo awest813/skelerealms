@@ -77,6 +77,10 @@ func _should_be_in_scene() -> void:
 	if supress_spawning:
 		in_scene = false
 		return
+	# A player puppet must not cull itself while moving away from an old anchor.
+	if has_component("PlayerComponent") and world == str(GameInfo.world):
+		in_scene = true
+		return
 	# if not in correct world
 	if GameInfo.world != world:
 		in_scene = false
@@ -131,7 +135,7 @@ func save() -> Dictionary:
 		},
 		"components": {}
 	}
-	for c in get_children().filter(func(x): return x is SKEntityComponent and x.dirty):
+	for c in get_children().filter(func(x): return x is SKEntityComponent):
 		data["components"][c.name] = (c as SKEntityComponent).save()
 	return data
 

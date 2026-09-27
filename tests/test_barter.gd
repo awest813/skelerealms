@@ -10,45 +10,30 @@ extends GutTest
 
 
 ## Minimal inventory stub: just holds a currencies dict and a parent_entity stub.
-class StubInventory extends Node:
-	var currencies: Dictionary = {}
-	var parent_entity: StubEntity = null
+class StubInventory extends InventoryComponent:
+	func _ready() -> void:
+		pass
 
-	func _init() -> void:
-		name = "InventoryComponent"
-
-	func add_money(_amount: int, _currency: StringName) -> void:
-		currencies[_currency] = currencies.get(_currency, 0) + _amount
-
-	func remove_money(_amount: int, _currency: StringName) -> void:
-		currencies[_currency] = currencies.get(_currency, 0) - _amount
-
-
-class StubEntity extends Node:
+class StubEntity extends SKEntity:
 	var _components: Dictionary = {}
-
-	func get_component(comp_name: String) -> Node:
+	func _enter_tree() -> void:
+		pass
+	func _process(_delta: float) -> void:
+		pass
+	func get_component(comp_name: String) -> SKEntityComponent:
 		return _components.get(comp_name, null)
 
-
-## Minimal shop stub: just exposes haggle_tolerance and other barter fields.
-class StubShop extends Node:
-	var haggle_tolerance: float = 0.3
-	var whitelist: Array[StringName] = []
-	var blacklist: Array[StringName] = []
-	var accept_stolen: bool = true
-
-	func _init() -> void:
-		name = "ShopComponent"
-
-
-# ── Helpers ────────────────────────────────────────────────────────────────
+class StubShop extends ShopComponent:
+	func _enter_tree() -> void:
+		pass
+	func _ready() -> void:
+		pass
 
 
 func _make_barter_system(max_attempts: int = 3) -> BarterSystem:
 	var bs := BarterSystem.new()
 	bs.max_haggle_attempts = max_attempts
-	add_child(bs)
+	add_child_autofree(bs)
 	return bs
 
 
@@ -57,8 +42,8 @@ func _start_barter_with_shop(bs: BarterSystem, tolerance: float = 0.3) -> void:
 	var customer := StubInventory.new()
 	vendor.currencies[&"snails"] = 10000
 	customer.currencies[&"snails"] = 10000
-	add_child(vendor)
-	add_child(customer)
+	add_child_autofree(vendor)
+	add_child_autofree(customer)
 
 	# Inject a stub shop onto vendor's entity
 	var vendor_entity := StubEntity.new()
@@ -66,8 +51,8 @@ func _start_barter_with_shop(bs: BarterSystem, tolerance: float = 0.3) -> void:
 	stub_shop.haggle_tolerance = tolerance
 	vendor_entity._components["ShopComponent"] = stub_shop
 	vendor.parent_entity = vendor_entity
-	add_child(vendor_entity)
-	add_child(stub_shop)
+	add_child_autofree(vendor_entity)
+	add_child_autofree(stub_shop)
 
 	# Directly populate BarterSystem's internal state rather than calling start_barter,
 	# because start_barter calls vendor.parent_entity.get_component("ShopComponent") which
@@ -115,7 +100,7 @@ func test_modifier_never_goes_below_one_minus_tolerance() -> void:
 	for i in range(10):
 		bs.haggle(1.0)
 	var floor_val := 1.0 - 0.3
-	assert_ge(bs.get_haggle_modifier(), floor_val - 0.0001,
+	assert_gte(bs.get_haggle_modifier(), floor_val - 0.0001,
 		"Modifier should not drop below 1 - tolerance.")
 
 
@@ -252,8 +237,8 @@ func _make_vendor_customer(vendor_snails: int, customer_snails: int) -> Array:
 		vendor.currencies[&"snails"] = vendor_snails
 	if customer_snails > 0:
 		customer.currencies[&"snails"] = customer_snails
-	add_child(vendor)
-	add_child(customer)
+	add_child_autofree(vendor)
+	add_child_autofree(customer)
 	return [vendor, customer]
 
 

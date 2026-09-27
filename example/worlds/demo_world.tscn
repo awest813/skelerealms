@@ -5,11 +5,15 @@
 [ext_resource type="PackedScene" path="res://entities/player.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://entities/guard.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://entities/chest.tscn" id="5"]
-[sub_resource type="DoorInstance" id="1"]
+[ext_resource type="Script" path="res://addons/skelerealms/scripts/instance_data/door_instance.gd" id="door_data"]
+
+[sub_resource type="Resource" id="1"]
+script = ExtResource("door_data")
 world = &"demo_world"
 position = Vector3(0, 1.2, 5)
 
-[sub_resource type="DoorInstance" id="2"]
+[sub_resource type="Resource" id="2"]
+script = ExtResource("door_data")
 world = &"demo_world_b"
 position = Vector3(0, 1.2, -4)
 

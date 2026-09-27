@@ -107,6 +107,7 @@ static func resolve_hitscan(
 	var to := from + direction * action.hitscan_range
 	var query := PhysicsRayQueryParameters3D.create(from, to)
 	query.exclude = exclude
+	query.collide_with_areas = true
 	var result := space_state.intersect_ray(query)
 
 	if result.is_empty():

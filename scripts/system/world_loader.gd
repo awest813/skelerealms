@@ -1,127 +1,109 @@
 class_name WorldLoader
 extends Node
-## World scene loader
+## Owns exactly one active world and commits only validated destinations.
 
-
-var world_paths:Dictionary[String, String] = {}
-var regex:RegEx
-var loading_path:String
-var last_load_progress := 0
-## Name of the world that was loaded before the current load attempt.
-## Used to attempt recovery on load failure.
+var world_paths: Dictionary[String, String] = {}
+var regex: RegEx
+var loading_path: String
+var last_load_progress: float = 0.0
 var _previous_world_id: String = ""
+var _destination_id: String = ""
+var _request_active := false
+var _committing := false
+var _was_paused := false
+var active_world_id: String = ""
 
-
-## Called when the loading process begins.
-## Hook into this to pop up a loading screen.
 signal begin_world_loading
-## Called when the world has finished loading, and gameplay can resume.
-## Use this to either continue gameplay, or pop up a button on the loading screen to continue gameplay.
 signal world_loading_ready
-## Called while the scene is loading with its progress. Progress from 0 to 1.
-signal load_scene_progess_updated(percent:int)
-## Called when a world load fails. The error message describes what went wrong.
-## Hook into this to show an error screen or take recovery action.
+signal load_scene_progess_updated(percent: float)
 signal world_loading_failed(error_message: String)
-
 
 func _enter_tree() -> void:
 	if get_child_count() > 0:
 		GameInfo.world = get_child(0).name
-
+		active_world_id = str(GameInfo.world)
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	regex = RegEx.new()
-	regex.compile("([^\\/\n\\r]+)\\.t?scn") 
-	_cache_worlds(ProjectSettings.get_setting("skelerealms/worlds_path"))
-	GameInfo.is_loading = false
-
+	regex.compile("([^\\/\n\\r]+)\\.t?scn")
+	_cache_worlds(ProjectSettings.get_setting("skelerealms/worlds_path", "res://worlds"))
 
 func _process(_delta: float) -> void:
-	if not GameInfo.is_loading:
-		return 
-	
-	var prog = []
-	match ResourceLoader.load_threaded_get_status(loading_path, prog):
-		ResourceLoader.THREAD_LOAD_LOADED:
-			var ps := ResourceLoader.load_threaded_get(loading_path) as PackedScene
-			if not ps:
-				push_error("Failed to load world at %s" % loading_path)
-				_abort("Loaded resource at '%s' is not a valid PackedScene." % loading_path)
-				return
-			_finish_load.call_deferred(ps)
-		ResourceLoader.THREAD_LOAD_FAILED, ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
-			push_error("Could not load world due to thread loading error.")
-			_abort("Threaded load failed for '%s'." % loading_path)
-		ResourceLoader.THREAD_LOAD_IN_PROGRESS:
-			if not last_load_progress == prog[0]:
-				(func(): load_scene_progess_updated.emit(prog[0])).call_deferred()
-				last_load_progress = prog[0]
-
-
-## Load a new world.
-func load_world(wid:String) -> void:
-	if not world_paths.has(wid):
-		push_error("World not found: %s" % wid)
+	if not _request_active or _committing:
 		return
-	
-	# Remember the current world so we can attempt recovery on failure
-	_previous_world_id = GameInfo.world
-	
-	GameInfo.console_unfreeze()
+	var progress := []
+	match ResourceLoader.load_threaded_get_status(loading_path, progress):
+		ResourceLoader.THREAD_LOAD_LOADED:
+			var scene := ResourceLoader.load_threaded_get(loading_path) as PackedScene
+			if scene == null or not scene.can_instantiate():
+				_abort("Destination is not an instantiable scene: %s" % loading_path)
+				return
+			_committing = true
+			_finish_load.call_deferred(scene)
+		ResourceLoader.THREAD_LOAD_FAILED, ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
+			_abort("Could not load world: %s" % loading_path)
+		ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			if not progress.is_empty() and last_load_progress != float(progress[0]):
+				last_load_progress = float(progress[0])
+				load_scene_progess_updated.emit(last_load_progress)
+
+## Returns false if the request cannot begin. Completion is signalled separately.
+func load_world(wid: String) -> bool:
+	if _request_active or GameInfo.is_loading:
+		return false
+	if not world_paths.has(wid):
+		world_loading_failed.emit("World not found: %s" % wid)
+		return false
+	_request_active = true
+	_previous_world_id = active_world_id if not active_world_id.is_empty() else str(GameInfo.world)
+	_destination_id = wid
+	loading_path = world_paths[wid]
+	last_load_progress = 0.0
+	_was_paused = get_tree().paused
+	GameInfo.is_loading = true
+	GameInfo.pause_game(true)
 	begin_world_loading.emit()
 	GameInfo.game_loading.emit(wid)
-	await get_tree().process_frame
-	GameInfo.is_loading = true
-	var e:Error = ResourceLoader.load_threaded_request(world_paths[wid], "PackedScene", true)
-	if not e == OK:
-		push_error("Load thread error: %d" % e)
-		_abort("Failed to start threaded load for world '%s' (error %d)." % [wid, e])
+	var error := ResourceLoader.load_threaded_request(loading_path, "PackedScene", true)
+	if error != OK:
+		_abort("Failed to request world '%s' (error %d)." % [wid, error])
+		return false
+	return true
+
+func _finish_load(scene: PackedScene) -> void:
+	var next_world := scene.instantiate()
+	if next_world == null:
+		_abort("Could not instantiate destination.")
 		return
-	
-	last_load_progress = 0
-	loading_path = world_paths[wid]
-	
 	_unload_world()
-
-
-func _finish_load(w:PackedScene) -> void:
-	add_child(w.instantiate())
+	GameInfo.world = StringName(_destination_id)
+	active_world_id = _destination_id
+	add_child(next_world)
+	_end_request()
+	load_scene_progess_updated.emit(1.0)
 	world_loading_ready.emit()
-	GameInfo.is_loading = false
 	GameInfo.game_loaded.emit()
-
 
 func _unload_world() -> void:
-	if get_child_count() > 0:
-		remove_child(get_child(0))
+	for old_world in get_children():
+		remove_child(old_world)
+		old_world.queue_free()
 
+func _end_request() -> void:
+	_request_active = false
+	_committing = false
+	GameInfo.is_loading = false
+	loading_path = ""
+	if not _was_paused:
+		GameInfo.unpause_game()
 
 func _abort(error_message: String = "Unknown world loading error.") -> void:
-	push_error("WorldLoader: ABORT — %s" % error_message)
-	GameInfo.is_loading = false
-
-	# Attempt to reload the previous world if one was set and is available
-	if not _previous_world_id.is_empty() and world_paths.has(_previous_world_id):
-		push_warning("WorldLoader: Attempting to reload previous world '%s'." % _previous_world_id)
-		var prev_path: String = world_paths[_previous_world_id]
-		var prev_scene := ResourceLoader.load(prev_path) as PackedScene
-		if prev_scene:
-			add_child(prev_scene.instantiate())
-			GameInfo.world = _previous_world_id
-			push_warning("WorldLoader: Successfully recovered to previous world '%s'." % _previous_world_id)
-		else:
-			push_error("WorldLoader: Recovery failed — could not reload '%s'. Pausing game." % _previous_world_id)
-			GameInfo.pause_game(true)
-	else:
-		# No previous world to recover to — pause the game to prevent undefined state
-		push_error("WorldLoader: No previous world available for recovery. Pausing game.")
-		GameInfo.pause_game(true)
-
-	_previous_world_id = ""
+	# The original world stays attached throughout preparation, so rollback
+	# requires no instantiation and cannot duplicate the world.
+	GameInfo.world = StringName(_previous_world_id)
+	_end_request()
 	world_loading_failed.emit(error_message)
-	world_loading_ready.emit()
-	GameInfo.game_loaded.emit()
 
 
 ## Searches the worlds directory and caches filepaths, matching them to their name

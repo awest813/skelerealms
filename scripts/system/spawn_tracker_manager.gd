@@ -1,11 +1,16 @@
-class_name SpawnTrackerManager
+class_name SKSpawnTrackerManager
 extends Node
 ## Manages persistence of [NPCSpawnPoint.spawn_tracker] across save/load cycles.
 ## Registers with the [code]savegame_other[/code] group so the save system
 ## automatically serializes and restores spawn state.
 
 
-static var instance: SpawnTrackerManager
+static var instance: SKSpawnTrackerManager
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE and instance == self:
+		instance = null
 
 
 func _ready() -> void:

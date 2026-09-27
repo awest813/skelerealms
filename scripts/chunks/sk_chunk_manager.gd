@@ -301,20 +301,28 @@ func _load_needed_chunks(coords_list: Array[Vector2i]) -> void:
 	# Spawn up to load_concurrency workers pulling from the shared queue.
 	var worker_count := mini(load_concurrency, queue.size())
 
-	var workers: Array = []
+	var batch := LoadBatch.new()
+	batch.remaining = worker_count
 	for i in worker_count:
-		workers.push_back(_load_worker(queue))
-	# Wait for all workers to finish (each is a coroutine).
-	for w in workers:
-		await w
+		# Callable dispatch starts each coroutine; the batch signal joins them.
+		_load_worker.call(queue, batch)
+	if batch.remaining > 0:
+		await batch.completed
 
 
-func _load_worker(queue: Array[SKChunk]) -> void:
-	while queue.size() > 0:
+class LoadBatch extends RefCounted:
+	signal completed
+	var remaining: int
+
+
+func _load_worker(queue: Array[SKChunk], batch: LoadBatch) -> void:
+	while not queue.is_empty():
 		var chunk: SKChunk = queue.pop_front()
-		if not chunk:
-			return
-		await _load_chunk(chunk)
+		if chunk:
+			await _load_chunk(chunk)
+	batch.remaining -= 1
+	if batch.remaining == 0:
+		batch.completed.emit()
 
 
 func _load_chunk(chunk: SKChunk) -> void:

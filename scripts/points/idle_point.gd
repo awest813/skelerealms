@@ -22,9 +22,10 @@ func _ready() -> void:
 	add_to_group("idle_points")
 
 
-func occupy(who:String) -> void:
+func occupy(who:String) -> bool:
 	is_occupied = true
 	owning_entity = who
+	return true
 
 
 func unoccupy() -> void:

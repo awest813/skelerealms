@@ -40,7 +40,7 @@ func test_itemchance_always_drops_at_chance_one() -> void:
 	var node: SKLTItemChance = preload("res://scripts/loottable/items/lt_itemchance.gd").new()
 	node.item = _make_packed_scene()
 	node.chance = 1.0
-	add_child(node)
+	add_child_autofree(node)
 	for _i in 20:
 		var result := node.resolve()
 		assert_eq(result.items.size(), 1,
@@ -52,7 +52,7 @@ func test_itemchance_never_drops_at_chance_zero() -> void:
 	var node: SKLTItemChance = preload("res://scripts/loottable/items/lt_itemchance.gd").new()
 	node.item = _make_packed_scene()
 	node.chance = 0.0
-	add_child(node)
+	add_child_autofree(node)
 	for _i in 20:
 		var result := node.resolve()
 		assert_eq(result.items.size(), 0,
@@ -66,7 +66,7 @@ func test_itemchance_never_drops_at_chance_zero() -> void:
 func test_weighted_item_resolves_its_scene() -> void:
 	var ps := _make_packed_scene()
 	var wi := _make_weighted_item(1.0, ps)
-	add_child(wi)
+	add_child_autofree(wi)
 	var result := wi.resolve()
 	assert_eq(result.items.size(), 1, "SKLTWeightedItem should resolve to its scene.")
 	assert_eq(result.items[0], ps)
@@ -77,7 +77,7 @@ func test_weighted_item_with_null_data_resolves_empty() -> void:
 	var wi: SKLTWeightedItem = preload("res://scripts/loottable/items/lt_weighted_item.gd").new()
 	wi.weight = 1.0
 	wi.data = null
-	add_child(wi)
+	add_child_autofree(wi)
 	var result := wi.resolve()
 	assert_eq(result.items.size(), 0, "Null data should produce an empty result.")
 	wi.queue_free()
@@ -88,7 +88,7 @@ func test_weighted_item_with_null_data_resolves_empty() -> void:
 
 func test_weighted_pool_empty_returns_empty() -> void:
 	var pool := _make_weighted_pool()
-	add_child(pool)
+	add_child_autofree(pool)
 	var result := pool.resolve()
 	assert_eq(result.items.size(), 0, "Empty pool should return empty result.")
 	pool.queue_free()
@@ -96,7 +96,7 @@ func test_weighted_pool_empty_returns_empty() -> void:
 
 func test_weighted_pool_single_pick_returns_one_item() -> void:
 	var pool := _make_weighted_pool(1)
-	add_child(pool)
+	add_child_autofree(pool)
 	var wi1 := _make_weighted_item(1.0)
 	var wi2 := _make_weighted_item(1.0)
 	pool.add_child(wi1)
@@ -108,7 +108,7 @@ func test_weighted_pool_single_pick_returns_one_item() -> void:
 
 func test_weighted_pool_picks_all_without_duplicates() -> void:
 	var pool := _make_weighted_pool(3, false)
-	add_child(pool)
+	add_child_autofree(pool)
 	var wi1 := _make_weighted_item(1.0, _make_packed_scene())
 	var wi2 := _make_weighted_item(1.0, _make_packed_scene())
 	var wi3 := _make_weighted_item(1.0, _make_packed_scene())
@@ -123,7 +123,7 @@ func test_weighted_pool_picks_all_without_duplicates() -> void:
 
 func test_weighted_pool_no_duplicates_clamps_to_pool_size() -> void:
 	var pool := _make_weighted_pool(10, false)
-	add_child(pool)
+	add_child_autofree(pool)
 	pool.add_child(_make_weighted_item(1.0))
 	pool.add_child(_make_weighted_item(1.0))
 	var result := pool.resolve()
@@ -134,7 +134,7 @@ func test_weighted_pool_no_duplicates_clamps_to_pool_size() -> void:
 
 func test_weighted_pool_allows_duplicates() -> void:
 	var pool := _make_weighted_pool(5, true)
-	add_child(pool)
+	add_child_autofree(pool)
 	pool.add_child(_make_weighted_item(1.0))
 	var result := pool.resolve()
 	assert_eq(result.items.size(), 5,
@@ -144,7 +144,7 @@ func test_weighted_pool_allows_duplicates() -> void:
 
 func test_weighted_pool_zero_weight_items_excluded() -> void:
 	var pool := _make_weighted_pool(1)
-	add_child(pool)
+	add_child_autofree(pool)
 	var wi_zero := _make_weighted_item(0.0)
 	var wi_valid := _make_weighted_item(1.0)
 	pool.add_child(wi_zero)
@@ -159,7 +159,7 @@ func test_weighted_pool_zero_weight_items_excluded() -> void:
 func test_weighted_pool_high_weight_selected_more_often() -> void:
 	## Statistical test: a 10:1 weight ratio should heavily favour the heavier item.
 	var pool := _make_weighted_pool(1)
-	add_child(pool)
+	add_child_autofree(pool)
 	var heavy_scene := _make_packed_scene()
 	var light_scene := _make_packed_scene()
 	var heavy := _make_weighted_item(10.0, heavy_scene)

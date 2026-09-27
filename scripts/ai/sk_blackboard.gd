@@ -11,7 +11,7 @@ extends Resource
 
 
 ## Emitted whenever a value is set or removed.
-signal changed(key: StringName)
+signal value_changed(key: StringName)
 
 ## The backing dictionary.
 @export var content: Dictionary = {}
@@ -20,7 +20,8 @@ signal changed(key: StringName)
 ## Sets a value in the blackboard.
 func set_value(key: StringName, value: Variant) -> void:
 	content[key] = value
-	changed.emit(key)
+	value_changed.emit(key)
+	emit_changed()
 
 
 ## Returns a value from the blackboard, or [param default] if the key is absent.
@@ -37,7 +38,8 @@ func has_value(key: StringName) -> bool:
 func erase_value(key: StringName) -> bool:
 	var existed := content.erase(key)
 	if existed:
-		changed.emit(key)
+		value_changed.emit(key)
+		emit_changed()
 	return existed
 
 

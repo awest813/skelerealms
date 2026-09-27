@@ -4,7 +4,7 @@ extends Node
 ##
 ## Save format (full snapshot with incremental merge):
 ## Each save is a complete snapshot of all tracked entities and systems.
-## When saving, the new snapshot is merged on top of the most recent save so
+## When saving, the new snapshot is merged on top of this session's snapshot so
 ## that entities not currently loaded still keep their persisted state.
 ## This is a "hybrid snapshot with deltas" approach — every file is a full
 ## snapshot, but building it reuses data from the prior save for entities that
@@ -37,6 +37,8 @@ var _migrations: Dictionary[int, Callable] = {}
 ## Guard flag — true while a save is in progress.
 ## Prevents concurrent or re-entrant saves that could corrupt the file.
 var _saving: bool = false
+## Last successful snapshot in this session (including the slot explicitly loaded).
+var _snapshot: Dictionary = {}
 
 
 func _ready() -> void:
@@ -55,8 +57,8 @@ func register_migration(from_version: int, migration: Callable) -> void:
 ## If empty, falls back to a datetime string.
 ## Returns without saving if a save is already in progress.
 func save(slot_name: String = "") -> void:
-	if _saving:
-		push_warning("SaveSystem: save() called while a save is already in progress. Ignoring.")
+	if _saving or GameInfo.is_loading:
+		push_warning("SaveSystem: save() called during a save or world transition. Ignoring.")
 		return
 	_saving = true
 
@@ -77,16 +79,10 @@ func save(slot_name: String = "") -> void:
 	for sd in get_tree().get_nodes_in_group("savegame_other"):
 		save_data["other_data"][sd.name] = sd.save()
 
-	# attempt merge with old data, so we still keep the info about entities that aren't being tracked right now.
-	var old_file = _get_most_recent_savegame() # my getting the most recent, which was also merged like this, we accumulate info
-	if old_file.some(): # we will only merge if there is something to merge with
-		var _old_file := FileAccess.open(old_file.unwrap(), FileAccess.READ)
-		if not _old_file:
-			push_warning("SaveSystem: Could not open previous save for merge: '%s'." % old_file.unwrap())
-		else:
-			var old_data:Dictionary = _deserialize(_old_file.get_as_text()) # deserialize old data
-			old_data.merge(save_data, true) # merge, taking care to overwrite to keep info up to date
-			save_data = old_data # bit funky but I'm lazy
+	# Preserve unloaded entities from this session, never from an unrelated newer slot.
+	var entities: Dictionary = _snapshot.get("entity_data", {}).duplicate(true)
+	entities.merge(save_data["entity_data"], true)
+	save_data["entity_data"] = entities
 
 	# Always stamp with current schema version after merge
 	save_data["schema_version"] = SAVE_SCHEMA_VERSION
@@ -94,7 +90,9 @@ func save(slot_name: String = "") -> void:
 	var save_text:String = _serialize(save_data) # serialize
 
 	# Compute and embed checksum (FNV-1a 32-bit)
-	save_data["checksum"] = _compute_checksum(save_text)
+	# Normalize through JSON so integer/float and StringName conversions match
+	# the representation that the loader will validate.
+	save_data["checksum"] = _compute_checksum(_serialize(_deserialize(save_text)))
 	save_text = _serialize(save_data)
 
 	DirAccess.make_dir_recursive_absolute("user://saves/")
@@ -115,10 +113,14 @@ func save(slot_name: String = "") -> void:
 		_saving = false
 		return
 	file.store_string(save_text)
-	var flush_ok := file.flush() == OK
+	file.flush()
+	var flush_ok := file.get_error() == OK
 	if not flush_ok:
 		push_error("SaveSystem: flush() failed for 'user://saves/%s'." % tmp_name)
 	file.close()
+	if not flush_ok:
+		_saving = false
+		return
 
 	# Atomically rename .tmp -> .dat, replacing any existing save for this slot.
 	var dir := DirAccess.open("user://saves/")
@@ -132,6 +134,7 @@ func save(slot_name: String = "") -> void:
 		_saving = false
 		return
 
+	_snapshot = save_data.duplicate(true)
 	_saving = false
 	save_complete.emit()
 
@@ -145,16 +148,30 @@ func load_most_recent() -> void:
 
 
 ## Load a game from a filepath.
-func load_game(path:String) -> void:
+func load_game(path:String) -> bool:
+	if GameInfo.is_loading:
+		return false
 	var file = FileAccess.open(path, FileAccess.READ) # open file
 	if not file:
 		push_error("SaveSystem: Failed to open save file '%s'." % path)
-		return
+		return false
 	var data_blob:String = file.get_as_text() # read file
 	var save_data:Dictionary = _deserialize(data_blob) # parse data
 	if save_data.is_empty():
 		push_error("SaveSystem: Failed to parse save file '%s'." % path)
-		return
+		return false
+
+	return restore_snapshot(save_data)
+
+
+## Restore an already prepared snapshot. Scene coordination belongs to the host.
+## Keeping parsed data in memory avoids re-reading a file after scene preparation.
+func restore_snapshot(save_data: Dictionary) -> bool:
+	if GameInfo.is_loading:
+		return false
+	if not _valid_snapshot(save_data):
+		push_error("SaveSystem: Invalid or unsupported save structure.")
+		return false
 
 	# Validate checksum if present
 	if save_data.has("checksum"):
@@ -164,7 +181,7 @@ func load_game(path:String) -> void:
 		check_data.erase("checksum")
 		var actual_checksum := _compute_checksum(_serialize(check_data))
 		if actual_checksum != stored_checksum:
-			push_warning("SaveSystem: Checksum mismatch for '%s'. Save may be corrupted (expected %s, got %s)." % [path, stored_checksum, actual_checksum])
+			push_warning("SaveSystem: Checksum mismatch. Save may be corrupted (expected %s, got %s)." % [stored_checksum, actual_checksum])
 
 	# Apply migrations if needed
 	save_data = _apply_migrations(save_data)
@@ -172,6 +189,9 @@ func load_game(path:String) -> void:
 	var entity_data:Dictionary = save_data.get("entity_data", {})
 	var game_info_data:Dictionary = save_data.get("game_info", {})
 	var other_data:Dictionary = save_data.get("other_data", {})
+
+	# Entity resolution must use the requested slot, not the newest disk save.
+	_snapshot = save_data.duplicate(true)
 
 	# Reset to default state if it doesn't have an entry in the save data
 	for e in SKEntityManager.instance.entities:
@@ -199,7 +219,39 @@ func load_game(path:String) -> void:
 		else:
 			so.reset_data()
 
+	_snapshot = save_data.duplicate(true)
 	load_complete.emit()
+	return true
+
+
+## Validate before mutating any live entity or global state. Component-specific
+## fields remain the responsibility of the component's schema/migration code.
+func _valid_snapshot(data: Dictionary) -> bool:
+	var version: Variant = data.get("schema_version", 0)
+	if not (version is int or version is float):
+		return false
+	if version < 0 or version > SAVE_SCHEMA_VERSION or float(version) != floorf(float(version)):
+		return false
+	if data.has("checksum") and not data["checksum"] is String:
+		return false
+	for section in ["entity_data", "game_info"]:
+		if not data.get(section) is Dictionary:
+			return false
+	if not data.get("other_data", {}) is Dictionary:
+		return false
+	for section in ["game_info", "other_data"]:
+		for value: Variant in data.get(section, {}).values():
+			if not value is Dictionary:
+				return false
+	for entry: Variant in data["entity_data"].values():
+		if not entry is Dictionary:
+			return false
+		if not entry.get("entity_data", {}) is Dictionary or not entry.get("components", {}) is Dictionary:
+			return false
+		for component: Variant in entry.get("components", {}).values():
+			if not component is Dictionary:
+				return false
+	return true
 
 
 ## Load a named save slot. Convenience wrapper around [method load_game].
@@ -207,8 +259,7 @@ func load_slot(slot_name: String) -> bool:
 	var path := "user://saves/%s.dat" % slot_name
 	if not FileAccess.file_exists(path):
 		return false
-	load_game(path)
-	return true
+	return load_game(path)
 
 
 ## List all save files. Returns an array of filenames (without path prefix).
@@ -223,6 +274,9 @@ func list_saves() -> Array[String]:
 ## Check if an entity is accounted for in the save system. Returns the save data blob if there is, else none.
 ## Use sparingly; could get memory intensive.
 func entity_in_save(ref_id:String) -> Option:
+	if not _snapshot.is_empty():
+		var entries: Dictionary = _snapshot.get("entity_data", {})
+		return Option.from(entries[ref_id]) if entries.has(ref_id) else Option.none()
 	var most_recent = _get_most_recent_savegame() # get most recent filepath
 	# if there was no recent save, it isn't here
 	if not most_recent.some():
@@ -250,7 +304,9 @@ func _get_most_recent_savegame() -> Option:
 		return Option.none()
 
 	var dir_files:Array[String] = []
-	dir_files.append_array(DirAccess.get_files_at("user://saves/"))
+	for file_name in DirAccess.get_files_at("user://saves/"):
+		if file_name.ends_with(".dat"):
+			dir_files.append(file_name)
 	# if no saves, we got none
 	if dir_files.is_empty():
 		return Option.none()
@@ -270,7 +326,10 @@ func _serialize(data:Dictionary) -> String:
 ## Turn a string into a data blob.
 ## Like with [method _serialize], you can write your own.
 func _deserialize(text:String) -> Dictionary:
-	return JSON.parse_string(text)
+	var parser := JSON.new()
+	if parser.parse(text) != OK:
+		return {}
+	return parser.data if parser.data is Dictionary else {}
 
 
 ## Apply registered migrations to bring a save up to [constant SAVE_SCHEMA_VERSION].

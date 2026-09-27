@@ -109,6 +109,8 @@ For the current singleton list, required folders, project settings, assumptions,
 
 ## Getting started
 
+For the space-game prototype, open [`flight_sandbox/project.godot`](flight_sandbox/project.godot). See the [flight controls](flight_sandbox/README.md) and [baseline repairs and test setup](docs/architecture/baseline_repairs.md).
+
 ### New project
 
 Start from the template project referenced in the quick start guide:

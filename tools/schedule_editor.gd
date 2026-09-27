@@ -180,7 +180,7 @@ func edit(s:Array[ScheduleEvent]) -> void:
 func add_box(e:ScheduleEvent) -> void:
 	var b:Control = BOX_CONTROL.instantiate()
 	b.get_child(0).delete_requested.connect(func() -> void:
-		tracks[track_index[b.get_child(0)]].erase(b.get_child(0))
+		tracks[track_index[b.get_child(0) as Control]].erase(b.get_child(0))
 		track_index.erase(b.get_child(0))
 		editing.remove_at(editing.find(e))
 		update_event_array.emit(editing)

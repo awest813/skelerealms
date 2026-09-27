@@ -94,9 +94,9 @@ var _combat_target:String
 var _path:Array[NavPoint]
 ## Whether this character is in dialogue or a cutscene or in combat. Will stop/continue the puppet's pathfinding if applicable (not in combat).
 var _busy:bool:
-		get:
-			return _busy or in_combat # is also busy if in combat
-		set(val):
+	get:
+		return _busy or in_combat # is also busy if in combat
+	set(val):
 		if val and _puppet:
 			_puppet.pause_nav()
 		elif not val and _puppet:

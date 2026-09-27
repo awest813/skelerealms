@@ -150,5 +150,5 @@ func load_data(data:Dictionary) -> void:
 	var inv_data = data.get("inventory", null)
 	if inv_data is Array:
 		inventory = PackedStringArray(inv_data)
-	currencies = data.get("currencies", currencies)
+	currencies.assign(data.get("currencies", currencies))
 	dirty = false

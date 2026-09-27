@@ -112,7 +112,7 @@ func save() -> Dictionary:
 
 
 func load_data(data:Dictionary) -> void:
-	crimes = data.get("crime", {})
+	crimes.assign(data.get("crime", {}))
 
 
 func reset_data() -> void:

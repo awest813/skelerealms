@@ -1,4 +1,4 @@
-class_name SKUIManager
+class_name SKUIService
 extends Node
 ## Manages the game UI layer stack, input routing between game and menu
 ## modes, and pause integration with [GameInfo].
@@ -36,6 +36,8 @@ var _menus:Dictionary[StringName, Control] = {}
 var _hud_layer:CanvasLayer
 var _menu_layer:CanvasLayer
 var _overlay_layer:CanvasLayer
+var _was_paused_before_menu := false
+var _mouse_mode_before_menu := Input.MOUSE_MODE_VISIBLE
 
 
 func _ready() -> void:
@@ -61,8 +63,11 @@ func _ready() -> void:
 
 ## Set the HUD shell instance. Called by the consuming project during setup.
 func set_hud(hud:SKHUDShell) -> void:
-	if _hud:
+	if _hud == hud:
+		return
+	if is_instance_valid(_hud):
 		_hud_layer.remove_child(_hud)
+		_hud.queue_free()
 	_hud = hud
 	_hud_layer.add_child(hud)
 	if theme_resource and theme_resource.base_theme:
@@ -71,9 +76,22 @@ func set_hud(hud:SKHUDShell) -> void:
 
 ## Register a menu by name. The menu must extend [Control].
 func register_menu(menu_name:StringName, menu:Control) -> void:
+	if _menus.get(menu_name) == menu:
+		return
+	if _menus.values().has(menu):
+		push_warning("SKUIManager: menu instance is already registered under another name.")
+		return
+	var stack_index := -1
+	if _menus.has(menu_name):
+		var previous := _menus[menu_name]
+		stack_index = _menu_stack.find(previous)
+		_menu_layer.remove_child(previous)
+		previous.queue_free()
 	_menus[menu_name] = menu
 	_menu_layer.add_child(menu)
-	menu.visible = false
+	menu.visible = stack_index >= 0
+	if stack_index >= 0:
+		_menu_stack[stack_index] = menu
 	if theme_resource and theme_resource.base_theme:
 		menu.theme = theme_resource.base_theme
 
@@ -166,10 +184,13 @@ func remove_overlay(control:Control) -> void:
 
 
 func _enter_menu_mode() -> void:
+	_was_paused_before_menu = get_tree().paused
+	_mouse_mode_before_menu = Input.mouse_mode
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	GameInfo.pause_game(true)  # silent pause — UI handles its own input
 
 
 func _exit_menu_mode() -> void:
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	GameInfo.unpause_game()
+	if not _was_paused_before_menu:
+		GameInfo.unpause_game()
+	Input.mouse_mode = _mouse_mode_before_menu

@@ -77,8 +77,8 @@ func has_dialogue(dialogue_id: StringName) -> bool:
 ## Create a new dialogue session. The context provides game-state queries.
 func create_session(dialogue_id: StringName, context: DialogueContext) -> DialogueSession:
 	var definition: DialogueDefinition = _definitions.get(dialogue_id)
-	var node_map: Dictionary = _node_maps.get(dialogue_id)
-	if not definition or node_map == null:
+	var node_map: Dictionary = _node_maps.get(dialogue_id, {})
+	if not definition or node_map.is_empty():
 		push_error("DialogueEngine: Unknown dialogue id '%s'." % dialogue_id)
 		return null
 	return DialogueSession.new(definition, context, node_map)

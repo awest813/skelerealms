@@ -38,14 +38,14 @@ func save() -> Dictionary:
 
 
 func load_data(data:Dictionary) -> void:
-	skills = data.get("skills", skills)
+	skills.assign(data.get("skills", skills))
 	var l = data.get("level", -1)
 	if l is float:
 		l = int(l)
 	if l >= 0:
 		level = l
 		_manually_set_level = true
-	skill_xp = data.get("skill_xp", skill_xp)
+	skill_xp.assign(data.get("skill_xp", skill_xp))
 	character_xp = int(data.get("character_xp", character_xp))
 	dirty = false
 
