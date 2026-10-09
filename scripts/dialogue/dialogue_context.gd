@@ -47,6 +47,13 @@ func get_skill_level(skill_id: StringName) -> int:
 	return 0
 
 
+## Get an NPC's disposition toward the player (-100..100) by speaker name.
+## Override to hook into opinion systems. The default of 0 keeps persuasion
+## purely skill-vs-difficulty.
+func get_disposition(speaker: String) -> int:
+	return 0
+
+
 ## Emit a custom event. Override to handle game-specific events.
 func emit_event(event_id: StringName, payload: Dictionary = {}) -> void:
 	push_warning("DialogueContext: Unhandled event '%s'. Override emit_event() to handle." % event_id)

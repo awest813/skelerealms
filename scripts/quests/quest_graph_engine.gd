@@ -39,14 +39,26 @@ class QuestRuntimeState extends RefCounted:
 	var status: String = "inactive"
 	## node_id -> QuestNodeState
 	var nodes: Dictionary = {}
+	## alias_id (StringName) -> filled entity ref-ID (StringName).
+	var alias_refs: Dictionary = {}
+	## Current journal stage index, or -1 when stageless / not yet staged.
+	var current_stage: int = -1
+	## Journal entries in log order: [{stage: int, text: String}].
+	var journal: Array = []
 
 	func serialize() -> Dictionary:
 		var node_data := {}
 		for node_id: StringName in nodes:
 			node_data[str(node_id)] = (nodes[node_id] as QuestNodeState).serialize()
+		var alias_data := {}
+		for alias_id: StringName in alias_refs:
+			alias_data[str(alias_id)] = str(alias_refs[alias_id])
 		return {
 			"status": status,
 			"nodes": node_data,
+			"aliases": alias_data,
+			"current_stage": current_stage,
+			"journal": journal.duplicate(true),
 		}
 
 	static func deserialize(data: Dictionary) -> QuestRuntimeState:
@@ -54,6 +66,10 @@ class QuestRuntimeState extends RefCounted:
 		s.status = data.get("status", "inactive")
 		for node_id: String in data.get("nodes", {}):
 			s.nodes[StringName(node_id)] = QuestNodeState.deserialize(data["nodes"][node_id])
+		for alias_id: String in data.get("aliases", {}):
+			s.alias_refs[StringName(alias_id)] = StringName(str(data["aliases"][alias_id]))
+		s.current_stage = int(data.get("current_stage", -1))
+		s.journal = (data.get("journal", []) as Array).duplicate(true)
 		return s
 
 
@@ -63,7 +79,26 @@ class QuestEventResult extends RefCounted:
 	var activated_node_ids: Array[StringName] = []
 	var completed_node_ids: Array[StringName] = []
 	var quest_completed: bool = false
+	var quest_failed: bool = false
+	var stages_advanced: Array[int] = []
 	var xp_reward: int = 0
+
+
+## Explicitly move a quest to a journal stage. The quest must be active and
+## the stage must exist, otherwise returns "" (unknown stages push_error).
+## Returns "advanced", "completed", or "failed". Stages with no flags still
+## log and become current. Re-setting the current stage is a silent no-op.
+func set_stage(quest_id: StringName, index: int) -> String:
+	var definition: QuestDefinition = _definitions.get(quest_id)
+	var state: QuestRuntimeState = _states.get(quest_id)
+	if not definition or not state or state.status != "active":
+		return ""
+	if _stage_by_index(definition, index) == null:
+		push_error("QuestGraphEngine: Quest '%s' has no stage %d." % [quest_id, index])
+		return ""
+	if state.current_stage == index:
+		return ""
+	return _apply_stage(definition, state, index)
 
 
 ## Validation issue found by [method validate_graph].
@@ -91,6 +126,15 @@ var _states: Dictionary[StringName, QuestRuntimeState] = {}
 var _node_maps: Dictionary[StringName, Dictionary] = {}
 ## quest_id -> { node_id -> Array[StringName] } — precomputed forward edges (explicit + implicit).
 var _successor_maps: Dictionary[StringName, Dictionary] = {}
+## Entity lookup for alias filling. Called with a filter Dictionary
+## ({must_be_npc: bool, required_coven: StringName, required_form: StringName,
+## exclude_ids: Array, world: StringName}) and returns an Array of candidate
+## Dictionaries ({ref: StringName, position: Vector3, world: StringName}).
+## Unset means alias quests cannot activate; QuestSystem installs a default
+## backed by SKEntityManager. Inject a stub in tests.
+var entity_finder: Callable
+## Human-readable reason the last [method fill_aliases] call failed.
+var last_alias_error: String = ""
 
 
 # ── Public API ──────────────────────────────────────────────────────────────
@@ -121,11 +165,18 @@ func activate_quest(quest_id: StringName) -> bool:
 ## [member QuestDefinition.description], [member QuestNodeDefinition.description],
 ## and [member QuestNodeDefinition.target_id] is replaced with the matching value.
 ##
-## Returns [code]true[/code] if the quest was activated.
-func activate_quest_with_params(quest_id: StringName, params: Dictionary = {}) -> bool:
+## [param context] carries fill-time data for quest aliases
+## ([code]{"player_position": Vector3, "world": StringName}[/code]).
+## Aliases fill before params apply, so explicit params take precedence over
+## generated fills. Returns [code]true[/code] if the quest was activated.
+func activate_quest_with_params(quest_id: StringName, params: Dictionary = {}, context: Dictionary = {}) -> bool:
 	var definition: QuestDefinition = _definitions.get(quest_id)
 	var state: QuestRuntimeState = _states.get(quest_id)
-	if not definition or not state or state.status == "completed":
+	if not definition or not state or state.status == "completed" or state.status == "failed":
+		return false
+
+	# Fill alias slots first; a failed required alias blocks activation.
+	if not fill_aliases(quest_id, context):
 		return false
 
 	# Merge defaults with caller overrides and apply to the definition
@@ -135,6 +186,9 @@ func activate_quest_with_params(quest_id: StringName, params: Dictionary = {}) -
 		_apply_template_params(definition, merged)
 
 	state.status = "active"
+	# Staged quests open their journal on the lowest stage.
+	if not definition.stages.is_empty():
+		_apply_stage(definition, state, _lowest_stage_index(definition))
 	var start_ids := _get_start_node_ids(definition)
 	for node_id: StringName in start_ids:
 		var node_state: QuestNodeState = state.nodes.get(node_id)
@@ -147,6 +201,311 @@ func activate_quest_with_params(quest_id: StringName, params: Dictionary = {}) -
 func get_quest_status(quest_id: StringName) -> String:
 	var state: QuestRuntimeState = _states.get(quest_id)
 	return state.status if state else "inactive"
+
+
+## Find a stage by index, or null.
+func _stage_by_index(definition: QuestDefinition, index: int) -> QuestStage:
+	for stage: QuestStage in definition.stages:
+		if stage.index == index:
+			return stage
+	return null
+
+
+## Lowest stage index, or -1 for stageless quests.
+func _lowest_stage_index(definition: QuestDefinition) -> int:
+	var best := -1
+	for stage: QuestStage in definition.stages:
+		if best < 0 or stage.index < best:
+			best = stage.index
+	return best
+
+
+## Alias fills as a plain String->String template table.
+func _alias_params(state: QuestRuntimeState) -> Dictionary:
+	var out := {}
+	for k in state.alias_refs:
+		out[str(k)] = str(state.alias_refs[k])
+	return out
+
+
+## Move to a stage, log its (alias-resolved) entry, and apply completion
+## or failure flags. Returns "advanced", "completed", or "failed".
+## A consecutive duplicate log line is skipped, so repeats stay quiet.
+func _apply_stage(definition: QuestDefinition, state: QuestRuntimeState, index: int) -> String:
+	var stage := _stage_by_index(definition, index)
+	if stage == null:
+		return ""
+	state.current_stage = index
+	var text := _resolve_variables(stage.log_entry, _alias_params(state))
+	if state.journal.is_empty() or (state.journal.back() as Dictionary).get("stage", -9999) != index or str((state.journal.back() as Dictionary).get("text", "")) != text:
+		state.journal.append({"stage": index, "text": text})
+	if stage.fails_quest:
+		state.status = "failed"
+		return "failed"
+	if stage.completes_quest:
+		state.status = "completed"
+		return "completed"
+	return "advanced"
+
+
+## Evaluate stage auto-triggers after node progress. Stages with empty
+## trigger lists never auto-fire (initial rule + explicit set_stage only).
+## Returns {"stages": Array[int] fired this pass, "finished": ""/"completed"/"failed"}.
+func _advance_stages(definition: QuestDefinition, state: QuestRuntimeState) -> Dictionary:
+	var seen := {}
+	for entry in state.journal:
+		seen[int((entry as Dictionary).get("stage", -9999))] = true
+	var advanced: Array[int] = []
+	var finished := ""
+	for stage: QuestStage in definition.stages:
+		if stage.trigger_nodes.is_empty() or seen.has(stage.index):
+			continue
+		var all_done := true
+		for nid: StringName in stage.trigger_nodes:
+			var ns: QuestNodeState = state.nodes.get(nid)
+			if ns == null or not ns.completed:
+				all_done = false
+				break
+		if not all_done:
+			continue
+		var outcome := _apply_stage(definition, state, stage.index)
+		advanced.append(stage.index)
+		seen[stage.index] = true
+		if outcome == "failed":
+			finished = "failed"
+		elif outcome != "" and finished == "":
+			finished = outcome
+	return {"stages": advanced, "finished": finished}
+
+
+## Journal view for UI: name, status, current stage, objectives with
+## done-flags, and the full log. Stageless quests fall back to node progress.
+func get_journal(quest_id: StringName) -> Dictionary:
+	var definition: QuestDefinition = _definitions.get(quest_id)
+	var state: QuestRuntimeState = _states.get(quest_id)
+	if not definition or not state:
+		return {}
+	var objectives: Array = []
+	if definition.stages.is_empty():
+		for node: QuestNodeDefinition in definition.nodes:
+			var ns: QuestNodeState = state.nodes.get(node.id)
+			if ns and (ns.active or ns.completed):
+				objectives.append({"text": node.description, "done": ns.completed, "stage": -1})
+	else:
+		var ordered: Array = []
+		for entry in state.journal:
+			var s := int((entry as Dictionary).get("stage", -1))
+			if not ordered.has(s):
+				ordered.append(s)
+		for s: int in ordered:
+			var st := _stage_by_index(definition, s)
+			if st == null:
+				continue
+			var done := state.status == "completed" or (state.status == "active" and s != state.current_stage)
+			objectives.append({"text": st.objective, "done": done, "stage": s})
+	return {
+		"name": definition.quest_name,
+		"status": state.status,
+		"current_stage": state.current_stage,
+		"objectives": objectives,
+		"log": (state.journal as Array).duplicate(true),
+	}
+
+
+## One-line current objective for HUD use ("" when nothing is current).
+func get_current_objective(quest_id: StringName) -> String:
+	var definition: QuestDefinition = _definitions.get(quest_id)
+	var state: QuestRuntimeState = _states.get(quest_id)
+	if not definition or not state or state.status != "active":
+		return ""
+	if not definition.stages.is_empty():
+		var st := _stage_by_index(definition, state.current_stage)
+		return st.objective if st else ""
+	for node: QuestNodeDefinition in definition.nodes:
+		var ns: QuestNodeState = state.nodes.get(node.id)
+		if ns and ns.active and not ns.completed:
+			return node.description
+	return ""
+
+
+## Quest XP reward, or 0 for unknown quests.
+func get_quest_xp(quest_id: StringName) -> int:
+	var definition: QuestDefinition = _definitions.get(quest_id)
+	return definition.xp_reward if definition else 0
+
+
+## Validate stage declarations without registering anything.
+## Returns an Array of Dictionaries with keys [code]type[/code],
+## [code]stage[/code] (int) and [code]detail[/code] (String).
+func validate_stages(definition: QuestDefinition) -> Array:
+	var issues: Array = []
+	var seen := {}
+	for stage: QuestStage in definition.stages:
+		if seen.has(stage.index):
+			issues.append({
+				"type": "duplicate_stage",
+				"stage": stage.index,
+				"detail": "Duplicate stage index %d." % stage.index,
+			})
+		seen[stage.index] = true
+	var node_ids := {}
+	for node: QuestNodeDefinition in definition.nodes:
+		node_ids[node.id] = true
+	for stage: QuestStage in definition.stages:
+		for nid: StringName in stage.trigger_nodes:
+			if not node_ids.has(nid):
+				issues.append({
+					"type": "bad_stage_trigger",
+					"stage": stage.index,
+					"detail": "Stage %d triggers on unknown node '%s'." % [stage.index, nid],
+				})
+	return issues
+
+
+## Fill this quest's alias slots from live entities. Called automatically by
+## [method activate_quest_with_params]; call directly to pre-check or refill.
+## Returns false (with [member last_alias_error] set) when a required alias
+## has no candidate, the anchor is unknown, or no finder is installed.
+## Filled refs land in runtime state, so they survive save/load.
+func fill_aliases(quest_id: StringName, context: Dictionary = {}) -> bool:
+	last_alias_error = ""
+	var definition: QuestDefinition = _definitions.get(quest_id)
+	var state: QuestRuntimeState = _states.get(quest_id)
+	if not definition or not state:
+		last_alias_error = "Quest '%s' is not registered." % quest_id
+		return false
+	if definition.aliases.is_empty():
+		return true
+	if not entity_finder.is_valid():
+		last_alias_error = "Quest '%s' needs aliases but no entity finder is set." % quest_id
+		return false
+	var filled_pos := {}
+	var filled_refs := {}
+	var player_pos: Vector3 = context.get("player_position", Vector3.ZERO)
+	for alias: QuestAlias in definition.aliases:
+		var candidates: Array = entity_finder.call({
+			"must_be_npc": alias.must_be_npc,
+			"required_coven": alias.required_coven,
+			"required_form": alias.required_form,
+			"exclude_ids": alias.exclude_ids.duplicate(),
+		})
+		if candidates.is_empty():
+			if alias.optional:
+				continue
+			last_alias_error = "Quest '%s': no candidate for required alias '%s'." % [quest_id, alias.id]
+			return false
+		var pick: Dictionary = candidates[0]
+		if not alias.nearest_to.is_empty():
+			var anchor := Vector3.ZERO
+			var anchor_world := StringName(context.get("world", ""))
+			if alias.nearest_to == &"player":
+				anchor = player_pos
+			elif filled_pos.has(alias.nearest_to):
+				anchor = filled_pos[alias.nearest_to]["position"]
+				anchor_world = filled_pos[alias.nearest_to]["world"]
+			else:
+				last_alias_error = "Quest '%s': alias '%s' anchors to unknown '%s' (must be &\"player\" or an earlier alias)." % [quest_id, alias.id, alias.nearest_to]
+				return false
+			var best_i := -1
+			var best_d := INF
+			for i in candidates.size():
+				var candidate: Dictionary = candidates[i]
+				if anchor_world != &"" and StringName(candidate.get("world", "")) != anchor_world:
+					continue
+				var d := (candidate.get("position", Vector3.ZERO) as Vector3).distance_squared_to(anchor)
+				if d < best_d:
+					best_d = d
+					best_i = i
+			if best_i < 0:
+				if alias.optional:
+					continue
+				last_alias_error = "Quest '%s': no candidate for required alias '%s' in the anchor's world." % [quest_id, alias.id]
+				return false
+			pick = candidates[best_i]
+		var ref := StringName(pick.get("ref", ""))
+		if ref == &"":
+			if alias.optional:
+				continue
+			last_alias_error = "Quest '%s': alias '%s' resolved to an empty ref." % [quest_id, alias.id]
+			return false
+		filled_refs[alias.id] = ref
+		filled_pos[alias.id] = {
+			"position": pick.get("position", Vector3.ZERO),
+			"world": StringName(pick.get("world", "")),
+		}
+	# Commit only after every required slot succeeds; replace optional misses.
+	state.alias_refs = filled_refs
+	return true
+
+
+## Get one filled alias ref, or &"" when the quest/alias is unknown or unfilled.
+func get_alias_ref(quest_id: StringName, alias_id: StringName) -> StringName:
+	var state: QuestRuntimeState = _states.get(quest_id)
+	if not state:
+		return &""
+	return StringName(state.alias_refs.get(alias_id, &""))
+
+
+## Get a copy of all filled alias refs for a quest (alias_id -> entity ref).
+func get_alias_refs(quest_id: StringName) -> Dictionary:
+	var state: QuestRuntimeState = _states.get(quest_id)
+	if not state:
+		return {}
+	return (state.alias_refs as Dictionary).duplicate()
+
+
+## Resolve a node's target ref, substituting whole-field {AliasId}
+## placeholders from this quest's fills. Anything else — literals and
+## unfilled placeholders — passes through unchanged so plain matching and
+## explicit template params keep working untouched.
+func _resolve_target(quest_id: StringName, node: QuestNodeDefinition, state: QuestRuntimeState) -> StringName:
+	var raw := str(node.target_id)
+	if raw.length() > 2 and raw.begins_with("{") and raw.ends_with("}"):
+		var key := StringName(raw.substr(1, raw.length() - 2))
+		if state.alias_refs.has(key):
+			return state.alias_refs[key]
+	return node.target_id
+
+
+## Validate alias declarations without registering or filling anything.
+## Returns an Array of Dictionaries with keys [code]type[/code],
+## [code]alias_id[/code] ([StringName]) and [code]detail[/code] (String).
+## An empty Array means the aliases are sound.
+func validate_aliases(definition: QuestDefinition) -> Array:
+	var issues: Array = []
+	var seen := {}
+	for alias: QuestAlias in definition.aliases:
+		if seen.has(alias.id):
+			issues.append({
+				"type": "duplicate_alias",
+				"alias_id": alias.id,
+				"detail": "Duplicate alias id '%s'." % alias.id,
+			})
+		seen[alias.id] = true
+	for alias: QuestAlias in definition.aliases:
+		var anchor := alias.nearest_to
+		if anchor.is_empty() or anchor == &"player":
+			continue
+		if not seen.has(anchor):
+			issues.append({
+				"type": "bad_anchor",
+				"alias_id": alias.id,
+				"detail": "Alias '%s' anchors to unknown '%s' (must be &\"player\" or another alias)." % [alias.id, anchor],
+			})
+			continue
+		var self_index := definition.aliases.find(alias)
+		var anchor_index := -1
+		for i in definition.aliases.size():
+			if (definition.aliases[i] as QuestAlias).id == anchor:
+				anchor_index = i
+				break
+		if anchor_index >= self_index:
+			issues.append({
+				"type": "forward_anchor",
+				"alias_id": alias.id,
+				"detail": "Alias '%s' anchors to '%s', which fills later. Anchors must target earlier aliases." % [alias.id, anchor],
+			})
+	return issues
 
 
 ## Get a deep copy of the runtime state for a quest (or null).
@@ -177,7 +536,9 @@ func apply_event(event: QuestEvent) -> Array[QuestEventResult]:
 			var node_state: QuestNodeState = state.nodes.get(node.id)
 			if not node_state or not node_state.active or node_state.completed:
 				continue
-			if node.trigger_type != event.type or node.target_id != event.target_id:
+			if node.trigger_type != event.type:
+				continue
+			if _resolve_target(quest_id, node, state) != event.target_id:
 				continue
 
 			node_state.progress = min(node.required_count, node_state.progress + delta)
@@ -201,15 +562,27 @@ func apply_event(event: QuestEvent) -> Array[QuestEventResult]:
 		if not progressed:
 			continue
 
-		var quest_completed := _is_quest_completed(definition, state.nodes)
-		if quest_completed:
-			state.status = "completed"
+		var stage_outcome := _advance_stages(definition, state)
+		var quest_completed := false
+		var quest_failed := false
+		if stage_outcome["finished"] == "failed":
+			state.status = "failed"
+			quest_failed = true
+		else:
+			if stage_outcome["finished"] == "completed":
+				state.status = "completed"
+				quest_completed = true
+			else:
+				quest_completed = _is_quest_completed(definition, state.nodes)
+				if quest_completed:
+					state.status = "completed"
 
 		# Also activate any implicit nodes whose prerequisites are now satisfied
 		_activate_implicit_nodes(definition, state.nodes, activated_ids)
 
 		var result := QuestEventResult.new()
 		result.quest_id = quest_id
+		result.stages_advanced = stage_outcome["stages"]
 		# Deduplicate activated_ids
 		var unique_activated: Array[StringName] = []
 		var seen := {}
@@ -220,6 +593,7 @@ func apply_event(event: QuestEvent) -> Array[QuestEventResult]:
 		result.activated_node_ids = unique_activated
 		result.completed_node_ids = completed_ids
 		result.quest_completed = quest_completed
+		result.quest_failed = quest_failed
 		result.xp_reward = definition.xp_reward if quest_completed else 0
 		results.append(result)
 
@@ -335,6 +709,15 @@ func get_registered_quest_ids() -> Array[StringName]:
 	for k: StringName in _definitions:
 		ids.append(k)
 	return ids
+
+
+## Remove a quest entirely: definition, runtime state, and lookup caches.
+## Used for failed radiant rollbacks and mod content removal.
+func unregister_quest(quest_id: StringName) -> void:
+	_definitions.erase(quest_id)
+	_states.erase(quest_id)
+	_node_maps.erase(quest_id)
+	_successor_maps.erase(quest_id)
 
 
 ## Reset all runtime state while keeping definitions. Re-creates empty state for each quest.
@@ -526,3 +909,7 @@ func _apply_template_params(definition: QuestDefinition, params: Dictionary) -> 
 		node.description = _resolve_variables(node.description, params)
 		var resolved_target := _resolve_variables(str(node.target_id), params)
 		node.target_id = StringName(resolved_target)
+
+	for stage: QuestStage in definition.stages:
+		stage.log_entry = _resolve_variables(stage.log_entry, params)
+		stage.objective = _resolve_variables(stage.objective, params)

@@ -4,7 +4,7 @@ extends Resource
 ## Extend for custom condition types.
 
 
-## The condition type. Built-in types: "flag", "faction_min", "quest_status", "has_item", "skill_min".
+## The condition type. Built-in types: "flag", "faction_min", "quest_status", "has_item", "skill_min", "companion_recruited", "companion_affinity_min".
 @export var type: String = "flag"
 
 # ── Flag condition ──
@@ -34,3 +34,7 @@ extends Resource
 # ── Skill condition ──
 ## Skill ID (when type == "skill_min").
 @export var skill_id: StringName
+
+# ── Companion conditions ──
+## Companion ref-ID (when type == "companion_recruited" or "companion_affinity_min").
+@export var companion_id: StringName

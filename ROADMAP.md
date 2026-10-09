@@ -22,6 +22,13 @@ This is the combined roadmap and framework-status document for Skelerealms.
 | `SaveSystem`         | `scripts/system/save_system.gd`                        | Serialize/deserialize game state to `user://saves/`   |
 | `CrimeMaster`        | `scripts/crime/crime_master.gd`                        | Tracks crimes committed against Covens; bounty calculation |
 | `DeviceNetwork`      | `scripts/misc/device_network.gd`                       | Broadcasts puzzle/device state changes (signals only) |
+| `QuestSystem`        | `scripts/quests/quest_system.gd`                       | Quest graph runtime, aliases, stages, journal, save integration |
+| `RadiantSystem`      | `scripts/radiant/radiant_system.gd`                    | Story Manager: event-driven instanced radiant quests, cooldowns |
+| `DialogueSystem`     | `scripts/dialogue/dialogue_system.gd`                  | Dialogue sessions, conditions, effects, save integration |
+| `BarkSystem`         | `scripts/dialogue/bark_system.gd`                      | One-liner barks for game events, cooldown-gated picking |
+| `CompanionSystem`    | `scripts/companions/companion_system.gd`               | Companion roster, follow orders, affinity + milestones |
+| `PerkSystem`         | `scripts/progression/perk_system.gd`                   | Perk registry, grant rules, live effect queries |
+| `PerkSystem`         | `scripts/progression/perk_system.gd`                   | Perk registry, grant rules, live effect queries |
 | `SpawnTrackerManager`| `scripts/system/spawn_tracker_manager.gd`              | Persists spawn point state across save/load cycles    |
 | `ModLoader`          | `scripts/mods/mod_loader.gd`                           | Discovers and applies mod manifests at game-start     |
 | `SKUIManager`        | `scripts/ui/ui_manager.gd`                             | UI layer stack, menu management, input mode routing   |

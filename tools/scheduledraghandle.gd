@@ -22,5 +22,12 @@ func _gui_input(event: InputEvent) -> void:
 			dragged.emit(event.relative)
 
 
+func _process(_delta: float) -> void:
+	# _gui_input only fires while the cursor is over the handle, so a
+	# release outside would otherwise leave dragging stuck on forever.
+	if dragging and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		dragging = false
+
+
 func _contains(pos: Vector2) -> bool:
 	return get_global_rect().has_point(pos)

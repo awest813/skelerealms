@@ -23,7 +23,8 @@ Skelerealms is inspired by Creation Engine, but aims to tackle many of its short
 - Cross-scene persistence
 - Inter-scene navigation
 - GOAP and behaviour trees
-- Quest system with DAG validation
+- Quest system with DAG validation, aliases, stages, and journal
+- Radiant Story Manager for event-driven repeatable quests
 - Dialogue system with branching trees
 - Combat subsystem (hitbox/hurtbox, damage pipeline, combat state machine)
 - UI framework (HUD, menus, widgets)
@@ -55,11 +56,17 @@ Skelerealms is inspired by Creation Engine, but aims to tackle many of its short
 - [Worlds](concepts/worlds.md)
 - [NPCs](user%20guide/npcs.md)
 - [AI Modules](user%20guide/ai_modules.md)
+- [AI Packages](user%20guide/ai_packages.md)
 - [GOAP Actions](user%20guide/goap_actions.md)
 - [Schedules](user%20guide/schedules.md)
 - [Navigation](user%20guide/navigation.md)
 - [Covens (Factions)](user%20guide/covens.md)
+- [Companions](user%20guide/companions.md)
+- [Progression](user%20guide/progression.md)
+- [Creatures](user%20guide/creatures.md)
+- [World Streaming](user%20guide/streaming.md)
 - [Quests](user%20guide/quests.md)
+- [Radiant Story Manager](user%20guide/radiant.md)
 - [Dialogue](user%20guide/dialogue.md)
 - [Save System](user%20guide/save_system.md)
 - [Mods](user%20guide/mods.md)

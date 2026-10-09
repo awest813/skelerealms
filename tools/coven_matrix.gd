@@ -91,6 +91,8 @@ func _load_covens() -> void:
 	_covens.clear()
 	var path: String = ProjectSettings.get_setting("skelerealms/covens_path", "res://covens")
 	_scan_dir(path)
+	# Stable grid order: filesystem order would shuffle rows/columns.
+	_covens.sort_custom(func(a: Coven, b: Coven) -> bool: return str(a.coven_id) < str(b.coven_id))
 
 
 func _scan_dir(path: String) -> void:

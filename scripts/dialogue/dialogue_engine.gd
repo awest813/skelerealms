@@ -11,6 +11,12 @@ class DialogueChoiceView extends RefCounted:
 	var text: String
 	var is_available: bool
 	var blocked_by: String # empty if available
+	## Persuasion attempt advertised by this choice (&"" when none).
+	var attempt_skill: StringName
+	var attempt_difficulty: int = 0
+
+
+## View of a dialogue node, with resolved choice availability.
 
 
 ## View of a dialogue node, with resolved choice availability.
@@ -19,6 +25,8 @@ class DialogueNodeView extends RefCounted:
 	var speaker: String
 	var text: String
 	var terminal: bool
+	var voice_id: StringName
+	var display_seconds: float = 0.0
 	var choices: Array[DialogueChoiceView] = []
 
 
@@ -28,6 +36,10 @@ class DialogueAdvanceResult extends RefCounted:
 	var message: String
 	var is_complete: bool
 	var current_node: DialogueNodeView # null if dialogue ended
+	## Whether the choice ran a persuasion attempt.
+	var attempted: bool = false
+	## Attempt outcome (meaningful only when attempted).
+	var attempt_succeeded: bool = false
 
 
 ## Snapshot of a session for save/restore.
@@ -74,6 +86,16 @@ func has_dialogue(dialogue_id: StringName) -> bool:
 	return _definitions.has(dialogue_id)
 
 
+## Node ids of a registered dialogue, or [] when unknown.
+## Used by scene validation without exposing the node map itself.
+func get_node_ids(dialogue_id: StringName) -> Array:
+	var node_map: Dictionary = _node_maps.get(dialogue_id, {})
+	var ids: Array = []
+	for node_id in node_map:
+		ids.append(node_id)
+	return ids
+
+
 ## Create a new dialogue session. The context provides game-state queries.
 func create_session(dialogue_id: StringName, context: DialogueContext) -> DialogueSession:
 	var definition: DialogueDefinition = _definitions.get(dialogue_id)
@@ -85,6 +107,65 @@ func create_session(dialogue_id: StringName, context: DialogueContext) -> Dialog
 
 
 # ── Validation ──────────────────────────────────────────────────────────────
+
+
+## Validate a definition without registering it.
+## Returns an Array of Dictionaries with keys [code]type[/code],
+## [code]node_id[/code] ([StringName]) and [code]detail[/code] (String).
+## An empty Array means the definition is valid. Used by the editor's
+## Validate button; registration-time checks still report via push_error.
+func validate_definition(definition: DialogueDefinition) -> Array:
+	var issues: Array = []
+	var seen := {}
+	for node: DialogueNode in definition.nodes:
+		if seen.has(node.id):
+			issues.append({
+				"type": "duplicate_node",
+				"node_id": node.id,
+				"detail": "Duplicate node id '%s'." % node.id,
+			})
+		seen[node.id] = true
+	if not seen.has(definition.start_node_id):
+		issues.append({
+			"type": "missing_start",
+			"node_id": definition.start_node_id,
+			"detail": "Start node '%s' does not exist." % definition.start_node_id,
+		})
+	for node: DialogueNode in definition.nodes:
+		var choice_ids := {}
+		for choice: DialogueChoice in node.choices:
+			if choice_ids.has(choice.id):
+				issues.append({
+					"type": "duplicate_choice",
+					"node_id": node.id,
+					"detail": "Duplicate choice id '%s'." % choice.id,
+				})
+			choice_ids[choice.id] = true
+			if not choice.next_node_id.is_empty() and not seen.has(choice.next_node_id):
+				issues.append({
+					"type": "dangling_choice",
+					"node_id": node.id,
+					"detail": "Choice '%s' points to unknown node '%s'." % [choice.id, choice.next_node_id],
+				})
+			if not choice.fail_next_node_id.is_empty() and not seen.has(choice.fail_next_node_id):
+				issues.append({
+					"type": "dangling_fail_branch",
+					"node_id": node.id,
+					"detail": "Choice '%s' fails to unknown node '%s'." % [choice.id, choice.fail_next_node_id],
+				})
+			if not choice.attempt_skill.is_empty() and choice.fail_next_node_id.is_empty() and not node.terminal:
+				issues.append({
+					"type": "check_without_fail",
+					"node_id": node.id,
+					"detail": "Choice '%s' rolls persuasion with nowhere to go on failure." % choice.id,
+				})
+		if not node.terminal and node.choices.is_empty():
+			issues.append({
+				"type": "dead_end",
+				"node_id": node.id,
+				"detail": "Non-terminal node has no choices.",
+			})
+	return issues
 
 
 func _validate_definition(definition: DialogueDefinition) -> Dictionary:

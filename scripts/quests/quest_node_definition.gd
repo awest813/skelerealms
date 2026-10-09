@@ -31,3 +31,6 @@ enum JoinMode {
 ## prerequisite to be completed.  [code]ANY[/code] activates this node as soon
 ## as any single prerequisite completes.
 @export var join_mode: JoinMode = JoinMode.ALL
+## Editor-only graph layout position, maintained by the quest graph editor.
+## Ignored at runtime; safe to leave at the default for grid auto-layout.
+@export var editor_position: Vector2 = Vector2.ZERO

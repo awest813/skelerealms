@@ -1,10 +1,6 @@
 extends Node3D
 
 
-static var spawn_position:Vector3
-static var spawn_world:String
-
-
 func _ready() -> void:
 	var world:String = OS.get_environment("world")
 	if world.is_empty():

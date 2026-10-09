@@ -27,34 +27,37 @@ func _jump_to_door_location(obj:Door) -> void:
 	var path = ProjectSettings.get_setting("skelerealms/worlds_path")
 	var res = _find_world(path, obj.destination_instance.world)
 	if res == "":
+		push_warning("DoorConnect: destination world '%s' not found under '%s'." % [obj.destination_instance.world, path])
 		return
-	push_warning("DoorConnect: Jumping to location...")
 	# Workaround from https://github.com/godotengine/godot/issues/75669#issuecomment-1621230016
 	p.get_editor_interface().open_scene_from_path.call_deferred(res)
 	p.get_editor_interface().edit_resource.call_deferred(load(res)) # switch tab
 	p.get_editor_interface().set_main_screen_editor.call_deferred("3D")
-#	var finish_up = func():
-#		print("setting camera position %s" % _cams[0].get_parent().get_parent())
-#		print(_cams.map(func(c:Camera3D): return c.global_position))
-#		var set_cam_position = func():
-#			_cams[0].global_position = obj.destination_instance.position
-#		set_cam_position.call_deferred()
-#	finish_up.call_deferred()
 
 
 func _set_position(obj:Door) -> void:
 	obj.instance.position = obj.global_position
-	obj.instance.world = obj.owner.name
+	# obj.owner is null when the Door itself is the edited scene root.
+	var scene_root := p.get_editor_interface().get_edited_scene_root()
+	if scene_root:
+		obj.instance.world = scene_root.name
+	elif obj.owner:
+		obj.instance.world = obj.owner.name
+	else:
+		obj.instance.world = ""
 
 
-func _find_world(path:String, target:String) -> String:
+## Static: pure directory search, no editor state needed (unit-testable).
+static func _find_world(path:String, target:String) -> String:
 	var dir = DirAccess.open(path)
 	if dir:
 		dir.list_dir_begin()
 		var file_name = dir.get_next()
 		while file_name != "":
 			if dir.current_is_dir(): # if is directory, search subdirectory
-				var res = _find_world(file_name, target)
+				# Recurse with the full path — passing the bare name loses
+				# the parent directory and breaks subdirectory searches.
+				var res = _find_world("%s/%s" % [path, file_name], target)
 				if not res == "":
 					return res
 			else: # if filename, cache filename

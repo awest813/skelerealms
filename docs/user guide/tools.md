@@ -28,3 +28,23 @@ The easiest way to allow the player to move between scenes is the Door. Add a do
 4. You now have a door.
 
 At any time, once you have a `destination_instance`, you can press the "Jump to destination" button to navigate the editor's camera to the other side of the door, opening the destination scene in the editor if necessary (providing that the destination world is in the proper folder).
+
+## Quest Graph Editor
+
+Select a `QuestDefinition` resource to open its graph: drag between nodes to link `next_node_ids`, select nodes (Delete key) to remove them — references from other nodes are scrubbed automatically. New nodes get the first unused `node_N` id. Node positions persist in the resource (`editor_position`); resources without stored layout open in grid auto-layout. Validate checks reachability, dead ends, cycles, and links to unknown nodes; press Save Resource to write the `.tres`.
+
+## Dialogue Tree Editor
+
+Select a `DialogueDefinition` resource to open its tree: each choice row has its own output port, so drag from a choice to its target node to set `next_node_id`. Deleting a node clears the choices that pointed at it; deleting a choice re-indexes the remaining ports. Properties (speaker, text, terminal flag, choices, conditions/effects counts) edit in the right-hand panel. Node layout persists like the quest editor. Validate reports duplicate ids, missing start nodes, dangling choices, and dead ends.
+
+## Coven Relationship Matrix
+
+Select any `Coven` resource to open the full opinion grid (rows/columns sorted by coven id). Edit scores inline — cells recolour by disposition — then Save All Covens to write every `.tres`.
+
+## Save Inspector
+
+The bottom-panel Save Inspector opens `user://saves/*.dat` files, verifies the checksum (honouring the `savegame_indents` project setting), and browses the full JSON tree with schema version and entity counts in the status bar.
+
+## Schedule Editor
+
+Select a `Schedule` resource to open the timeline: Add Event creates a box for any `ScheduleEvent` subclass, drag the edges to resize (snaps to the hour, then the minute), drag boxes between overlap tracks — extra tracks open automatically when more events overlap than fit. Delete boxes with Remove. Layout and tracking state reset cleanly each time a schedule is opened.

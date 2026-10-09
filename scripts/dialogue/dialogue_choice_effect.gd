@@ -4,7 +4,7 @@ extends Resource
 ## Extend for custom effect types.
 
 
-## The effect type. Built-in: "set_flag", "faction_delta", "emit_event", "activate_quest", "consume_item", "give_item".
+## The effect type. Built-in: "set_flag", "faction_delta", "emit_event", "activate_quest", "consume_item", "give_item", "recruit_companion", "dismiss_companion".
 @export var type: String = "set_flag"
 
 # ── Flag effect ──
@@ -26,6 +26,10 @@ extends Resource
 # ── Quest effect ──
 ## Quest ID to activate (when type == "activate_quest").
 @export var quest_id: StringName
+
+# ── Companion effects ──
+## Companion ref-ID (when type == "recruit_companion" or "dismiss_companion").
+@export var companion_id: StringName
 
 # ── Item effects ──
 ## Item ref-ID (when type == "consume_item" or "give_item").

@@ -43,6 +43,12 @@ func _build_ui() -> void:
 	load_btn.pressed.connect(_on_load)
 	toolbar.add_child(load_btn)
 
+	var latest_btn := Button.new()
+	latest_btn.text = "Latest"
+	latest_btn.tooltip_text = "Load the most recently modified save in user://saves/."
+	latest_btn.pressed.connect(_on_load_latest)
+	toolbar.add_child(latest_btn)
+
 	# ── Status bar ──
 	_status_label = Label.new()
 	_status_label.text = "No file loaded."
@@ -82,6 +88,34 @@ func _on_browse() -> void:
 	else:
 		_file_dialog.current_dir = OS.get_user_data_dir()
 	_file_dialog.popup_centered(Vector2i(900, 600))
+
+
+func _on_load_latest() -> void:
+	var saves_dir := OS.get_user_data_dir().path_join("saves")
+	var latest := find_latest_save(saves_dir)
+	if latest.is_empty():
+		_set_status("No save files found in user://saves/.", Color(1.0, 0.6, 0.2))
+		return
+	_path_field.text = "user://saves/%s" % latest
+	_on_load()
+
+
+## File name (not path) of the most recently modified .dat save in a
+## directory, or "" when there are none. Static so tests can drive it
+## against throwaway directories.
+static func find_latest_save(dir_path: String) -> String:
+	if not DirAccess.dir_exists_absolute(dir_path):
+		return ""
+	var latest := ""
+	var latest_mtime := 0
+	for file_name in DirAccess.get_files_at(dir_path):
+		if not file_name.ends_with(".dat"):
+			continue
+		var modified := FileAccess.get_modified_time(dir_path.path_join(file_name))
+		if latest.is_empty() or modified > latest_mtime:
+			latest = file_name
+			latest_mtime = modified
+	return latest
 
 
 func _on_load() -> void:
@@ -140,14 +174,18 @@ func _inspect(data: Dictionary, raw_text: String, path: String) -> void:
 
 ## Returns true if the embedded checksum matches a freshly-computed one,
 ## or true when no checksum field is present (old format).
+## The indent must mirror SaveSystem._serialize exactly, including the
+## skelerealms/savegame_indents setting — a hardcoded "\t" reported a
+## permanent MISMATCH for projects that save without indentation.
 func _verify_checksum(data: Dictionary, _raw_text: String) -> bool:
 	if not data.has("checksum"):
 		return true
 	var stored: String = data["checksum"]
 	var check_data: Dictionary = data.duplicate(true)
 	check_data.erase("checksum")
+	var indent := "\t" if ProjectSettings.get_setting("skelerealms/savegame_indents", true) else ""
 	var recalc: String = _compute_checksum(
-		JSON.stringify(check_data, "\t", true, true)
+		JSON.stringify(check_data, indent, true, true)
 	)
 	return recalc == stored
 

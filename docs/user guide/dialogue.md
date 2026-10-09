@@ -46,6 +46,10 @@ Create a `DialogueDefinition` resource (`.tres`):
 | `ends_dialogue` | `bool` | If `true`, the dialogue ends regardless of `next_node_id`. |
 | `conditions` | `Array[DialogueChoiceCondition]` | All must pass for this choice to be available. |
 | `effects` | `Array[DialogueChoiceEffect]` | Applied when this choice is selected. |
+| `attempt_skill` | `StringName` | Persuasion skill rolled on selection (empty = no attempt). |
+| `attempt_difficulty` | `int` | Subtracted from the roll chance. |
+| `fail_next_node_id` | `StringName` | Branch on failed attempts. Empty = stay (fizzle). |
+| `fail_effects` | `Array[DialogueChoiceEffect]` | Applied only when the attempt fails. |
 
 ### Conditions (`DialogueChoiceCondition`)
 
@@ -109,6 +113,91 @@ if result.is_complete:
 else:
     display_node(result.current_node)
 ```
+
+## Persuasion Attempts
+
+A choice with `attempt_skill` set rolls a persuasion check on selection
+instead of applying blindly. Chance is `50 + skill − difficulty +
+disposition/5`, clamped to 5–95, where skill comes from
+`DialogueContext.get_skill_level()` and disposition from
+`DialogueContext.get_disposition()` (both overridable, defaulting to 0 and a
+d100 respectively). Sessions carry their own `rng`, so seed it for
+deterministic tests or replays.
+
+- **Success** applies `effects` and follows `next_node_id` as usual.
+- **Failure** applies `fail_effects` and follows `fail_next_node_id` — or
+  fizzles in place (staying on the node, reporting `success = false`) when
+  no fail branch is set.
+- Results flag `attempted` / `attempt_succeeded`, and choice views advertise
+  `attempt_skill` / `attempt_difficulty` so UI can tag `[Persuade]` options.
+- Validation flags `dangling_fail_branch` (bad fail targets) and
+  `check_without_fail` (a check on a non-terminal node with nowhere to go).
+
+## Dialogue Scenes
+
+A `DialogueScene` stages a coordinated multi-actor conversation on top of an
+ordinary dialogue tree: each tree node may name which participant speaks
+that line, so two NPCs (and the player) can hold a scripted exchange with
+choices, conditions, effects, and persuasion all working unchanged.
+
+| Property | Type | Description |
+|---|---|---|
+| `id` | `StringName` | Unique scene id. |
+| `dialogue_id` | `StringName` | The backing tree this scene performs. |
+| `participants` | `Array[StringName]` | Every actor involved (`"player"` allowed). |
+| `required_participants` | `Array[StringName]` | Who must be present to start. Empty = all participants. |
+| `cast` | `Dictionary` | Node id → speaking actor ref. Unlisted nodes keep their authored speaker. |
+| `greet_radius` | `float` | Proximity trigger in metres. `0` disables auto-greet. |
+
+```gdscript
+DialogueSystem.register_dialogue(tree)
+DialogueSystem.register_scene(scene)
+
+# Manual start, or proximity-greet:
+var view := DialogueSystem.try_greet(&"market_argument", player_pos, guard_pos)
+var blocked := DialogueSystem.get_blocked_actors() # hold their AI packages
+DialogueSystem.choose(&"intervene")
+DialogueSystem.stop_scene() # aborts performance and conversation
+```
+
+While running, the scene's session **is** the active session, so `choose()`,
+save/load, and signals behave identically. `get_current_node()` carries the
+cast speaker override. Scenes validate like trees (unknown dialogue, cast
+nodes missing from the tree) and round-trip through saves mid-performance.
+Games decide presence: override `DialogueSystem.scene_participant_provider`
+with entity/proximity queries (it defaults to everyone present).
+
+## Barks
+
+`DialogueBark` resources are conditional one-liners — combat shouts, idle
+chatter, greetings. They reuse tree-choice conditions, evaluated through the
+same `DialogueConditions` helper, so authoring stays in one language:
+
+| Property | Type | Description |
+|---|---|---|
+| `id` / `trigger` | `StringName` | Unique id; trigger channel like `&"kill"` or `&"greet"`. |
+| `speaker` | `StringName` | Who may say it. Empty means anyone (generic fallback). |
+| `text` / `voice_id` / `display_seconds` | `String` / `StringName` / `float` | The line, its dub id, and subtitle hold (`0` = game decides). |
+| `priority` | `int` | Higher wins when several match (registration order breaks ties). |
+| `chance` | `float` | Per-query roll, `0..1`. |
+| `cooldown_seconds` | `float` | Refire lockout. Ephemeral — never saved. |
+| `conditions` | `Array[DialogueChoiceCondition]` | All must pass for eligibility. |
+
+```gdscript
+BarkSystem.register_bark(preload("res://dialogues/barks/guard_kill.tres"))
+var bark := BarkSystem.say(&"kill", &"GuardCaptain")
+# {} when nothing is eligible, else {bark_id, speaker, text, voice_id, display_seconds}
+```
+
+`BarkSystem.bark_said(speaker, text, voice_id, display_seconds)` feeds your
+subtitle/voice playback. Validate with `BarkSystem.validate_bark(bark)`.
+
+## Voice Hooks
+
+`DialogueNode` carries `voice_id` (dubbed-audio id, empty = unvoiced) and
+`display_seconds` (subtitle hold, `0` = game decides from line length). Both
+flow into `DialogueNodeView`, and bark payloads carry the same pair — one
+subtitle/voice contract for trees, scenes, and barks.
 
 ## Customising `DialogueContext`
 

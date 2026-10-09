@@ -1,6 +1,12 @@
 extends RigidBody3D
 ## Local -Z is forward. Input and AI/tests share the same command interface.
 signal reset_completed
+## Emitted when take_damage() reduces shields or hull.
+signal damaged(amount: float)
+## Emitted once when shields drop from above zero to zero.
+signal shield_broken
+## Emitted exactly once when hull reaches zero.
+signal destroyed
 
 @export var thrust_acceleration := 22.0
 @export var strafe_acceleration := 14.0
@@ -11,6 +17,18 @@ signal reset_completed
 @export var angular_response := 8.0
 @export var zone_radius := 2000.0
 @export var mouse_sensitivity := 0.008
+@export_group("Durability")
+@export var max_shield := 50.0
+@export var shield_regen_rate := 8.0
+@export var shield_regen_delay := 3.0
+@export var max_hull := 100.0
+var shield: float
+var hull: float
+var destroyed_flag := false
+## Transparent bubble mesh flashed on hits; assigned by the ship builder.
+var shield_bubble: MeshInstance3D
+var _since_damage := 999.0
+var _bubble_left := 0.0
 var assist_enabled := true
 var controls_enabled := true
 var read_player_input := true
@@ -22,6 +40,8 @@ var _reset_requested := false
 var boundary_resets := 0
 
 func _ready() -> void:
+	shield = max_shield
+	hull = max_hull
 	gravity_scale = 0.0
 	linear_damp_mode = RigidBody3D.DAMP_MODE_REPLACE
 	angular_damp_mode = RigidBody3D.DAMP_MODE_REPLACE
@@ -51,10 +71,68 @@ func request_reset() -> void:
 	_reset_requested = true
 	clear_commands()
 
+## Shields absorb damage first; overflow reaches the hull. Emits destroyed
+## exactly once. Destroyed ships keep drifting but accept no commands.
+func take_damage(amount: float) -> void:
+	if destroyed_flag or amount <= 0.0:
+		return
+	_since_damage = 0.0
+	var remaining := amount
+	if shield > 0.0:
+		var absorbed := minf(shield, remaining)
+		shield -= absorbed
+		remaining -= absorbed
+		if shield <= 0.0:
+			shield = 0.0
+			shield_broken.emit()
+	if remaining > 0.0:
+		hull = maxf(0.0, hull - remaining)
+	shield_flash()
+	damaged.emit(amount)
+	if hull <= 0.0 and not destroyed_flag:
+		destroyed_flag = true
+		clear_commands()
+		destroyed.emit()
+
+func repair_full() -> void:
+	shield = max_shield
+	hull = max_hull
+	destroyed_flag = false
+	_since_damage = shield_regen_delay
+
+
+## Show the shield bubble briefly; fades out in _process.
+func shield_flash() -> void:
+	if shield_bubble and is_instance_valid(shield_bubble):
+		_bubble_left = 0.4
+		shield_bubble.visible = true
+
+
+func _process(delta: float) -> void:
+	if _bubble_left <= 0.0:
+		return
+	_bubble_left -= delta
+	if not (shield_bubble and is_instance_valid(shield_bubble)):
+		_bubble_left = 0.0
+		return
+	var f := clampf(_bubble_left / 0.4, 0.0, 1.0)
+	shield_bubble.scale = Vector3.ONE * (1.0 + (1.0 - f) * 0.15)
+	var mat := shield_bubble.material_override as StandardMaterial3D
+	if mat:
+		mat.albedo_color.a = 0.45 * f
+	if _bubble_left <= 0.0:
+		shield_bubble.visible = false
+
 func _physics_process(delta: float) -> void:
 	if not controls_enabled:
 		clear_commands()
 		return
+	if destroyed_flag:
+		clear_commands()
+		return
+	_since_damage += delta
+	if shield < max_shield and _since_damage >= shield_regen_delay:
+		shield = minf(max_shield, shield + shield_regen_rate * delta)
 	if read_player_input:
 		thrust_command = Vector3(
 			Input.get_axis("flight_left", "flight_right"),

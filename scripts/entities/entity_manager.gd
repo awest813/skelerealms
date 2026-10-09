@@ -104,6 +104,16 @@ func _cleanup_stale_entities() -> void:
 			remove_entity(c.name)
 
 
+## Drop every entity's cached fade distance so a changed
+## skelerealms/actor_fade_distance takes effect immediately.
+## Called by worldspace entry; cheap enough to run on transitions.
+func invalidate_fade_cache() -> void:
+	for ref in entities:
+		var e: SKEntity = entities[ref]
+		if e and is_instance_valid(e):
+			e.refresh_fade_cache()
+
+
 ## Remove entity from the game.
 func remove_entity(rid: StringName) -> void:
 	if not entities.has(rid):

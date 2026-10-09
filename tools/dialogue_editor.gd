@@ -25,6 +25,10 @@ var _editing: DialogueDefinition
 var _selected_id: StringName = &""
 ## Maps safe node name (String) → DialogueNode id (StringName).
 var _name_to_id: Dictionary[String, StringName] = {}
+## Reverse map: definition id → safe node name. All node-name computation
+## must go through this (never raw _safe), or ids like "a b" and "a_b"
+## will misroute connections.
+var _id_to_name: Dictionary = {}
 
 
 func _ready() -> void:
@@ -53,6 +57,11 @@ func _build_ui() -> void:
 	add_btn.pressed.connect(_add_node)
 	toolbar.add_child(add_btn)
 
+	var validate_btn := Button.new()
+	validate_btn.text = "Validate"
+	validate_btn.pressed.connect(_validate)
+	toolbar.add_child(validate_btn)
+
 	var save_btn := Button.new()
 	save_btn.text = "Save Resource"
 	save_btn.pressed.connect(_save)
@@ -69,6 +78,7 @@ func _build_ui() -> void:
 	_graph.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_graph.connection_request.connect(_on_connection_request)
 	_graph.disconnection_request.connect(_on_disconnection_request)
+	_graph.delete_nodes_request.connect(_on_delete_nodes_request)
 	_graph.node_selected.connect(_on_node_selected)
 	split.add_child(_graph)
 
@@ -94,6 +104,7 @@ func edit(definition: DialogueDefinition) -> void:
 
 func _rebuild() -> void:
 	_name_to_id.clear()
+	_id_to_name.clear()
 	var to_remove: Array[Node] = []
 	for child: Node in _graph.get_children():
 		if child is GraphNode:
@@ -106,32 +117,40 @@ func _rebuild() -> void:
 	if not _editing:
 		return
 
+	# Use stored layout when any node has one; otherwise grid auto-layout.
+	var use_stored := false
+	for nd: DialogueNode in _editing.nodes:
+		if nd.editor_position != Vector2.ZERO:
+			use_stored = true
+			break
 	var cols := maxi(1, ceili(sqrt(_editing.nodes.size())))
 	for i: int in range(_editing.nodes.size()):
 		var nd: DialogueNode = _editing.nodes[i]
-		var col := i % cols
-		var row := i / cols
-		_create_graph_node(nd, Vector2(col * 340 + 40, row * 240 + 40))
+		var pos := nd.editor_position if use_stored else Vector2(i % cols * 340 + 40, i / cols * 240 + 40)
+		_create_graph_node(nd, pos)
 
 	# Draw connections: for each node's choice that has a next_node_id.
+	# Dangling targets (unknown ids) are skipped here and reported by Validate.
 	for nd: DialogueNode in _editing.nodes:
-		var from_name := _safe(nd.id)
+		var from_name: StringName = _id_to_name.get(nd.id, StringName(_safe(nd.id)))
 		for p: int in range(nd.choices.size()):
 			var ch: DialogueChoice = nd.choices[p]
 			if ch.next_node_id == &"":
 				continue
-			var to_name := _safe(ch.next_node_id)
-			if _name_to_id.has(to_name):
-				_graph.connect_node(StringName(from_name), p, StringName(to_name), 0)
+			if _id_to_name.has(ch.next_node_id):
+				_graph.connect_node(from_name, p, StringName(_id_to_name[ch.next_node_id]), 0)
 
 
 func _create_graph_node(nd: DialogueNode, pos: Vector2) -> void:
 	var gn := GraphNode.new()
-	var safe_name := _safe(nd.id)
+	var safe_name := _unique_safe(nd.id)
 	gn.name = safe_name
 	gn.title = str(nd.id) if nd.id else "(unnamed)"
 	gn.position_offset = pos
+	nd.editor_position = pos
+	gn.position_offset_changed.connect(func() -> void: nd.editor_position = gn.position_offset)
 	_name_to_id[safe_name] = nd.id
+	_id_to_name[nd.id] = safe_name
 
 	# ── Slot 0: input row ──
 	var in_row := Label.new()
@@ -359,26 +378,34 @@ func _build_choice_row(nd: DialogueNode, ch: DialogueChoice, p: int) -> Control:
 
 
 func _update_choice_target(nd: DialogueNode, ch: DialogueChoice, port: int, new_id: StringName) -> void:
-	var safe_from := _safe(nd.id)
+	var safe_from: StringName = _id_to_name.get(nd.id, StringName(_safe(nd.id)))
 	# Remove old connection.
-	if ch.next_node_id != &"":
-		var old_safe := _safe(ch.next_node_id)
-		_graph.disconnect_node(StringName(safe_from), port, StringName(old_safe), 0)
+	if ch.next_node_id != &"" and _id_to_name.has(ch.next_node_id):
+		_graph.disconnect_node(safe_from, port, StringName(_id_to_name[ch.next_node_id]), 0)
 	ch.next_node_id = new_id
 	# Add new connection if target exists.
-	if new_id != &"":
-		var to_safe := _safe(new_id)
-		if _name_to_id.has(to_safe):
-			_graph.connect_node(StringName(safe_from), port, StringName(to_safe), 0)
+	if new_id != &"" and _id_to_name.has(new_id):
+		_graph.connect_node(safe_from, port, StringName(_id_to_name[new_id]), 0)
 
 
 func _add_choice(nd: DialogueNode) -> void:
 	var ch := DialogueChoice.new()
-	ch.id = StringName("choice_%d" % nd.choices.size())
+	ch.id = _next_choice_id(nd)
 	ch.text = ""
 	nd.choices.append(ch)
 	_rebuild_graph_node_slots(nd)
 	_show_props_for_node(nd)
+
+
+## First unused "choice_N" id on this node, robust against deletions.
+func _next_choice_id(nd: DialogueNode) -> StringName:
+	var taken := {}
+	for ch: DialogueChoice in nd.choices:
+		taken[ch.id] = true
+	var n := nd.choices.size()
+	while taken.has(StringName("choice_%d" % n)):
+		n += 1
+	return StringName("choice_%d" % n)
 
 
 func _remove_choice(nd: DialogueNode, idx: int) -> void:
@@ -386,10 +413,9 @@ func _remove_choice(nd: DialogueNode, idx: int) -> void:
 		return
 	var ch: DialogueChoice = nd.choices[idx]
 	# Clear graph connection for this choice.
-	if ch.next_node_id != &"":
-		var safe_from := _safe(nd.id)
-		var safe_to := _safe(ch.next_node_id)
-		_graph.disconnect_node(StringName(safe_from), idx, StringName(safe_to), 0)
+	if ch.next_node_id != &"" and _id_to_name.has(ch.next_node_id):
+		var safe_from: StringName = _id_to_name.get(nd.id, StringName(_safe(nd.id)))
+		_graph.disconnect_node(safe_from, idx, StringName(_id_to_name[ch.next_node_id]), 0)
 	nd.choices.remove_at(idx)
 	# Rebuild remaining connections (port indices shifted).
 	_rebuild_graph_node_connections(nd)
@@ -399,7 +425,7 @@ func _remove_choice(nd: DialogueNode, idx: int) -> void:
 
 ## Rebuild only the choice slots on an existing [GraphNode] without recreating it.
 func _rebuild_graph_node_slots(nd: DialogueNode) -> void:
-	var safe_name := _safe(nd.id)
+	var safe_name: String = _id_to_name.get(nd.id, _safe(nd.id))
 	var gn: GraphNode = _graph.get_node_or_null(NodePath(safe_name)) as GraphNode
 	if not gn:
 		return
@@ -414,7 +440,7 @@ func _rebuild_graph_node_slots(nd: DialogueNode) -> void:
 
 ## Refresh the speaker/text preview label on a [GraphNode].
 func _refresh_graph_node_preview(nd: DialogueNode) -> void:
-	var safe_name := _safe(nd.id)
+	var safe_name: String = _id_to_name.get(nd.id, _safe(nd.id))
 	var gn: GraphNode = _graph.get_node_or_null(NodePath(safe_name)) as GraphNode
 	if not gn:
 		return
@@ -448,11 +474,81 @@ func _add_node() -> void:
 	if not _editing:
 		return
 	var nd := DialogueNode.new()
-	nd.id = StringName("node_%d" % _editing.nodes.size())
+	nd.id = _next_node_id()
 	nd.speaker = ""
 	nd.text = ""
 	_editing.nodes.append(nd)
 	_create_graph_node(nd, _graph.scroll_offset + Vector2(80.0 + _editing.nodes.size() * 10.0, 80.0))
+
+
+## Delete-selected-nodes support: clears every choice targeting the nodes,
+## drops them from the definition, then rebuilds to keep ports in sync.
+func _on_delete_nodes_request(node_names: Array) -> void:
+	if not _editing:
+		return
+	var doomed := {}
+	for node_name: Variant in node_names:
+		var doomed_id: StringName = _name_to_id.get(str(node_name), StringName(str(node_name)))
+		doomed[doomed_id] = true
+		_name_to_id.erase(str(node_name))
+		_id_to_name.erase(doomed_id)
+	if doomed.is_empty():
+		return
+	if _selected_id in doomed:
+		_selected_id = &""
+	for nd: DialogueNode in _editing.nodes:
+		for ch: DialogueChoice in nd.choices:
+			if ch.next_node_id in doomed:
+				ch.next_node_id = &""
+	var kept: Array[DialogueNode] = []
+	for nd: DialogueNode in _editing.nodes:
+		if not doomed.has(nd.id):
+			kept.append(nd)
+	_editing.nodes = kept
+	_rebuild()
+	_refresh_props()
+
+
+## First unused "node_N" id, robust against deletions.
+func _next_node_id() -> StringName:
+	var taken := {}
+	for nd: DialogueNode in _editing.nodes:
+		taken[nd.id] = true
+	var n := _editing.nodes.size()
+	while taken.has(StringName("node_%d" % n)):
+		n += 1
+	return StringName("node_%d" % n)
+
+
+## Collision-proof node name: "a b" and "a_b" must not share a GraphNode.
+func _unique_safe(id: StringName) -> String:
+	var base := _safe(id)
+	var candidate := base
+	var suffix := 1
+	while _name_to_id.has(candidate):
+		suffix += 1
+		candidate = "%s_%d" % [base, suffix]
+	return candidate
+
+
+func _validate() -> void:
+	if not _editing:
+		return
+	var engine := DialogueEngine.new()
+	var issues: Array = engine.validate_definition(_editing)
+	var dlg := AcceptDialog.new()
+	add_child(dlg)
+	if issues.is_empty():
+		dlg.title = "Validation Passed"
+		dlg.dialog_text = "Dialogue '%s' is valid." % str(_editing.id)
+	else:
+		var lines: PackedStringArray
+		for issue: Dictionary in issues:
+			lines.append("• [%s] node '%s': %s" % [str(issue.get("type", "?")), str(issue.get("node_id", "?")), str(issue.get("detail", ""))])
+		dlg.title = "Validation Issues (%d)" % issues.size()
+		dlg.dialog_text = "\n".join(lines)
+	dlg.popup_centered()
+	_free_dialog_on_close(dlg)
 
 
 func _save() -> void:
@@ -486,7 +582,15 @@ func _alert(msg: String, title: String) -> void:
 	dlg.title = title
 	dlg.dialog_text = msg
 	dlg.popup_centered()
+	_free_dialog_on_close(dlg)
+
+
+## AcceptDialog has no `cancelled` signal (only ConfirmationDialog does), so
+## hook OK plus the window's own close request — otherwise every X-close
+## leaks a dialog.
+func _free_dialog_on_close(dlg: AcceptDialog) -> void:
 	dlg.confirmed.connect(dlg.queue_free)
+	dlg.close_requested.connect(dlg.queue_free)
 
 
 ## Convert a node [StringName] id to a valid Godot node name.

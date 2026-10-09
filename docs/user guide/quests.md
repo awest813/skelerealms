@@ -62,6 +62,86 @@ Node B (`QuestNodeDefinition`):
 - `id = &"bring_iron"`, `trigger_type = "pickup"`, `target_id = &"iron_ingot"`, `required_count = 3`
 - `prerequisites = [&"talk_to_smith"]`
 
+## Quest Aliases
+
+Aliases are named reference slots filled with live entity ref-IDs when a quest
+activates — the Creation-Kit-style way to target "the nearest thief" instead
+of hardcoding `&"snitch_a"`. Nodes reference an alias with a `{AliasId}`
+placeholder in `target_id`; the engine resolves it against the fills stored
+in quest runtime state when matching events.
+
+Each alias is a `QuestAlias` resource on `QuestDefinition.aliases`:
+
+| Property | Type | Description |
+|---|---|---|
+| `id` | `StringName` | Alias name, e.g. `&"Mark"` (referenced as `{Mark}`). |
+| `optional` | `bool` | When true, the quest still activates if nothing matches. Unresolved placeholders simply match no events. |
+| `must_be_npc` | `bool` | Only entities with an `NPCComponent` are candidates (default `true`). |
+| `required_coven` | `StringName` | Only members of this coven match. Empty means any. |
+| `required_form` | `StringName` | Only entities with this `form_id` match. Empty means any. |
+| `exclude_ids` | `Array[StringName]` | Ref-IDs that must never fill this alias (e.g. the quest giver). |
+| `nearest_to` | `StringName` | Nearest-pick anchor: `&"player"`, another (earlier) alias id, or empty for first-registry-match. |
+
+Filling is deterministic: candidates arrive in entity-registry order and
+nearest picks break ties by distance, so the same world state always fills
+the same refs. Required aliases with no candidate block activation (the quest
+stays inactive); explicit template params take precedence over generated
+fills. Fills live in runtime state, so they survive save/load automatically.
+
+```gdscript
+# Journal text and map markers read fills like this:
+var mark := QuestSystem.resolve_alias(&"the_snitch", &"Mark")
+var all_fills := QuestSystem.get_alias_refs(&"the_snitch")
+```
+
+`QuestGraphEngine.validate_aliases(definition)` checks declarations without
+registering anything: duplicate ids, anchors to unknown ids, and anchors to
+aliases that fill later (anchors must target earlier aliases). See
+`example/quests/alias_demo_quest.tres` for a complete worked quest.
+
+## Quest Stages and the Journal
+
+Nodes are a quest's mechanics; **stages** are its narrative. Each `QuestStage`
+resource is one journaled beat: an index (`10`, `20`, `30` …), a log entry,
+and a short objective line. A stage becomes current explicitly via
+`QuestSystem.set_stage(id, index)` or automatically when every node in its
+`trigger_nodes` completes (stages with empty triggers only fire as the
+opening stage or explicitly). Each new current stage appends its log entry —
+with `{AliasId}` placeholders resolved against quest fills — to the quest
+journal. Stages can also end the quest: `completes_quest` pays XP as usual,
+`fails_quest` closes it terminally with no XP (watch `quest_failed`).
+
+| Property | Type | Description |
+|---|---|---|
+| `index` | `int` | Stage number, unique within the quest. |
+| `log_entry` | `String` | Journal line written on arrival. Supports `{AliasId}`. |
+| `objective` | `String` | Short objective shown while current. |
+| `trigger_nodes` | `Array[StringName]` | Joint completion auto-advances here. Empty = explicit-only. |
+| `completes_quest` | `bool` | Reaching this stage completes the quest. |
+| `fails_quest` | `bool` | Reaching this stage fails the quest. |
+
+```gdscript
+QuestSystem.set_stage(&"the_snitch", 20)
+# Returns "advanced", "completed", "failed", or "" when nothing happened.
+
+var journal := QuestSystem.get_journal(&"the_snitch")
+# {name, status, current_stage, objectives: [{text, done, stage}], log: [{stage, text}]}
+
+var line := QuestSystem.get_current_objective(&"the_snitch")
+# One-line objective for HUD use.
+```
+
+Quests without stages keep working exactly as before: their journal falls
+back to raw node progress. Stage fills persist in save snapshots alongside
+everything else. Validate declarations (duplicate indices, triggers naming
+unknown nodes) with `QuestGraphEngine.validate_stages(definition)`.
+
+## Repeatable Quests
+
+For bounty boards, rumor-driven errands, and other repeatable content, don't
+hand-place quest instances — declare a template and let the [Radiant Story
+Manager](radiant.md) issue them from game events.
+
 ## Registering Quests
 
 Call `QuestSystem.register_quest(definition)` before activating. You can load definitions from resources and register them at startup:

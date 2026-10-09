@@ -18,6 +18,12 @@ var stale_timer:float
 var supress_spawning:bool
 ## Cached actor fade distance squared, refreshed once.
 var _actor_fade_dist_sq:float = -1.0
+
+
+## Drop the cached fade distance so the next check re-reads
+## skelerealms/actor_fade_distance (worldspace entry).
+func refresh_fade_cache() -> void:
+	_actor_fade_dist_sq = -1.0
 ## Whether this entity is in the scene or not.
 var in_scene: bool:
 	get:

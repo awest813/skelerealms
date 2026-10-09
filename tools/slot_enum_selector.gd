@@ -11,7 +11,7 @@ var items_vbox := VBoxContainer.new()
 func _init() -> void:
 	add_child(parent_vbox)
 	parent_vbox.add_child(items_vbox)
-	
+
 	var hbox := HBoxContainer.new()
 	var b := Button.new()
 	b.text = "Add item"
@@ -22,14 +22,27 @@ func _init() -> void:
 	hbox.add_child(option_button)
 	hbox.add_child(b)
 	parent_vbox.add_child(hbox)
-	
+
 	add_focusable(option_button)
+	# Populate here, not in _ready: _update_property can run before _ready,
+	# which would leave every per-row duplicate dropdown permanently empty.
+	_populate_slots()
 
 
 func _ready() -> void:
+	# Second chance: the config may not have existed yet during _init.
+	# _populate_slots clears first, so calling twice is harmless.
+	_populate_slots()
+
+
+## Fill the template dropdown from the project config. Safe to call twice.
+func _populate_slots() -> void:
+	if SkeleRealmsGlobal.config == null:
+		push_warning("SlotEnumSelector: no SKConfig loaded; slot list is empty.")
+		return
+	option_button.clear()
 	for i:StringName in SkeleRealmsGlobal.config.equipment_slots:
 		option_button.add_item(i)
-		var n_i:int = option_button.item_count - 1
 
 
 func _sync() -> void:
@@ -72,7 +85,10 @@ func _add_item(kind:StringName = &"") -> void:
 	
 	var b := Button.new()
 	b.text = "Delete"
-	b.pressed.connect(func() -> void: 
+	b.pressed.connect(func() -> void:
+		# Detach first: queue_free is deferred, so a bare queue_free would
+		# still be counted by _get_values and the deletion would never stick.
+		items_vbox.remove_child(hbox)
 		hbox.queue_free()
 		_sync()
 		)

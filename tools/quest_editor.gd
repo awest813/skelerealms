@@ -13,6 +13,10 @@ var _graph: GraphEdit
 var _editing: QuestDefinition
 ## Maps safe node name (String) → QuestNodeDefinition id (StringName).
 var _name_to_id: Dictionary[String, StringName] = {}
+## Reverse map: definition id → safe node name. All node-name computation
+## must go through this (never raw _safe), or ids like "a b" and "a_b"
+## will misroute connections.
+var _id_to_name: Dictionary = {}
 
 
 func _ready() -> void:
@@ -56,6 +60,7 @@ func _build_ui() -> void:
 	_graph.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_graph.connection_request.connect(_on_connection_request)
 	_graph.disconnection_request.connect(_on_disconnection_request)
+	_graph.delete_nodes_request.connect(_on_delete_nodes_request)
 	vbox.add_child(_graph)
 
 
@@ -67,6 +72,7 @@ func edit(definition: QuestDefinition) -> void:
 
 func _rebuild() -> void:
 	_name_to_id.clear()
+	_id_to_name.clear()
 	# Remove existing GraphNodes.
 	var to_remove: Array[Node] = []
 	for child: Node in _graph.get_children():
@@ -80,37 +86,45 @@ func _rebuild() -> void:
 	if not _editing:
 		return
 
-	# Lay out nodes in a grid pattern.
+	# Use stored layout when any node has one; otherwise grid auto-layout.
+	# (Stored positions are never (0,0): the grid starts at (40,40).)
+	var use_stored := false
+	for nd: QuestNodeDefinition in _editing.nodes:
+		if nd.editor_position != Vector2.ZERO:
+			use_stored = true
+			break
 	var cols := maxi(1, ceili(sqrt(_editing.nodes.size())))
 	for i: int in range(_editing.nodes.size()):
 		var nd: QuestNodeDefinition = _editing.nodes[i]
-		var col := i % cols
-		var row := i / cols
-		_create_graph_node(nd, Vector2(col * 320 + 40, row * 220 + 40))
+		var pos := nd.editor_position if use_stored else Vector2(i % cols * 320 + 40, i / cols * 220 + 40)
+		_create_graph_node(nd, pos)
 
 	# Draw prerequisite/next-node connections after all nodes are placed.
+	# Dangling targets (unknown ids) are skipped here and reported by Validate.
 	for nd: QuestNodeDefinition in _editing.nodes:
-		var from_name := _safe(nd.id)
+		var from_name: StringName = _id_to_name.get(nd.id, StringName(_safe(nd.id)))
 		for next_id: StringName in nd.next_node_ids:
-			var to_name := _safe(next_id)
-			if _name_to_id.has(to_name):
-				_graph.connect_node(StringName(from_name), 0, StringName(to_name), 0)
+			if _id_to_name.has(next_id):
+				_graph.connect_node(from_name, 0, StringName(_id_to_name[next_id]), 0)
 
 
 func _create_graph_node(nd: QuestNodeDefinition, pos: Vector2) -> void:
 	var gn := GraphNode.new()
-	var safe_name := _safe(nd.id)
+	var safe_name := _unique_safe(nd.id)
 	gn.name = safe_name
 	gn.title = str(nd.id) if nd.id else "(unnamed)"
 	gn.position_offset = pos
+	nd.editor_position = pos
+	gn.position_offset_changed.connect(func() -> void: nd.editor_position = gn.position_offset)
 	_name_to_id[safe_name] = nd.id
+	_id_to_name[nd.id] = safe_name
 
 	# ── Row 0: trigger type selector + description ──
 	var row0 := HBoxContainer.new()
 	gn.add_child(row0)
 
 	var trigger_opt := OptionButton.new()
-	var trigger_types := ["kill", "pickup", "talk", "custom"]
+	var trigger_types := _trigger_types()
 	for t: String in trigger_types:
 		trigger_opt.add_item(t)
 	var ti := trigger_types.find(nd.trigger_type)
@@ -184,12 +198,47 @@ func _add_node() -> void:
 	if not _editing:
 		return
 	var nd := QuestNodeDefinition.new()
-	nd.id = StringName("node_%d" % _editing.nodes.size())
+	nd.id = _next_node_id()
 	nd.description = ""
 	nd.trigger_type = "custom"
 	nd.required_count = 1
 	_editing.nodes.append(nd)
 	_create_graph_node(nd, _graph.scroll_offset + Vector2(80.0 + _editing.nodes.size() * 10.0, 80.0))
+
+
+## Delete-selected-nodes support: removes the nodes, scrubs every
+## next_node_ids reference to them, then rebuilds to keep ports in sync.
+func _on_delete_nodes_request(node_names: Array) -> void:
+	if not _editing:
+		return
+	var doomed := {}
+	for node_name: Variant in node_names:
+		var doomed_id: StringName = _name_to_id.get(str(node_name), StringName(str(node_name)))
+		doomed[doomed_id] = true
+		_name_to_id.erase(str(node_name))
+		_id_to_name.erase(doomed_id)
+	if doomed.is_empty():
+		return
+	for nd: QuestNodeDefinition in _editing.nodes:
+		for dead_id: Variant in doomed:
+			nd.next_node_ids.erase(dead_id)
+	var kept: Array[QuestNodeDefinition] = []
+	for nd: QuestNodeDefinition in _editing.nodes:
+		if not doomed.has(nd.id):
+			kept.append(nd)
+	_editing.nodes = kept
+	_rebuild()
+
+
+## First unused "node_N" id, robust against deletions.
+func _next_node_id() -> StringName:
+	var taken := {}
+	for nd: QuestNodeDefinition in _editing.nodes:
+		taken[nd.id] = true
+	var n := _editing.nodes.size()
+	while taken.has(StringName("node_%d" % n)):
+		n += 1
+	return StringName("node_%d" % n)
 
 
 func _validate() -> void:
@@ -198,19 +247,35 @@ func _validate() -> void:
 	var engine := QuestGraphEngine.new()
 	engine.register_quest(_editing)
 	var report := engine.validate_graph(_editing.id)
+	# The engine checks reachability, dead ends, and cycles — but not links
+	# to unknown nodes, so the editor reports those itself.
+	var known := {}
+	for nd: QuestNodeDefinition in _editing.nodes:
+		known[nd.id] = true
+	var extra: Array[QuestGraphEngine.QuestValidationIssue] = []
+	for nd: QuestNodeDefinition in _editing.nodes:
+		for next_id: StringName in nd.next_node_ids:
+			if not known.has(next_id):
+				var dangling := QuestGraphEngine.QuestValidationIssue.new()
+				dangling.type = "dangling_link"
+				dangling.node_id = nd.id
+				dangling.detail = "Node '%s' links to unknown node '%s'." % [nd.id, next_id]
+				extra.append(dangling)
 	var dlg := AcceptDialog.new()
 	add_child(dlg)
-	if report.valid:
+	if report.valid and extra.is_empty():
 		dlg.title = "Validation Passed"
 		dlg.dialog_text = "Quest '%s' graph is valid." % str(_editing.id)
 	else:
 		var lines: PackedStringArray
 		for issue: QuestGraphEngine.QuestValidationIssue in report.issues:
 			lines.append("• [%s] node '%s': %s" % [issue.type, str(issue.node_id), issue.detail])
-		dlg.title = "Validation Issues (%d)" % report.issues.size()
+		for issue: QuestGraphEngine.QuestValidationIssue in extra:
+			lines.append("• [%s] node '%s': %s" % [issue.type, str(issue.node_id), issue.detail])
+		dlg.title = "Validation Issues (%d)" % (report.issues.size() + extra.size())
 		dlg.dialog_text = "\n".join(lines)
 	dlg.popup_centered()
-	dlg.confirmed.connect(dlg.queue_free)
+	_free_dialog_on_close(dlg)
 
 
 func _save() -> void:
@@ -229,9 +294,40 @@ func _alert(msg: String, title: String) -> void:
 	dlg.title = title
 	dlg.dialog_text = msg
 	dlg.popup_centered()
+	_free_dialog_on_close(dlg)
+
+
+## AcceptDialog has no `cancelled` signal (only ConfirmationDialog does), so
+## hook OK plus the window's own close request — otherwise every X-close
+## leaks a dialog.
+func _free_dialog_on_close(dlg: AcceptDialog) -> void:
 	dlg.confirmed.connect(dlg.queue_free)
+	dlg.close_requested.connect(dlg.queue_free)
 
 
 ## Convert a node [StringName] id to a valid Godot node name (no spaces or slashes).
 func _safe(id: StringName) -> String:
 	return str(id).replace(" ", "_").replace("/", "_")
+
+
+## Trigger types straight from the QuestNodeDefinition export hint, so the
+## editor can never drift out of sync with the runtime. Static for tests.
+static func _trigger_types() -> Array:
+	for prop: Dictionary in ClassDB.class_get_property_list("QuestNodeDefinition"):
+		if str(prop.get("name", "")) == "trigger_type":
+			var options := str(prop.get("hint_string", "")).split(",", false)
+			if not options.is_empty():
+				return options
+	return ["kill", "pickup", "talk", "custom"]
+
+
+## Collision-proof variant: "a b" and "a_b" must not share a GraphNode name,
+## or connections would misroute.
+func _unique_safe(id: StringName) -> String:
+	var base := _safe(id)
+	var candidate := base
+	var suffix := 1
+	while _name_to_id.has(candidate):
+		suffix += 1
+		candidate = "%s_%d" % [base, suffix]
+	return candidate

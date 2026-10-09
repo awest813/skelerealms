@@ -30,3 +30,9 @@ extends Resource
 ## values are the default substitution strings.  Override at activation time via
 ## [method QuestGraphEngine.activate_quest_with_params].
 @export var parameters: Dictionary = {}
+## Reference slots filled with live entity ref-IDs at activation time.
+## See [QuestAlias]. Nodes target them with [code]{AliasId}[/code] placeholders.
+@export var aliases: Array[QuestAlias] = []
+## Journaled narrative beats. See [QuestStage]. Empty means a stageless
+## quest, whose journal falls back to raw node progress.
+@export var stages: Array[QuestStage] = []

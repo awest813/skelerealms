@@ -63,21 +63,29 @@ func gather_debug_info() -> String:
 func add_skill_xp(skill:StringName, amount:int) -> void:
 	if not skills.has(skill):
 		push_warning("SKEntity %s has no skill %s." % [parent_entity.name, skill])
-		return 
-	skill_xp[skill] += amount
-	var target:int = SkeleRealmsGlobal.config.compute_skill(skills[skill])
-	if target == -1:
 		return
-	if skill_xp[skill] >= target:
+	# The xp ledger starts empty even for known skills; read defensively.
+	var gain := maxi(0, amount)
+	if parent_entity:
+		gain = int(round(gain * PerkSystem.skill_xp_rate(parent_entity, skill)))
+	skill_xp[skill] = int(skill_xp.get(skill, 0)) + gain
+	if SkeleRealmsGlobal.config == null:
+		return
+	var target:int = SkeleRealmsGlobal.config.compute_skill(skills[skill])
+	while target > 0 and skill_xp[skill] >= target:
+		skill_xp[skill] -= target
 		skills[skill] += 1
 		skill_levelled_up.emit(skill, skills[skill])
+		target = SkeleRealmsGlobal.config.compute_skill(skills[skill])
 
 
 func add_character_xp(amount:int) -> void:
-	character_xp += amount
-	var target:int = SkeleRealmsGlobal.config.compute_character(level)
-	if target == -1:
+	character_xp += maxi(0, amount)
+	if SkeleRealmsGlobal.config == null:
 		return
-	if character_xp >= target:
+	var target:int = SkeleRealmsGlobal.config.compute_character(level)
+	while target > 0 and character_xp >= target:
+		character_xp -= target
 		level += 1
 		character_levelled_up.emit(level)
+		target = SkeleRealmsGlobal.config.compute_character(level)

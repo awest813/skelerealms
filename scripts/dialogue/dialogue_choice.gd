@@ -15,3 +15,13 @@ extends Resource
 @export var conditions: Array[DialogueChoiceCondition] = []
 ## Effects to apply when this choice is selected.
 @export var effects: Array[DialogueChoiceEffect] = []
+## Persuasion attempt: skill id rolled on selection (e.g. &"speechcraft").
+## Empty means no attempt — the choice applies normally.
+@export var attempt_skill: StringName
+## Difficulty subtracted from the roll chance. Higher is harder.
+@export var attempt_difficulty: int = 0
+## Node advanced to when the attempt FAILS. Empty means stay on the
+## current node (the attempt fizzles without advancing).
+@export var fail_next_node_id: StringName
+## Effects applied only when the attempt fails.
+@export var fail_effects: Array[DialogueChoiceEffect] = []

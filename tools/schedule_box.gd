@@ -61,6 +61,9 @@ func edit(s:ScheduleEvent, e:Control) -> void:
 		&"hour": s.to.hour,
 		&"minute": s.to.minute,
 	}) - internal_pos
+	# Keep the drag base in sync with the laid-out size — otherwise the
+	# first end-handle drag jumps from the stale _ready-time width.
+	internal_size = int(size.x)
 	$MarginContainer/Controls/LineEdit.text = editing.name
 
 

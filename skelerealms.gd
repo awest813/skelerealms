@@ -88,7 +88,11 @@ func _enter_tree() -> void:
 	add_autoload_singleton("CrimeMaster", "res://addons/skelerealms/scripts/crime/crime_master.gd")
 	add_autoload_singleton("DeviceNetwork", "res://addons/skelerealms/scripts/misc/device_network.gd")
 	add_autoload_singleton("QuestSystem", "res://addons/skelerealms/scripts/quests/quest_system.gd")
+	add_autoload_singleton("RadiantSystem", "res://addons/skelerealms/scripts/radiant/radiant_system.gd")
 	add_autoload_singleton("DialogueSystem", "res://addons/skelerealms/scripts/dialogue/dialogue_system.gd")
+	add_autoload_singleton("BarkSystem", "res://addons/skelerealms/scripts/dialogue/bark_system.gd")
+	add_autoload_singleton("CompanionSystem", "res://addons/skelerealms/scripts/companions/companion_system.gd")
+	add_autoload_singleton("PerkSystem", "res://addons/skelerealms/scripts/progression/perk_system.gd")
 	add_autoload_singleton("SpawnTrackerManager", "res://addons/skelerealms/scripts/system/spawn_tracker_manager.gd")
 	add_autoload_singleton("ModLoader", "res://addons/skelerealms/scripts/mods/mod_loader.gd")
 	add_autoload_singleton("SKUIManager", "res://addons/skelerealms/scripts/ui/ui_manager.gd")
@@ -201,7 +205,11 @@ func _exit_tree() -> void:
 	remove_autoload_singleton("CrimeMaster")
 	remove_autoload_singleton("DeviceNetwork")
 	remove_autoload_singleton("QuestSystem")
+	remove_autoload_singleton("RadiantSystem")
 	remove_autoload_singleton("DialogueSystem")
+	remove_autoload_singleton("BarkSystem")
+	remove_autoload_singleton("CompanionSystem")
+	remove_autoload_singleton("PerkSystem")
 	remove_autoload_singleton("SpawnTrackerManager")
 	remove_autoload_singleton("ModLoader")
 	remove_autoload_singleton("SKUIManager")
@@ -340,7 +348,7 @@ func _forward_3d_gui_input(viewport_camera: Camera3D, event: InputEvent) -> int:
 	# pass if event isn't a mouse button
 	if not event is InputEventMouseButton:
 		return AFTER_GUI_INPUT_PASS
-	# pass if not mouse right click down
+	# pass if not mouse left click down
 	if not (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT or \
 		not (event as InputEventMouseButton).pressed:
 			return AFTER_GUI_INPUT_PASS
@@ -420,8 +428,13 @@ func _add_point(camera: Camera3D, position:Vector2, portal:bool = false) -> void
 	var from = camera.project_ray_origin(position)
 	var to = from + (camera.project_ray_normal(position) * RAY_LENGTH)
 	var ray = PhysicsRayQueryParameters3D.create(from, to)
-	# wait for physics
+	# wait for physics. Snapshot first: the selection may change during the
+	# await, and editing a newly-selected network would corrupt both.
+	var awaited_node := _target_node
+	var awaited_network: Network = target
 	await _target_node.get_tree().physics_frame
+	if _target_node != awaited_node or target != awaited_network or _target_node == null or target == null:
+		return
 	var hits = _target_node.get_world_3d().direct_space_state.intersect_ray(ray)
 	if hits:
 		hit_pos = hits["position"]

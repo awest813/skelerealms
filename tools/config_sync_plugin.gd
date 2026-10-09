@@ -27,14 +27,24 @@ func _parse_property(object: Object, _type: Variant.Type, name: String, _hint_ty
 func _handle_attributes(object: AttributesComponent) -> void:
 	var b := Button.new()
 	b.text = "Sync attributes set"
-	b.pressed.connect(func() -> void: object.attributes = SkeleRealmsGlobal.config.attributes.duplicate())
+	b.pressed.connect(func() -> void:
+		if SkeleRealmsGlobal.config == null:
+			push_error("ConfigSync: no SKConfig loaded; cannot sync attributes.")
+			return
+		object.attributes = SkeleRealmsGlobal.config.attributes.duplicate()
+		object.property_list_changed_notify())
 	add_custom_control(b)
 
 
 func _handle_skills(object: SkillsComponent) -> void:
 	var b := Button.new()
 	b.text = "Sync skill set"
-	b.pressed.connect(func() -> void: object.skills = SkeleRealmsGlobal.config.skills.duplicate())
+	b.pressed.connect(func() -> void:
+		if SkeleRealmsGlobal.config == null:
+			push_error("ConfigSync: no SKConfig loaded; cannot sync skills.")
+			return
+		object.skills = SkeleRealmsGlobal.config.skills.duplicate()
+		object.property_list_changed_notify())
 	add_custom_control(b)
 
 

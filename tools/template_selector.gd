@@ -15,7 +15,7 @@ var editing:SKWorldEntity
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	var templates:PackedStringArray = ProjectSettings.get_setting("skelerealms/entity_archetypes")
+	var templates:PackedStringArray = ProjectSettings.get_setting("skelerealms/entity_archetypes", PackedStringArray())
 	option_button.clear()
 	for t:String in templates:
 		option_button.add_item(t)
@@ -26,12 +26,18 @@ func edit(what:SKWorldEntity) -> void:
 
 
 func _on_button_pressed() -> void:
+	if option_button.item_count == 0:
+		push_error("TemplateSelector: no entity archetypes configured (skelerealms/entity_archetypes).")
+		return
 	file_dialog.popup_centered()
-	#_create_using_editor()
 
 
 func _grab_uid(path:String) -> String:
-	return ResourceUID.id_to_text(ResourceLoader.get_resource_uid(path))
+	var uid := ResourceLoader.get_resource_uid(path)
+	if uid == ResourceUID.INVALID_ID:
+		push_warning("TemplateSelector: '%s' has no registered UID; writing scene without ext_resource uid." % path)
+		return ""
+	return ResourceUID.id_to_text(uid)
 
 
 func _generate_inherited_scene_id() -> String:
@@ -41,17 +47,19 @@ func _generate_inherited_scene_id() -> String:
 func _format_scene(from:String, entity_name:String) -> String:
 	var id:String = _generate_inherited_scene_id()
 	var uid:String = ResourceUID.id_to_text(ResourceUID.create_id())
+	var from_uid := _grab_uid(from)
+	var ext_line := "[ext_resource type=\"PackedScene\" path=\"%s\" id=\"%s\"]" % [from, id]
+	if not from_uid.is_empty():
+		ext_line = "[ext_resource type=\"PackedScene\" uid=\"%s\" path=\"%s\" id=\"%s\"]" % [from_uid, from, id]
 	return """
 [gd_scene load_steps=2 format=3 uid=\"%s\"]
 
-[ext_resource type=\"PackedScene\" uid=\"%s\" path=\"%s\" id=\"%s\"]
+%s
 
 [node name=\"%s\" instance=ExtResource(\"%s\")]
 """ % [
 	uid,
-	_grab_uid(from),
-	from,
-	id,
+	ext_line,
 	entity_name,
 	id
 ]
@@ -59,12 +67,18 @@ func _format_scene(from:String, entity_name:String) -> String:
 
 func _on_file_dialog_file_selected(path: String) -> void:
 	_make_manually(path)
-	#_create_using_instantiation(path)
 
 
 func _make_manually(path:String) -> void:
+	if editing == null:
+		push_error("TemplateSelector: no world entity is being edited.")
+		return
 	var p:String = option_button.get_item_text(option_button.selected)
-	var contents:String = _format_scene(p, "test_entity")
+	# Name the instance after the destination file, not a hardcoded placeholder.
+	var entity_name := path.get_file().get_basename().to_pascal_case()
+	if entity_name.is_empty():
+		entity_name = "NewEntity"
+	var contents:String = _format_scene(p, entity_name)
 	var fh := FileAccess.open(path, FileAccess.WRITE)
 	if fh == null:
 		push_error("TemplateSelector: Failed to open '%s' for writing: %s" % [path, error_string(FileAccess.get_open_error())])
